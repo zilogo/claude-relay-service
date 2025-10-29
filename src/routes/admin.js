@@ -157,6 +157,64 @@ router.get('/users', authenticateAdmin, async (req, res) => {
   }
 })
 
+// 🔓 重置用户密码（管理员功能）
+router.post('/users/:userId/reset-password', authenticateAdmin, async (req, res) => {
+  try {
+    const userService = require('../services/userService')
+    const inputValidator = require('../utils/inputValidator')
+    const { userId } = req.params
+    const { newPassword } = req.body
+
+    if (!newPassword) {
+      return res.status(400).json({
+        error: 'Missing field',
+        message: 'New password is required'
+      })
+    }
+
+    // 验证新密码格式
+    try {
+      inputValidator.validatePassword(newPassword)
+    } catch (validationError) {
+      return res.status(400).json({
+        error: 'Invalid input',
+        message: validationError.message
+      })
+    }
+
+    // 重置用户密码
+    await userService.resetUserPassword(userId, newPassword)
+
+    logger.info(`🔓 Admin ${req.admin.username} reset password for user: ${userId}`)
+
+    res.json({
+      success: true,
+      message: 'Password reset successfully'
+    })
+  } catch (error) {
+    logger.error('❌ Reset user password error:', error)
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        error: 'User not found',
+        message: error.message
+      })
+    }
+
+    if (error.message.includes('Only local users')) {
+      return res.status(400).json({
+        error: 'Reset password failed',
+        message: error.message
+      })
+    }
+
+    res.status(500).json({
+      error: 'Reset password error',
+      message: 'Internal server error during password reset'
+    })
+  }
+})
+
 // 🔑 API Keys 管理
 
 // 调试：获取API Key费用详情

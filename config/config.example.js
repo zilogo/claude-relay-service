@@ -165,6 +165,15 @@ const config = {
     allowUserDeleteApiKeys: process.env.ALLOW_USER_DELETE_API_KEYS === 'true' // 默认不允许用户删除自己的API Keys
   },
 
+  // 🔑 本地认证配置
+  localAuth: {
+    enabled: process.env.LOCAL_AUTH_ENABLED === 'true',
+    allowSelfRegistration: process.env.ALLOW_SELF_REGISTRATION !== 'false', // 默认允许自助注册
+    passwordMinLength: parseInt(process.env.PASSWORD_MIN_LENGTH) || 8,
+    passwordMaxLength: parseInt(process.env.PASSWORD_MAX_LENGTH) || 128,
+    requirePasswordChange: process.env.REQUIRE_PASSWORD_CHANGE === 'true' // 首次登录是否强制修改密码
+  },
+
   // 📢 Webhook通知配置
   webhook: {
     enabled: process.env.WEBHOOK_ENABLED !== 'false', // 默认启用

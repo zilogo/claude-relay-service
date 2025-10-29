@@ -26,49 +26,21 @@
           <span class="ml-2 text-xl font-bold text-gray-900 dark:text-white">Claude Relay</span>
         </div>
         <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-          User Sign In
+          Create Account
         </h2>
         <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-          Sign in to your account to manage your API keys
+          Register a new account to access the service
         </p>
       </div>
 
       <div class="rounded-lg bg-white px-6 py-8 shadow dark:bg-gray-800 dark:shadow-xl">
-        <!-- 认证方式切换 Tab -->
-        <div class="mb-6 flex space-x-2 rounded-lg bg-gray-100 p-1 dark:bg-gray-700">
-          <button
-            type="button"
-            :class="[
-              'flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-              authType === 'local'
-                ? 'bg-white text-blue-600 shadow-sm dark:bg-gray-800 dark:text-blue-400'
-                : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
-            ]"
-            @click="authType = 'local'"
-          >
-            Local Login
-          </button>
-          <button
-            type="button"
-            :class="[
-              'flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-              authType === 'ldap'
-                ? 'bg-white text-blue-600 shadow-sm dark:bg-gray-800 dark:text-blue-400'
-                : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
-            ]"
-            @click="authType = 'ldap'"
-          >
-            LDAP Login
-          </button>
-        </div>
-
-        <form class="space-y-6" @submit.prevent="handleLogin">
+        <form class="space-y-6" @submit.prevent="handleRegister">
           <div>
             <label
               class="block text-sm font-medium text-gray-700 dark:text-gray-300"
               for="username"
             >
-              Username
+              Username <span class="text-red-500">*</span>
             </label>
             <div class="mt-1">
               <input
@@ -78,9 +50,28 @@
                 class="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400 sm:text-sm"
                 :disabled="loading"
                 name="username"
-                placeholder="Enter your username"
+                placeholder="Choose a username"
                 required
                 type="text"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="email">
+              Email <span class="text-red-500">*</span>
+            </label>
+            <div class="mt-1">
+              <input
+                id="email"
+                v-model="form.email"
+                autocomplete="email"
+                class="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400 sm:text-sm"
+                :disabled="loading"
+                name="email"
+                placeholder="Enter your email"
+                required
+                type="email"
               />
             </div>
           </div>
@@ -90,19 +81,62 @@
               class="block text-sm font-medium text-gray-700 dark:text-gray-300"
               for="password"
             >
-              Password
+              Password <span class="text-red-500">*</span>
             </label>
             <div class="mt-1">
               <input
                 id="password"
                 v-model="form.password"
-                autocomplete="current-password"
+                autocomplete="new-password"
                 class="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400 sm:text-sm"
                 :disabled="loading"
                 name="password"
-                placeholder="Enter your password"
+                placeholder="Choose a password (min 8 characters)"
                 required
                 type="password"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              for="confirmPassword"
+            >
+              Confirm Password <span class="text-red-500">*</span>
+            </label>
+            <div class="mt-1">
+              <input
+                id="confirmPassword"
+                v-model="form.confirmPassword"
+                autocomplete="new-password"
+                class="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400 sm:text-sm"
+                :disabled="loading"
+                name="confirmPassword"
+                placeholder="Confirm your password"
+                required
+                type="password"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              for="displayName"
+            >
+              Display Name (Optional)
+            </label>
+            <div class="mt-1">
+              <input
+                id="displayName"
+                v-model="form.displayName"
+                autocomplete="name"
+                class="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400 sm:text-sm"
+                :disabled="loading"
+                name="displayName"
+                placeholder="Your display name"
+                type="text"
               />
             </div>
           </div>
@@ -127,10 +161,30 @@
             </div>
           </div>
 
+          <div
+            v-if="success"
+            class="rounded-md border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20"
+          >
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    clip-rule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    fill-rule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm text-green-700 dark:text-green-400">{{ success }}</p>
+              </div>
+            </div>
+          </div>
+
           <div>
             <button
               class="group relative flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-400 dark:focus:ring-offset-gray-800"
-              :disabled="loading || !form.username || !form.password"
+              :disabled="loading || !isFormValid"
               type="submit"
             >
               <span v-if="loading" class="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -155,24 +209,16 @@
                   ></path>
                 </svg>
               </span>
-              {{ loading ? 'Signing In...' : 'Sign In' }}
+              {{ loading ? 'Creating Account...' : 'Create Account' }}
             </button>
           </div>
 
-          <div class="flex items-center justify-between text-sm">
+          <div class="text-center">
             <router-link
-              v-if="authType === 'local'"
-              class="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
-              to="/user-register"
+              class="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+              to="/user-login"
             >
-              Create Account
-            </router-link>
-            <span v-else></span>
-            <router-link
-              class="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
-              to="/admin-login"
-            >
-              Admin Login
+              Already have an account? Sign in
             </router-link>
           </div>
         </form>
@@ -182,54 +228,85 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useUserStore } from '@/stores/user'
+import axios from 'axios'
 import { useThemeStore } from '@/stores/theme'
 import { showToast } from '@/utils/toast'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
+import { API_PREFIX } from '@/config/api'
 
 const router = useRouter()
-const userStore = useUserStore()
 const themeStore = useThemeStore()
 
 const loading = ref(false)
 const error = ref('')
-const authType = ref('local') // 默认本地登录
+const success = ref('')
 
 const form = reactive({
   username: '',
-  password: ''
+  email: '',
+  password: '',
+  confirmPassword: '',
+  displayName: ''
 })
 
-const handleLogin = async () => {
-  if (!form.username || !form.password) {
-    error.value = 'Please enter both username and password'
+const isFormValid = computed(() => {
+  return (
+    form.username &&
+    form.email &&
+    form.password &&
+    form.confirmPassword &&
+    form.password === form.confirmPassword &&
+    form.password.length >= 8
+  )
+})
+
+const handleRegister = async () => {
+  error.value = ''
+  success.value = ''
+
+  // 验证密码匹配
+  if (form.password !== form.confirmPassword) {
+    error.value = 'Passwords do not match'
+    return
+  }
+
+  // 验证密码长度
+  if (form.password.length < 8) {
+    error.value = 'Password must be at least 8 characters'
     return
   }
 
   loading.value = true
-  error.value = ''
 
   try {
-    await userStore.login({
+    const response = await axios.post(`${API_PREFIX}/users/register`, {
       username: form.username,
+      email: form.email,
       password: form.password,
-      authType: authType.value
+      displayName: form.displayName || form.username
     })
 
-    showToast('Login successful!', 'success')
-    router.push('/user-dashboard')
+    if (response.data.success) {
+      success.value = 'Account created successfully! Redirecting to login...'
+      showToast('Registration successful! Please log in.', 'success')
+
+      // 2秒后跳转到登录页
+      setTimeout(() => {
+        router.push('/user-login')
+      }, 2000)
+    }
   } catch (err) {
-    console.error('Login error:', err)
-    error.value = err.response?.data?.message || err.message || 'Login failed'
+    console.error('Registration error:', err)
+    error.value = err.response?.data?.message || err.message || 'Registration failed'
   } finally {
     loading.value = false
   }
 }
 
 onMounted(() => {
-  // 初始化主题（因为该页面不在 MainLayout 内）
+  // 初始化主题
   themeStore.initTheme()
 })
 </script>

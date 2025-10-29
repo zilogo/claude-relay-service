@@ -160,6 +160,365 @@ router.post('/login', async (req, res) => {
   }
 })
 
+// 📝 用户注册端点
+router.post('/register', async (req, res) => {
+  try {
+    const { username, email, password, displayName, firstName, lastName } = req.body
+    const clientIp = req.ip || req.connection.remoteAddress || 'unknown'
+
+    // 初始化速率限制器（如果尚未初始化）
+    const limiters = initRateLimiters()
+
+    // 检查IP速率限制
+    if (limiters.ipRateLimiter) {
+      try {
+        await limiters.ipRateLimiter.consume(clientIp)
+      } catch (rateLimiterRes) {
+        const retryAfter = Math.round(rateLimiterRes.msBeforeNext / 1000) || 900
+        logger.security(`🚫 Registration rate limit exceeded for IP: ${clientIp}`)
+        res.set('Retry-After', String(retryAfter))
+        return res.status(429).json({
+          error: 'Too many requests',
+          message: 'Too many registration attempts from this IP. Please try again later.'
+        })
+      }
+    }
+
+    // 验证必填字段
+    if (!username || !email || !password) {
+      return res.status(400).json({
+        error: 'Missing fields',
+        message: 'Username, email, and password are required'
+      })
+    }
+
+    // 验证输入格式
+    try {
+      inputValidator.validateUsername(username)
+      inputValidator.validateEmail(email)
+      inputValidator.validatePassword(password)
+      if (displayName) {
+        inputValidator.validateDisplayName(displayName)
+      }
+    } catch (validationError) {
+      return res.status(400).json({
+        error: 'Invalid input',
+        message: validationError.message
+      })
+    }
+
+    // 检查用户管理是否启用
+    if (!config.userManagement.enabled) {
+      return res.status(503).json({
+        error: 'Service unavailable',
+        message: 'User management is not enabled'
+      })
+    }
+
+    // 注册用户
+    const user = await userService.registerLocalUser({
+      username,
+      email,
+      password,
+      displayName,
+      firstName,
+      lastName
+    })
+
+    logger.info(`📝 New user registered: ${username} from IP: ${clientIp}`)
+
+    res.status(201).json({
+      success: true,
+      message: 'Registration successful',
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        displayName: user.displayName,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role
+      }
+    })
+  } catch (error) {
+    logger.error('❌ User registration error:', error)
+
+    // 返回友好的错误信息
+    if (error.message.includes('already exists')) {
+      return res.status(409).json({
+        error: 'Registration failed',
+        message: error.message
+      })
+    }
+
+    if (error.message.includes('not enabled') || error.message.includes('not allowed')) {
+      return res.status(403).json({
+        error: 'Registration failed',
+        message: error.message
+      })
+    }
+
+    res.status(500).json({
+      error: 'Registration error',
+      message: 'Internal server error during registration'
+    })
+  }
+})
+
+// 🔐 本地用户登录端点
+router.post('/login/local', async (req, res) => {
+  try {
+    const { username, password } = req.body
+    const clientIp = req.ip || req.connection.remoteAddress || 'unknown'
+
+    // 初始化速率限制器
+    const limiters = initRateLimiters()
+
+    // 检查IP速率限制
+    if (limiters.ipRateLimiter) {
+      try {
+        await limiters.ipRateLimiter.consume(clientIp)
+      } catch (rateLimiterRes) {
+        const retryAfter = Math.round(rateLimiterRes.msBeforeNext / 1000) || 900
+        logger.security(`🚫 Login rate limit exceeded for IP: ${clientIp}`)
+        res.set('Retry-After', String(retryAfter))
+        return res.status(429).json({
+          error: 'Too many requests',
+          message: 'Too many login attempts from this IP. Please try again later.'
+        })
+      }
+    }
+
+    if (limiters.strictIpRateLimiter) {
+      try {
+        await limiters.strictIpRateLimiter.consume(clientIp)
+      } catch (rateLimiterRes) {
+        const retryAfter = Math.round(rateLimiterRes.msBeforeNext / 1000) || 3600
+        logger.security(`🚫 Strict rate limit exceeded for IP: ${clientIp}`)
+        res.set('Retry-After', String(retryAfter))
+        return res.status(429).json({
+          error: 'Too many requests',
+          message: 'Too many login attempts detected. Access temporarily blocked.'
+        })
+      }
+    }
+
+    if (!username || !password) {
+      return res.status(400).json({
+        error: 'Missing credentials',
+        message: 'Username and password are required'
+      })
+    }
+
+    // 验证输入格式
+    try {
+      inputValidator.validateUsername(username)
+      inputValidator.validatePassword(password)
+    } catch (validationError) {
+      return res.status(400).json({
+        error: 'Invalid input',
+        message: validationError.message
+      })
+    }
+
+    // 检查用户管理是否启用
+    if (!config.userManagement.enabled) {
+      return res.status(503).json({
+        error: 'Service unavailable',
+        message: 'User management is not enabled'
+      })
+    }
+
+    // 本地认证
+    const authResult = await userService.authenticateLocalUser(username, password)
+
+    logger.info(`✅ Local user login successful: ${username} from IP: ${clientIp}`)
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      user: {
+        id: authResult.user.id,
+        username: authResult.user.username,
+        email: authResult.user.email,
+        displayName: authResult.user.displayName,
+        firstName: authResult.user.firstName,
+        lastName: authResult.user.lastName,
+        role: authResult.user.role,
+        authType: authResult.user.authType
+      },
+      sessionToken: authResult.sessionToken
+    })
+  } catch (error) {
+    const clientIp = req.ip || req.connection.remoteAddress || 'unknown'
+    logger.info(`🚫 Failed local login attempt from IP: ${clientIp}`)
+    logger.error('❌ Local user login error:', error)
+
+    // 返回通用错误信息，避免用户枚举
+    res.status(401).json({
+      error: 'Authentication failed',
+      message: 'Invalid username or password'
+    })
+  }
+})
+
+// 🔐 LDAP用户登录端点
+router.post('/login/ldap', async (req, res) => {
+  try {
+    const { username, password } = req.body
+    const clientIp = req.ip || req.connection.remoteAddress || 'unknown'
+
+    // 初始化速率限制器
+    const limiters = initRateLimiters()
+
+    // 检查IP速率限制
+    if (limiters.ipRateLimiter) {
+      try {
+        await limiters.ipRateLimiter.consume(clientIp)
+      } catch (rateLimiterRes) {
+        const retryAfter = Math.round(rateLimiterRes.msBeforeNext / 1000) || 900
+        logger.security(`🚫 Login rate limit exceeded for IP: ${clientIp}`)
+        res.set('Retry-After', String(retryAfter))
+        return res.status(429).json({
+          error: 'Too many requests',
+          message: 'Too many login attempts from this IP. Please try again later.'
+        })
+      }
+    }
+
+    if (limiters.strictIpRateLimiter) {
+      try {
+        await limiters.strictIpRateLimiter.consume(clientIp)
+      } catch (rateLimiterRes) {
+        const retryAfter = Math.round(rateLimiterRes.msBeforeNext / 1000) || 3600
+        logger.security(`🚫 Strict rate limit exceeded for IP: ${clientIp}`)
+        res.set('Retry-After', String(retryAfter))
+        return res.status(429).json({
+          error: 'Too many requests',
+          message: 'Too many login attempts detected. Access temporarily blocked.'
+        })
+      }
+    }
+
+    if (!username || !password) {
+      return res.status(400).json({
+        error: 'Missing credentials',
+        message: 'Username and password are required'
+      })
+    }
+
+    // 验证输入格式
+    let validatedUsername
+    try {
+      validatedUsername = inputValidator.validateUsername(username)
+      inputValidator.validatePassword(password)
+    } catch (validationError) {
+      return res.status(400).json({
+        error: 'Invalid input',
+        message: validationError.message
+      })
+    }
+
+    // 检查用户管理是否启用
+    if (!config.userManagement.enabled) {
+      return res.status(503).json({
+        error: 'Service unavailable',
+        message: 'User management is not enabled'
+      })
+    }
+
+    // 检查LDAP是否启用
+    if (!config.ldap || !config.ldap.enabled) {
+      return res.status(503).json({
+        error: 'Service unavailable',
+        message: 'LDAP authentication is not enabled'
+      })
+    }
+
+    // LDAP认证
+    const authResult = await ldapService.authenticateUserCredentials(validatedUsername, password)
+
+    if (!authResult.success) {
+      logger.info(`🚫 Failed LDAP login attempt for user: ${validatedUsername} from IP: ${clientIp}`)
+      return res.status(401).json({
+        error: 'Authentication failed',
+        message: authResult.message
+      })
+    }
+
+    logger.info(`✅ LDAP user login successful: ${validatedUsername} from IP: ${clientIp}`)
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      user: {
+        id: authResult.user.id,
+        username: authResult.user.username,
+        email: authResult.user.email,
+        displayName: authResult.user.displayName,
+        firstName: authResult.user.firstName,
+        lastName: authResult.user.lastName,
+        role: authResult.user.role
+      },
+      sessionToken: authResult.sessionToken
+    })
+  } catch (error) {
+    logger.error('❌ LDAP user login error:', error)
+    res.status(500).json({
+      error: 'Login error',
+      message: 'Internal server error during login'
+    })
+  }
+})
+
+// 🔄 修改密码端点
+router.post('/change-password', authenticateUser, async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({
+        error: 'Missing fields',
+        message: 'Old password and new password are required'
+      })
+    }
+
+    // 验证新密码格式
+    try {
+      inputValidator.validatePassword(newPassword)
+    } catch (validationError) {
+      return res.status(400).json({
+        error: 'Invalid input',
+        message: validationError.message
+      })
+    }
+
+    // 修改密码
+    await userService.updateUserPassword(req.user.id, oldPassword, newPassword)
+
+    logger.info(`🔄 User password changed: ${req.user.username}`)
+
+    res.json({
+      success: true,
+      message: 'Password changed successfully'
+    })
+  } catch (error) {
+    logger.error('❌ Change password error:', error)
+
+    if (error.message.includes('incorrect') || error.message.includes('Only local users')) {
+      return res.status(400).json({
+        error: 'Change password failed',
+        message: error.message
+      })
+    }
+
+    res.status(500).json({
+      error: 'Change password error',
+      message: 'Internal server error during password change'
+    })
+  }
+})
+
 // 🚪 用户登出端点
 router.post('/logout', authenticateUser, async (req, res) => {
   try {

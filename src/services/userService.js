@@ -8,6 +8,10 @@ class UserService {
     this.userPrefix = 'user:'
     this.usernamePrefix = 'username:'
     this.userSessionPrefix = 'user_session:'
+    // 加密相关常量
+    this.ENCRYPTION_ALGORITHM = 'aes-256-cbc'
+    this.ENCRYPTION_SALT = 'salt'
+    this._encryptionKeyCache = null
   }
 
   // 🔑 生成用户ID
@@ -18,6 +22,83 @@ class UserService {
   // 🔑 生成会话Token
   generateSessionToken() {
     return crypto.randomBytes(32).toString('hex')
+  }
+
+  // 🔑 生成加密密钥
+  _generateEncryptionKey() {
+    if (!this._encryptionKeyCache) {
+      this._encryptionKeyCache = crypto.scryptSync(
+        config.security.encryptionKey,
+        this.ENCRYPTION_SALT,
+        32
+      )
+    }
+    return this._encryptionKeyCache
+  }
+
+  // 🔐 加密密码
+  _encryptPassword(password) {
+    if (!password) {
+      return ''
+    }
+
+    try {
+      const key = this._generateEncryptionKey()
+      const iv = crypto.randomBytes(16)
+
+      const cipher = crypto.createCipheriv(this.ENCRYPTION_ALGORITHM, key, iv)
+      let encrypted = cipher.update(password, 'utf8', 'hex')
+      encrypted += cipher.final('hex')
+
+      // 将IV和加密数据一起返回，用:分隔
+      return `${iv.toString('hex')}:${encrypted}`
+    } catch (error) {
+      logger.error('❌ Password encryption error:', error)
+      throw error
+    }
+  }
+
+  // 🔓 解密密码
+  _decryptPassword(encryptedPassword) {
+    if (!encryptedPassword) {
+      return ''
+    }
+
+    try {
+      // 检查是否是新格式（包含IV）
+      if (encryptedPassword.includes(':')) {
+        const parts = encryptedPassword.split(':')
+        if (parts.length === 2) {
+          const key = this._generateEncryptionKey()
+          const iv = Buffer.from(parts[0], 'hex')
+          const encrypted = parts[1]
+
+          const decipher = crypto.createDecipheriv(this.ENCRYPTION_ALGORITHM, key, iv)
+          let decrypted = decipher.update(encrypted, 'hex', 'utf8')
+          decrypted += decipher.final('utf8')
+
+          return decrypted
+        }
+      }
+
+      // 格式错误
+      logger.warn('⚠️ Invalid encrypted password format')
+      return ''
+    } catch (error) {
+      logger.error('❌ Password decryption error:', error)
+      return ''
+    }
+  }
+
+  // 🔍 验证密码
+  async verifyPassword(password, encryptedPassword) {
+    try {
+      const decryptedPassword = this._decryptPassword(encryptedPassword)
+      return password === decryptedPassword
+    } catch (error) {
+      logger.error('❌ Password verification error:', error)
+      return false
+    }
   }
 
   // 👤 创建或更新用户
@@ -586,6 +667,230 @@ class UserService {
     } catch (error) {
       logger.error('❌ Error transferring matching API keys:', error)
       // Don't throw error to prevent blocking user creation
+    }
+  }
+
+  // 📝 本地用户注册
+  async registerLocalUser(userData) {
+    try {
+      const { username, email, password, displayName, firstName, lastName } = userData
+
+      // 检查本地认证是否启用
+      if (!config.localAuth.enabled) {
+        throw new Error('Local authentication is not enabled')
+      }
+
+      // 检查是否允许自助注册
+      if (!config.localAuth.allowSelfRegistration) {
+        throw new Error('Self-registration is not allowed')
+      }
+
+      // 检查用户是否已存在
+      const existingUser = await this.getUserByUsername(username)
+      if (existingUser) {
+        throw new Error('Username already exists')
+      }
+
+      // 验证密码长度
+      if (
+        password.length < config.localAuth.passwordMinLength ||
+        password.length > config.localAuth.passwordMaxLength
+      ) {
+        throw new Error(
+          `Password must be between ${config.localAuth.passwordMinLength} and ${config.localAuth.passwordMaxLength} characters`
+        )
+      }
+
+      // 加密密码
+      const encryptedPassword = this._encryptPassword(password)
+
+      // 创建用户ID
+      const userId = this.generateUserId()
+
+      // 创建用户对象
+      const user = {
+        id: userId,
+        username,
+        email,
+        displayName: displayName || username,
+        firstName: firstName || '',
+        lastName: lastName || '',
+        role: config.userManagement.defaultUserRole,
+        isActive: true,
+        authType: 'local', // 标记为本地认证用户
+        passwordHash: encryptedPassword,
+        passwordChangedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastLoginAt: null,
+        apiKeyCount: 0,
+        totalUsage: {
+          requests: 0,
+          inputTokens: 0,
+          outputTokens: 0,
+          totalCost: 0
+        }
+      }
+
+      // 保存用户信息
+      await redis.set(`${this.userPrefix}${user.id}`, JSON.stringify(user))
+      await redis.set(`${this.usernamePrefix}${username}`, user.id)
+
+      // 尝试转移匹配的API Keys
+      await this.transferMatchingApiKeys(user)
+
+      logger.info(`📝 Registered local user: ${username} (${user.id})`)
+
+      // 返回用户信息（不包含密码哈希）
+      const { passwordHash, ...userWithoutPassword } = user
+      return userWithoutPassword
+    } catch (error) {
+      logger.error('❌ Error registering local user:', error)
+      throw error
+    }
+  }
+
+  // 🔐 本地用户认证
+  async authenticateLocalUser(username, password) {
+    try {
+      // 检查本地认证是否启用
+      if (!config.localAuth.enabled) {
+        throw new Error('Local authentication is not enabled')
+      }
+
+      // 获取用户
+      const user = await this.getUserByUsername(username)
+      if (!user) {
+        throw new Error('Invalid username or password')
+      }
+
+      // 检查是否是本地用户
+      if (user.authType !== 'local') {
+        throw new Error('This user cannot use local authentication')
+      }
+
+      // 检查用户是否被禁用
+      if (!user.isActive) {
+        throw new Error('User account is disabled')
+      }
+
+      // 验证密码
+      const isValid = await this.verifyPassword(password, user.passwordHash)
+      if (!isValid) {
+        throw new Error('Invalid username or password')
+      }
+
+      // 更新最后登录时间
+      await this.recordUserLogin(user.id)
+
+      // 创建会话
+      const sessionToken = await this.createUserSession(user.id)
+
+      logger.info(`🔐 Local user authenticated: ${username} (${user.id})`)
+
+      // 返回用户信息（不包含密码哈希）
+      const { passwordHash, ...userWithoutPassword } = user
+      return {
+        user: userWithoutPassword,
+        sessionToken
+      }
+    } catch (error) {
+      logger.error('❌ Error authenticating local user:', error)
+      throw error
+    }
+  }
+
+  // 🔄 修改用户密码
+  async updateUserPassword(userId, oldPassword, newPassword) {
+    try {
+      // 获取用户
+      const user = await this.getUserById(userId, false)
+      if (!user) {
+        throw new Error('User not found')
+      }
+
+      // 检查是否是本地用户
+      if (user.authType !== 'local') {
+        throw new Error('Only local users can change their password')
+      }
+
+      // 验证旧密码
+      const isValid = await this.verifyPassword(oldPassword, user.passwordHash)
+      if (!isValid) {
+        throw new Error('Current password is incorrect')
+      }
+
+      // 验证新密码长度
+      if (
+        newPassword.length < config.localAuth.passwordMinLength ||
+        newPassword.length > config.localAuth.passwordMaxLength
+      ) {
+        throw new Error(
+          `Password must be between ${config.localAuth.passwordMinLength} and ${config.localAuth.passwordMaxLength} characters`
+        )
+      }
+
+      // 加密新密码
+      const encryptedPassword = this._encryptPassword(newPassword)
+
+      // 更新用户密码
+      user.passwordHash = encryptedPassword
+      user.passwordChangedAt = new Date().toISOString()
+      user.updatedAt = new Date().toISOString()
+
+      // 保存用户信息
+      await redis.set(`${this.userPrefix}${userId}`, JSON.stringify(user))
+
+      logger.info(`🔄 User password updated: ${user.username} (${userId})`)
+
+      return true
+    } catch (error) {
+      logger.error('❌ Error updating user password:', error)
+      throw error
+    }
+  }
+
+  // 🔓 重置用户密码（管理员功能）
+  async resetUserPassword(userId, newPassword) {
+    try {
+      // 获取用户
+      const user = await this.getUserById(userId, false)
+      if (!user) {
+        throw new Error('User not found')
+      }
+
+      // 检查是否是本地用户
+      if (user.authType !== 'local') {
+        throw new Error('Only local users can have their password reset')
+      }
+
+      // 验证新密码长度
+      if (
+        newPassword.length < config.localAuth.passwordMinLength ||
+        newPassword.length > config.localAuth.passwordMaxLength
+      ) {
+        throw new Error(
+          `Password must be between ${config.localAuth.passwordMinLength} and ${config.localAuth.passwordMaxLength} characters`
+        )
+      }
+
+      // 加密新密码
+      const encryptedPassword = this._encryptPassword(newPassword)
+
+      // 更新用户密码
+      user.passwordHash = encryptedPassword
+      user.passwordChangedAt = new Date().toISOString()
+      user.updatedAt = new Date().toISOString()
+
+      // 保存用户信息
+      await redis.set(`${this.userPrefix}${userId}`, JSON.stringify(user))
+
+      logger.info(`🔓 User password reset by admin: ${user.username} (${userId})`)
+
+      return true
+    } catch (error) {
+      logger.error('❌ Error resetting user password:', error)
+      throw error
     }
   }
 }
