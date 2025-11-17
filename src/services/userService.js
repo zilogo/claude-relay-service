@@ -973,8 +973,8 @@ class UserService {
 
       // 记录速率限制
       const rateLimitTtl = config.email.rateLimit.window
-      await redis.incr(rateLimitKey)
-      await redis.expire(rateLimitKey, rateLimitTtl)
+      await redis.getClient().incr(rateLimitKey)
+      await redis.getClient().expire(rateLimitKey, rateLimitTtl)
 
       // 发送重置邮件
       const emailService = require('./emailService')
@@ -1120,8 +1120,8 @@ class UserService {
 
       // 记录速率限制
       const rateLimitTtl = config.email.rateLimit.window
-      await redis.incr(rateLimitKey)
-      await redis.expire(rateLimitKey, rateLimitTtl)
+      await redis.getClient().incr(rateLimitKey)
+      await redis.getClient().expire(rateLimitKey, rateLimitTtl)
 
       // 发送验证邮件
       const emailService = require('./emailService')
