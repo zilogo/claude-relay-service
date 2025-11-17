@@ -1259,4 +1259,269 @@ router.get('/admin/ldap-test', authenticateUserOrAdmin, requireAdmin, async (req
   }
 })
 
+// === 密码重置和邮箱验证端点 ===
+
+// 📧 请求密码重置
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body
+    const clientIp = req.ip || req.connection.remoteAddress || 'unknown'
+
+    // 初始化速率限制器
+    const limiters = initRateLimiters()
+
+    // 检查IP速率限制
+    if (limiters.ipRateLimiter) {
+      try {
+        await limiters.ipRateLimiter.consume(clientIp)
+      } catch (rateLimiterRes) {
+        const retryAfter = Math.round(rateLimiterRes.msBeforeNext / 1000) || 900
+        logger.security(`🚫 Password reset rate limit exceeded for IP: ${clientIp}`)
+        res.set('Retry-After', String(retryAfter))
+        return res.status(429).json({
+          error: 'Too many requests',
+          message: 'Too many password reset attempts. Please try again later.'
+        })
+      }
+    }
+
+    if (!email || !email.trim()) {
+      return res.status(400).json({
+        error: 'Missing email',
+        message: 'Email address is required'
+      })
+    }
+
+    // 验证邮箱格式
+    try {
+      inputValidator.validateEmail(email)
+    } catch (validationError) {
+      return res.status(400).json({
+        error: 'Invalid email',
+        message: validationError.message
+      })
+    }
+
+    // 生成重置Token并发送邮件
+    const result = await userService.generatePasswordResetToken(email.trim())
+
+    logger.info(`📧 Password reset requested for: ${email} from IP: ${clientIp}`)
+
+    // 始终返回成功响应（安全考虑：不透露用户是否存在）
+    res.json({
+      success: true,
+      message:
+        'If a user account with that email exists, a password reset link has been sent to it.'
+    })
+  } catch (error) {
+    logger.error('❌ Forgot password error:', error)
+
+    // 如果是速率限制错误，返回具体错误信息
+    if (error.message.includes('Too many')) {
+      return res.status(429).json({
+        error: 'Too many requests',
+        message: error.message
+      })
+    }
+
+    // 其他错误也返回通用成功消息（安全考虑）
+    res.json({
+      success: true,
+      message:
+        'If a user account with that email exists, a password reset link has been sent to it.'
+    })
+  }
+})
+
+// 🔓 重置密码
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body
+    const clientIp = req.ip || req.connection.remoteAddress || 'unknown'
+
+    if (!token || !newPassword) {
+      return res.status(400).json({
+        error: 'Missing fields',
+        message: 'Reset token and new password are required'
+      })
+    }
+
+    // 验证新密码格式
+    try {
+      inputValidator.validatePassword(newPassword)
+    } catch (validationError) {
+      return res.status(400).json({
+        error: 'Invalid password',
+        message: validationError.message
+      })
+    }
+
+    // 使用Token重置密码
+    const result = await userService.resetPasswordWithToken(token, newPassword)
+
+    logger.info(`🔓 Password reset successful from IP: ${clientIp}`)
+
+    res.json({
+      success: true,
+      message: 'Password reset successfully. Please log in with your new password.'
+    })
+  } catch (error) {
+    logger.error('❌ Reset password error:', error)
+
+    if (
+      error.message.includes('Invalid') ||
+      error.message.includes('expired') ||
+      error.message.includes('not found')
+    ) {
+      return res.status(400).json({
+        error: 'Reset failed',
+        message: error.message
+      })
+    }
+
+    res.status(500).json({
+      error: 'Reset password error',
+      message: 'Failed to reset password. Please try again.'
+    })
+  }
+})
+
+// ✅ 验证邮箱
+router.post('/verify-email', async (req, res) => {
+  try {
+    const { token } = req.body
+    const clientIp = req.ip || req.connection.remoteAddress || 'unknown'
+
+    if (!token) {
+      return res.status(400).json({
+        error: 'Missing token',
+        message: 'Verification token is required'
+      })
+    }
+
+    // 验证邮箱
+    const result = await userService.verifyEmail(token)
+
+    logger.info(
+      `✅ Email verified successfully for user: ${result.user.username} from IP: ${clientIp}`
+    )
+
+    res.json({
+      success: true,
+      message: 'Email verified successfully',
+      user: result.user
+    })
+  } catch (error) {
+    logger.error('❌ Verify email error:', error)
+
+    if (
+      error.message.includes('Invalid') ||
+      error.message.includes('expired') ||
+      error.message.includes('not found')
+    ) {
+      return res.status(400).json({
+        error: 'Verification failed',
+        message: error.message
+      })
+    }
+
+    res.status(500).json({
+      error: 'Verification error',
+      message: 'Failed to verify email. Please try again.'
+    })
+  }
+})
+
+// 🔄 重新发送验证邮件
+router.post('/resend-verification', authenticateUser, async (req, res) => {
+  try {
+    const result = await userService.resendVerificationEmail(req.user.id)
+
+    if (result.skipped) {
+      return res.json({
+        success: true,
+        message: 'Email verification is not enabled'
+      })
+    }
+
+    logger.info(`🔄 Verification email resent for user: ${req.user.username}`)
+
+    res.json({
+      success: true,
+      message: 'Verification email sent successfully'
+    })
+  } catch (error) {
+    logger.error('❌ Resend verification error:', error)
+
+    if (error.message.includes('Too many')) {
+      return res.status(429).json({
+        error: 'Too many requests',
+        message: error.message
+      })
+    }
+
+    if (error.message.includes('already verified')) {
+      return res.json({
+        success: true,
+        message: 'Email is already verified'
+      })
+    }
+
+    res.status(500).json({
+      error: 'Resend error',
+      message: 'Failed to resend verification email'
+    })
+  }
+})
+
+// 🔓 管理员重置用户密码
+router.post('/:userId/reset-password', authenticateUserOrAdmin, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params
+    const { newPassword } = req.body
+
+    if (!newPassword) {
+      return res.status(400).json({
+        error: 'Missing password',
+        message: 'New password is required'
+      })
+    }
+
+    // 验证新密码格式
+    try {
+      inputValidator.validatePassword(newPassword)
+    } catch (validationError) {
+      return res.status(400).json({
+        error: 'Invalid password',
+        message: validationError.message
+      })
+    }
+
+    // 重置用户密码
+    await userService.resetUserPassword(userId, newPassword)
+
+    const adminUser = req.admin?.username || req.user?.username
+    logger.info(`🔓 Admin ${adminUser} reset password for user ID: ${userId}`)
+
+    res.json({
+      success: true,
+      message: 'User password reset successfully'
+    })
+  } catch (error) {
+    logger.error('❌ Admin reset password error:', error)
+
+    if (error.message.includes('not found') || error.message.includes('Only local users')) {
+      return res.status(400).json({
+        error: 'Reset failed',
+        message: error.message
+      })
+    }
+
+    res.status(500).json({
+      error: 'Reset password error',
+      message: 'Failed to reset user password'
+    })
+  }
+})
+
 module.exports = router

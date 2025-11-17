@@ -174,6 +174,38 @@ const config = {
     requirePasswordChange: process.env.REQUIRE_PASSWORD_CHANGE === 'true' // 首次登录是否强制修改密码
   },
 
+  // 📧 邮件服务配置
+  email: {
+    enabled: process.env.EMAIL_ENABLED === 'true',
+    serviceType: process.env.EMAIL_SERVICE_TYPE || 'smtp', // smtp / sendgrid / mailgun
+    smtp: {
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT) || 587,
+      secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+      }
+    },
+    from: {
+      name: process.env.EMAIL_FROM_NAME || 'Claude Relay Service',
+      address: process.env.EMAIL_FROM_ADDRESS || 'noreply@example.com'
+    },
+    baseUrl: process.env.BASE_URL || 'http://localhost:3000', // 用于生成邮件中的链接
+    features: {
+      requireEmailVerification: process.env.REQUIRE_EMAIL_VERIFICATION === 'true', // 是否要求邮箱验证
+      allowPasswordReset: process.env.ALLOW_PASSWORD_RESET !== 'false' // 是否允许密码找回，默认允许
+    },
+    rateLimit: {
+      window: parseInt(process.env.EMAIL_RATE_LIMIT_WINDOW) || 600, // 10分钟（秒）
+      max: parseInt(process.env.EMAIL_RATE_LIMIT_MAX) || 3 // 窗口期内最多发送次数
+    },
+    tokenTTL: {
+      emailVerification: parseInt(process.env.EMAIL_VERIFICATION_TOKEN_TTL) || 86400, // 24小时（秒）
+      passwordReset: parseInt(process.env.PASSWORD_RESET_TOKEN_TTL) || 3600 // 1小时（秒）
+    }
+  },
+
   // 📢 Webhook通知配置
   webhook: {
     enabled: process.env.WEBHOOK_ENABLED !== 'false', // 默认启用

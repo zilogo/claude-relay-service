@@ -26,62 +26,21 @@
           <span class="ml-2 text-xl font-bold text-gray-900 dark:text-white">Claude Relay</span>
         </div>
         <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-          Create Account
+          Reset Your Password
         </h2>
         <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-          Register a new account to access the service
+          Enter your new password below
         </p>
       </div>
 
       <div class="rounded-lg bg-white px-6 py-8 shadow dark:bg-gray-800 dark:shadow-xl">
-        <form class="space-y-6" @submit.prevent="handleRegister">
-          <div>
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-              for="username"
-            >
-              Username <span class="text-red-500">*</span>
-            </label>
-            <div class="mt-1">
-              <input
-                id="username"
-                v-model="form.username"
-                autocomplete="username"
-                class="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400 sm:text-sm"
-                :disabled="loading"
-                name="username"
-                placeholder="Choose a username"
-                required
-                type="text"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="email">
-              Email <span class="text-red-500">*</span>
-            </label>
-            <div class="mt-1">
-              <input
-                id="email"
-                v-model="form.email"
-                autocomplete="email"
-                class="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400 sm:text-sm"
-                :disabled="loading"
-                name="email"
-                placeholder="Enter your email"
-                required
-                type="email"
-              />
-            </div>
-          </div>
-
+        <form v-if="!success" class="space-y-6" @submit.prevent="handleSubmit">
           <div>
             <label
               class="block text-sm font-medium text-gray-700 dark:text-gray-300"
               for="password"
             >
-              Password <span class="text-red-500">*</span>
+              New Password <span class="text-red-500">*</span>
             </label>
             <div class="mt-1">
               <input
@@ -91,7 +50,7 @@
                 class="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400 sm:text-sm"
                 :disabled="loading"
                 name="password"
-                placeholder="Choose a password (min 8 characters)"
+                placeholder="Choose a new password (min 8 characters)"
                 required
                 type="password"
               />
@@ -104,7 +63,7 @@
               class="block text-sm font-medium text-gray-700 dark:text-gray-300"
               for="confirmPassword"
             >
-              Confirm Password <span class="text-red-500">*</span>
+              Confirm New Password <span class="text-red-500">*</span>
             </label>
             <div class="mt-1">
               <input
@@ -114,30 +73,9 @@
                 class="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400 sm:text-sm"
                 :disabled="loading"
                 name="confirmPassword"
-                placeholder="Confirm your password"
+                placeholder="Confirm your new password"
                 required
                 type="password"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-              for="displayName"
-            >
-              Display Name (Optional)
-            </label>
-            <div class="mt-1">
-              <input
-                id="displayName"
-                v-model="form.displayName"
-                autocomplete="name"
-                class="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400 sm:text-sm"
-                :disabled="loading"
-                name="displayName"
-                placeholder="Your display name"
-                type="text"
               />
             </div>
           </div>
@@ -158,26 +96,6 @@
               </div>
               <div class="ml-3">
                 <p class="text-sm text-red-700 dark:text-red-400">{{ error }}</p>
-              </div>
-            </div>
-          </div>
-
-          <div
-            v-if="success"
-            class="rounded-md border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20"
-          >
-            <div class="flex">
-              <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    clip-rule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    fill-rule="evenodd"
-                  />
-                </svg>
-              </div>
-              <div class="ml-3">
-                <p class="text-sm text-green-700 dark:text-green-400">{{ success }}</p>
               </div>
             </div>
           </div>
@@ -210,19 +128,46 @@
                   ></path>
                 </svg>
               </span>
-              {{ loading ? 'Creating Account...' : 'Create Account' }}
+              {{ loading ? 'Resetting...' : 'Reset Password' }}
             </button>
           </div>
-
-          <div class="text-center">
-            <router-link
-              class="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
-              to="/user-login"
-            >
-              Already have an account? Sign in
-            </router-link>
-          </div>
         </form>
+
+        <div
+          v-if="success"
+          class="rounded-md border border-green-200 bg-green-50 p-6 dark:border-green-800 dark:bg-green-900/20"
+        >
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg class="h-6 w-6 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  clip-rule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  fill-rule="evenodd"
+                />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <h3 class="text-sm font-medium text-green-800 dark:text-green-400">
+                Password Reset Successful
+              </h3>
+              <div class="mt-2 text-sm text-green-700 dark:text-green-300">
+                <p>
+                  Your password has been reset successfully. You can now log in with your new
+                  password.
+                </p>
+                <p class="mt-4">
+                  <router-link
+                    class="font-medium text-green-800 underline hover:text-green-900 dark:text-green-300 dark:hover:text-green-200"
+                    to="/user-login"
+                  >
+                    Go to Sign In
+                  </router-link>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -230,7 +175,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import axios from 'axios'
 import { useThemeStore } from '@/stores/theme'
 import { showToast } from '@/utils/toast'
@@ -238,25 +183,24 @@ import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import PasswordStrengthMeter from '@/components/user/PasswordStrengthMeter.vue'
 import { API_PREFIX } from '@/config/api'
 
-const router = useRouter()
+const route = useRoute()
 const themeStore = useThemeStore()
 
 const loading = ref(false)
 const error = ref('')
-const success = ref('')
+const success = ref(false)
 
 const form = reactive({
-  username: '',
-  email: '',
   password: '',
-  confirmPassword: '',
-  displayName: ''
+  confirmPassword: ''
+})
+
+const resetToken = computed(() => {
+  return route.params.token || ''
 })
 
 const isFormValid = computed(() => {
   return (
-    form.username &&
-    form.email &&
     form.password &&
     form.confirmPassword &&
     form.password === form.confirmPassword &&
@@ -264,9 +208,9 @@ const isFormValid = computed(() => {
   )
 })
 
-const handleRegister = async () => {
+const handleSubmit = async () => {
   error.value = ''
-  success.value = ''
+  success.value = false
 
   // 验证密码匹配
   if (form.password !== form.confirmPassword) {
@@ -280,29 +224,27 @@ const handleRegister = async () => {
     return
   }
 
+  if (!resetToken.value) {
+    error.value = 'Invalid reset token. Please request a new password reset link.'
+    return
+  }
+
   loading.value = true
 
   try {
-    const response = await axios.post(`${API_PREFIX}/users/register`, {
-      username: form.username,
-      email: form.email,
-      password: form.password,
-      displayName: form.displayName || form.username
+    const response = await axios.post(`${API_PREFIX}/users/reset-password`, {
+      token: resetToken.value,
+      newPassword: form.password
     })
 
     if (response.data.success) {
-      success.value =
-        'Account created successfully! Please check your email for verification (if enabled). Redirecting to login...'
-      showToast('Registration successful! Please log in.', 'success')
-
-      // 2秒后跳转到登录页
-      setTimeout(() => {
-        router.push('/user-login')
-      }, 2000)
+      success.value = true
+      showToast('Password reset successfully! Please log in.', 'success')
     }
   } catch (err) {
-    console.error('Registration error:', err)
-    error.value = err.response?.data?.message || err.message || 'Registration failed'
+    console.error('Reset password error:', err)
+    error.value = err.response?.data?.message || err.message || 'Failed to reset password'
+    showToast(error.value, 'error')
   } finally {
     loading.value = false
   }
@@ -311,6 +253,11 @@ const handleRegister = async () => {
 onMounted(() => {
   // 初始化主题
   themeStore.initTheme()
+
+  // 检查是否有重置token
+  if (!resetToken.value) {
+    error.value = 'Invalid or missing reset token. Please request a new password reset link.'
+  }
 })
 </script>
 

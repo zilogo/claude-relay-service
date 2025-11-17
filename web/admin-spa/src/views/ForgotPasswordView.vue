@@ -26,83 +26,30 @@
           <span class="ml-2 text-xl font-bold text-gray-900 dark:text-white">Claude Relay</span>
         </div>
         <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-          User Sign In
+          Forgot Password
         </h2>
         <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-          Sign in to your account to manage your API keys
+          Enter your email address and we'll send you a password reset link
         </p>
       </div>
 
       <div class="rounded-lg bg-white px-6 py-8 shadow dark:bg-gray-800 dark:shadow-xl">
-        <!-- 认证方式切换 Tab -->
-        <div class="mb-6 flex space-x-2 rounded-lg bg-gray-100 p-1 dark:bg-gray-700">
-          <button
-            :class="[
-              'flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-              authType === 'local'
-                ? 'bg-white text-blue-600 shadow-sm dark:bg-gray-800 dark:text-blue-400'
-                : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
-            ]"
-            type="button"
-            @click="authType = 'local'"
-          >
-            Local Login
-          </button>
-          <button
-            :class="[
-              'flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-              authType === 'ldap'
-                ? 'bg-white text-blue-600 shadow-sm dark:bg-gray-800 dark:text-blue-400'
-                : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
-            ]"
-            type="button"
-            @click="authType = 'ldap'"
-          >
-            LDAP Login
-          </button>
-        </div>
-
-        <form class="space-y-6" @submit.prevent="handleLogin">
+        <form v-if="!success" class="space-y-6" @submit.prevent="handleSubmit">
           <div>
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-              for="username"
-            >
-              Username
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="email">
+              Email Address <span class="text-red-500">*</span>
             </label>
             <div class="mt-1">
               <input
-                id="username"
-                v-model="form.username"
-                autocomplete="username"
+                id="email"
+                v-model="form.email"
+                autocomplete="email"
                 class="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400 sm:text-sm"
                 :disabled="loading"
-                name="username"
-                placeholder="Enter your username"
+                name="email"
+                placeholder="Enter your email address"
                 required
-                type="text"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label
-              class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-              for="password"
-            >
-              Password
-            </label>
-            <div class="mt-1">
-              <input
-                id="password"
-                v-model="form.password"
-                autocomplete="current-password"
-                class="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400 sm:text-sm"
-                :disabled="loading"
-                name="password"
-                placeholder="Enter your password"
-                required
-                type="password"
+                type="email"
               />
             </div>
           </div>
@@ -130,7 +77,7 @@
           <div>
             <button
               class="group relative flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-400 dark:focus:ring-offset-gray-800"
-              :disabled="loading || !form.username || !form.password"
+              :disabled="loading || !isFormValid"
               type="submit"
             >
               <span v-if="loading" class="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -155,91 +102,106 @@
                   ></path>
                 </svg>
               </span>
-              {{ loading ? 'Signing In...' : 'Sign In' }}
+              {{ loading ? 'Sending...' : 'Send Reset Link' }}
             </button>
           </div>
+        </form>
 
-          <div class="space-y-2">
-            <div v-if="authType === 'local'" class="text-center text-sm">
-              <router-link
-                class="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
-                to="/forgot-password"
-              >
-                Forgot Password?
-              </router-link>
+        <div
+          v-if="success"
+          class="rounded-md border border-green-200 bg-green-50 p-6 dark:border-green-800 dark:bg-green-900/20"
+        >
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg class="h-6 w-6 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  clip-rule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  fill-rule="evenodd"
+                />
+              </svg>
             </div>
-            <div class="flex items-center justify-between text-sm">
-              <router-link
-                v-if="authType === 'local'"
-                class="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
-                to="/user-register"
-              >
-                Create Account
-              </router-link>
-              <span v-else></span>
-              <router-link
-                class="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
-                to="/admin-login"
-              >
-                Admin Login
-              </router-link>
+            <div class="ml-3">
+              <h3 class="text-sm font-medium text-green-800 dark:text-green-400">
+                Reset Link Sent
+              </h3>
+              <div class="mt-2 text-sm text-green-700 dark:text-green-300">
+                <p>
+                  If a user account with that email exists, a password reset link has been sent to
+                  it. Please check your email inbox and follow the instructions to reset your
+                  password.
+                </p>
+              </div>
             </div>
           </div>
-        </form>
+        </div>
+
+        <div class="mt-6 text-center">
+          <router-link
+            class="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+            to="/user-login"
+          >
+            Back to Sign In
+          </router-link>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useUserStore } from '@/stores/user'
+import { ref, reactive, computed, onMounted } from 'vue'
+import axios from 'axios'
 import { useThemeStore } from '@/stores/theme'
 import { showToast } from '@/utils/toast'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
+import { API_PREFIX } from '@/config/api'
 
-const router = useRouter()
-const userStore = useUserStore()
 const themeStore = useThemeStore()
 
 const loading = ref(false)
 const error = ref('')
-const authType = ref('local') // 默认本地登录
+const success = ref(false)
 
 const form = reactive({
-  username: '',
-  password: ''
+  email: ''
 })
 
-const handleLogin = async () => {
-  if (!form.username || !form.password) {
-    error.value = 'Please enter both username and password'
+const isFormValid = computed(() => {
+  return form.email && form.email.includes('@')
+})
+
+const handleSubmit = async () => {
+  error.value = ''
+  success.value = false
+
+  if (!form.email || !form.email.trim()) {
+    error.value = 'Email address is required'
     return
   }
 
   loading.value = true
-  error.value = ''
 
   try {
-    await userStore.login({
-      username: form.username,
-      password: form.password,
-      authType: authType.value
+    const response = await axios.post(`${API_PREFIX}/users/forgot-password`, {
+      email: form.email.trim()
     })
 
-    showToast('Login successful!', 'success')
-    router.push('/user-dashboard')
+    if (response.data.success) {
+      success.value = true
+      showToast('Password reset email sent successfully', 'success')
+    }
   } catch (err) {
-    console.error('Login error:', err)
-    error.value = err.response?.data?.message || err.message || 'Login failed'
+    console.error('Forgot password error:', err)
+    // 即使发生错误,也显示成功消息(安全考虑)
+    success.value = true
   } finally {
     loading.value = false
   }
 }
 
 onMounted(() => {
-  // 初始化主题（因为该页面不在 MainLayout 内）
+  // 初始化主题
   themeStore.initTheme()
 })
 </script>

@@ -7,6 +7,9 @@ import { APP_CONFIG } from '@/config/app'
 const LoginView = () => import('@/views/LoginView.vue')
 const UserLoginView = () => import('@/views/UserLoginView.vue')
 const UserRegisterView = () => import('@/views/UserRegisterView.vue')
+const ForgotPasswordView = () => import('@/views/ForgotPasswordView.vue')
+const ResetPasswordView = () => import('@/views/ResetPasswordView.vue')
+const EmailVerificationView = () => import('@/views/EmailVerificationView.vue')
 const UserDashboardView = () => import('@/views/UserDashboardView.vue')
 const UserManagementView = () => import('@/views/UserManagementView.vue')
 const MainLayout = () => import('@/components/layout/MainLayout.vue')
@@ -54,6 +57,24 @@ const routes = [
     path: '/user-register',
     name: 'UserRegister',
     component: UserRegisterView,
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: ForgotPasswordView,
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/reset-password/:token',
+    name: 'ResetPassword',
+    component: ResetPasswordView,
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/verify-email/:token',
+    name: 'EmailVerification',
+    component: EmailVerificationView,
     meta: { requiresAuth: false }
   },
   {

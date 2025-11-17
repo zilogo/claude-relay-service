@@ -910,6 +910,305 @@ class UserService {
       throw error
     }
   }
+
+  // 📧 生成密码重置Token
+  async generatePasswordResetToken(email) {
+    try {
+      const crypto = require('crypto')
+
+      // 检查邮件服务是否可用
+      if (!config.email?.enabled || !config.email?.features?.allowPasswordReset) {
+        throw new Error('Password reset feature is not enabled')
+      }
+
+      // 根据邮箱查找用户
+      const client = redis.getClientSafe()
+      const pattern = `${this.userPrefix}*`
+      const keys = await client.keys(pattern)
+
+      let user = null
+      for (const key of keys) {
+        const userData = await client.get(key)
+        if (userData) {
+          const u = JSON.parse(userData)
+          if (u.email === email && u.authType === 'local') {
+            user = u
+            break
+          }
+        }
+      }
+
+      if (!user) {
+        // 不透露用户是否存在，直接返回成功（安全考虑）
+        logger.warn(`⚠️ Password reset requested for non-existent email: ${email}`)
+        return { success: true, message: 'If the email exists, a reset link will be sent' }
+      }
+
+      // 检查速率限制（防止滥用）
+      const rateLimitKey = `password_reset_rate:${email}`
+      const resetAttempts = await redis.get(rateLimitKey)
+      if (resetAttempts && parseInt(resetAttempts) >= config.email.rateLimit.max) {
+        throw new Error('Too many password reset attempts. Please try again later.')
+      }
+
+      // 生成重置Token（32字节随机字符串）
+      const resetToken = crypto.randomBytes(32).toString('hex')
+      const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex')
+
+      // 保存重置Token（使用哈希存储）
+      const resetTokenData = {
+        userId: user.id,
+        email: user.email,
+        tokenHash: resetTokenHash,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + config.email.tokenTTL.passwordReset * 1000).toISOString()
+      }
+
+      const ttl = config.email.tokenTTL.passwordReset
+      await redis.setex(
+        `password_reset_token:${resetTokenHash}`,
+        ttl,
+        JSON.stringify(resetTokenData)
+      )
+
+      // 记录速率限制
+      const rateLimitTtl = config.email.rateLimit.window
+      await redis.incr(rateLimitKey)
+      await redis.expire(rateLimitKey, rateLimitTtl)
+
+      // 发送重置邮件
+      const emailService = require('./emailService')
+      await emailService.sendPasswordResetEmail(email, resetToken, user.username)
+
+      logger.info(`📧 Password reset token generated for: ${email}`)
+
+      return {
+        success: true,
+        message: 'Password reset email sent successfully',
+        resetToken // 仅用于开发/测试，生产环境应移除
+      }
+    } catch (error) {
+      logger.error('❌ Error generating password reset token:', error)
+      throw error
+    }
+  }
+
+  // 🔓 使用Token重置密码
+  async resetPasswordWithToken(resetToken, newPassword) {
+    try {
+      const crypto = require('crypto')
+
+      // 验证新密码长度
+      if (
+        newPassword.length < config.localAuth.passwordMinLength ||
+        newPassword.length > config.localAuth.passwordMaxLength
+      ) {
+        throw new Error(
+          `Password must be between ${config.localAuth.passwordMinLength} and ${config.localAuth.passwordMaxLength} characters`
+        )
+      }
+
+      // 哈希Token进行查找
+      const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex')
+      const tokenData = await redis.get(`password_reset_token:${resetTokenHash}`)
+
+      if (!tokenData) {
+        throw new Error('Invalid or expired reset token')
+      }
+
+      const tokenInfo = JSON.parse(tokenData)
+
+      // 检查Token是否过期
+      if (new Date() > new Date(tokenInfo.expiresAt)) {
+        await redis.del(`password_reset_token:${resetTokenHash}`)
+        throw new Error('Reset token has expired')
+      }
+
+      // 获取用户
+      const user = await this.getUserById(tokenInfo.userId, false)
+      if (!user) {
+        throw new Error('User not found')
+      }
+
+      // 检查是否是本地用户
+      if (user.authType !== 'local') {
+        throw new Error('Only local users can reset their password')
+      }
+
+      // 使用 bcrypt 哈希新密码
+      const hashedPassword = await this._hashPassword(newPassword)
+
+      // 更新用户密码
+      user.passwordHash = hashedPassword
+      user.passwordChangedAt = new Date().toISOString()
+      user.updatedAt = new Date().toISOString()
+
+      // 保存用户信息
+      await redis.set(`${this.userPrefix}${user.id}`, JSON.stringify(user))
+
+      // 删除已使用的重置Token
+      await redis.del(`password_reset_token:${resetTokenHash}`)
+
+      // 使所有会话失效（强制重新登录）
+      await this.invalidateUserSessions(user.id)
+
+      logger.info(`🔓 Password reset successfully for user: ${user.username} (${user.id})`)
+
+      return {
+        success: true,
+        message: 'Password reset successfully'
+      }
+    } catch (error) {
+      logger.error('❌ Error resetting password with token:', error)
+      throw error
+    }
+  }
+
+  // 📧 生成邮箱验证Token
+  async generateEmailVerificationToken(userId) {
+    try {
+      const crypto = require('crypto')
+
+      // 检查邮件服务是否可用
+      if (!config.email?.enabled || !config.email?.features?.requireEmailVerification) {
+        logger.warn('Email verification is not enabled, skipping token generation')
+        return { success: true, skipped: true }
+      }
+
+      // 获取用户
+      const user = await this.getUserById(userId, false)
+      if (!user) {
+        throw new Error('User not found')
+      }
+
+      // 检查用户邮箱是否已验证
+      if (user.emailVerified) {
+        return { success: true, message: 'Email already verified' }
+      }
+
+      // 检查速率限制
+      const rateLimitKey = `email_verification_rate:${user.email}`
+      const verificationAttempts = await redis.get(rateLimitKey)
+      if (verificationAttempts && parseInt(verificationAttempts) >= config.email.rateLimit.max) {
+        throw new Error('Too many verification emails sent. Please try again later.')
+      }
+
+      // 生成验证Token（32字节随机字符串）
+      const verificationToken = crypto.randomBytes(32).toString('hex')
+      const verificationTokenHash = crypto
+        .createHash('sha256')
+        .update(verificationToken)
+        .digest('hex')
+
+      // 保存验证Token（使用哈希存储）
+      const verificationTokenData = {
+        userId: user.id,
+        email: user.email,
+        tokenHash: verificationTokenHash,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(
+          Date.now() + config.email.tokenTTL.emailVerification * 1000
+        ).toISOString()
+      }
+
+      const ttl = config.email.tokenTTL.emailVerification
+      await redis.setex(
+        `email_verification_token:${verificationTokenHash}`,
+        ttl,
+        JSON.stringify(verificationTokenData)
+      )
+
+      // 记录速率限制
+      const rateLimitTtl = config.email.rateLimit.window
+      await redis.incr(rateLimitKey)
+      await redis.expire(rateLimitKey, rateLimitTtl)
+
+      // 发送验证邮件
+      const emailService = require('./emailService')
+      await emailService.sendEmailVerificationEmail(user.email, verificationToken, user.username)
+
+      logger.info(`📧 Email verification token generated for: ${user.email}`)
+
+      return {
+        success: true,
+        message: 'Verification email sent successfully',
+        verificationToken // 仅用于开发/测试，生产环境应移除
+      }
+    } catch (error) {
+      logger.error('❌ Error generating email verification token:', error)
+      throw error
+    }
+  }
+
+  // ✅ 验证邮箱
+  async verifyEmail(verificationToken) {
+    try {
+      const crypto = require('crypto')
+
+      // 哈希Token进行查找
+      const verificationTokenHash = crypto
+        .createHash('sha256')
+        .update(verificationToken)
+        .digest('hex')
+      const tokenData = await redis.get(`email_verification_token:${verificationTokenHash}`)
+
+      if (!tokenData) {
+        throw new Error('Invalid or expired verification token')
+      }
+
+      const tokenInfo = JSON.parse(tokenData)
+
+      // 检查Token是否过期
+      if (new Date() > new Date(tokenInfo.expiresAt)) {
+        await redis.del(`email_verification_token:${verificationTokenHash}`)
+        throw new Error('Verification token has expired')
+      }
+
+      // 获取用户
+      const user = await this.getUserById(tokenInfo.userId, false)
+      if (!user) {
+        throw new Error('User not found')
+      }
+
+      // 更新用户邮箱验证状态
+      user.emailVerified = true
+      user.emailVerifiedAt = new Date().toISOString()
+      user.updatedAt = new Date().toISOString()
+
+      // 保存用户信息
+      await redis.set(`${this.userPrefix}${user.id}`, JSON.stringify(user))
+
+      // 删除已使用的验证Token
+      await redis.del(`email_verification_token:${verificationTokenHash}`)
+
+      logger.info(`✅ Email verified successfully for user: ${user.username} (${user.id})`)
+
+      return {
+        success: true,
+        message: 'Email verified successfully',
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          emailVerified: user.emailVerified
+        }
+      }
+    } catch (error) {
+      logger.error('❌ Error verifying email:', error)
+      throw error
+    }
+  }
+
+  // 🔄 重新发送验证邮件
+  async resendVerificationEmail(userId) {
+    try {
+      // 直接调用生成验证Token的方法（包含速率限制）
+      return await this.generateEmailVerificationToken(userId)
+    } catch (error) {
+      logger.error('❌ Error resending verification email:', error)
+      throw error
+    }
+  }
 }
 
 module.exports = new UserService()
