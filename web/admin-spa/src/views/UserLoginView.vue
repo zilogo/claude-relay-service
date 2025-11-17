@@ -37,25 +37,25 @@
         <!-- 认证方式切换 Tab -->
         <div class="mb-6 flex space-x-2 rounded-lg bg-gray-100 p-1 dark:bg-gray-700">
           <button
-            type="button"
             :class="[
               'flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors',
               authType === 'local'
                 ? 'bg-white text-blue-600 shadow-sm dark:bg-gray-800 dark:text-blue-400'
                 : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
             ]"
+            type="button"
             @click="authType = 'local'"
           >
             Local Login
           </button>
           <button
-            type="button"
             :class="[
               'flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors',
               authType === 'ldap'
                 ? 'bg-white text-blue-600 shadow-sm dark:bg-gray-800 dark:text-blue-400'
                 : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
             ]"
+            type="button"
             @click="authType = 'ldap'"
           >
             LDAP Login

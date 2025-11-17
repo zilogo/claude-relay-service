@@ -27,8 +27,7 @@ export const useUserStore = defineStore('user', {
       try {
         // 根据认证方式选择不同的登录端点
         const { authType = 'ldap', username, password } = credentials
-        const endpoint =
-          authType === 'local' ? `${API_BASE}/login/local` : `${API_BASE}/login/ldap`
+        const endpoint = authType === 'local' ? `${API_BASE}/login/local` : `${API_BASE}/login/ldap`
 
         const response = await axios.post(endpoint, {
           username,

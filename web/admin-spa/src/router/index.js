@@ -6,6 +6,7 @@ import { APP_CONFIG } from '@/config/app'
 // 路由懒加载
 const LoginView = () => import('@/views/LoginView.vue')
 const UserLoginView = () => import('@/views/UserLoginView.vue')
+const UserRegisterView = () => import('@/views/UserRegisterView.vue')
 const UserDashboardView = () => import('@/views/UserDashboardView.vue')
 const UserManagementView = () => import('@/views/UserManagementView.vue')
 const MainLayout = () => import('@/components/layout/MainLayout.vue')
@@ -48,6 +49,12 @@ const routes = [
     name: 'UserLogin',
     component: UserLoginView,
     meta: { requiresAuth: false, userAuth: true }
+  },
+  {
+    path: '/user-register',
+    name: 'UserRegister',
+    component: UserRegisterView,
+    meta: { requiresAuth: false }
   },
   {
     path: '/user-dashboard',
