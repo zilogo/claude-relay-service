@@ -1,21 +1,28 @@
 <template>
   <div
-    class="relative flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 dark:bg-gray-900 sm:px-6 lg:px-8"
+    class="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-blue-50 via-white to-purple-50 px-4 py-12 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800"
   >
+    <!-- 装饰性背景元素 -->
+    <div
+      class="absolute left-1/4 top-1/4 h-96 w-96 animate-pulse rounded-full bg-blue-400/10 blur-3xl dark:bg-blue-500/5"
+    ></div>
+    <div
+      class="absolute bottom-1/4 right-1/4 h-96 w-96 animate-pulse rounded-full bg-purple-400/10 blur-3xl dark:bg-purple-500/5"
+      style="animation-delay: 1s"
+    ></div>
+
     <!-- 主题切换按钮 -->
     <div class="fixed right-4 top-4 z-10">
       <ThemeToggle mode="dropdown" />
     </div>
 
-    <div class="w-full max-w-md space-y-8">
-      <div>
-        <div class="mx-auto flex h-12 w-auto items-center justify-center">
-          <svg
-            class="h-8 w-8 text-blue-600 dark:text-blue-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+    <div class="relative z-10 w-full max-w-md">
+      <!-- Logo 和标题 -->
+      <div class="mb-8 text-center">
+        <div
+          class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/30 dark:shadow-blue-500/20"
+        >
+          <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
               stroke-linecap="round"
@@ -23,117 +30,159 @@
               stroke-width="2"
             />
           </svg>
-          <span class="ml-2 text-xl font-bold text-gray-900 dark:text-white">Claude Relay</span>
         </div>
-        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-          User Sign In
-        </h2>
-        <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-          Sign in to your account to manage your API keys
-        </p>
+        <h1 class="mb-2 text-3xl font-bold text-gray-900 dark:text-white">用户登录</h1>
+        <p class="text-sm text-gray-600 dark:text-gray-400">登录您的账户以管理 API Keys</p>
       </div>
 
-      <div class="rounded-lg bg-white px-6 py-8 shadow dark:bg-gray-800 dark:shadow-xl">
-        <!-- 认证方式切换 Tab -->
-        <div class="mb-6 flex space-x-2 rounded-lg bg-gray-100 p-1 dark:bg-gray-700">
+      <!-- 登录卡片 -->
+      <div
+        class="rounded-3xl border border-gray-200/50 bg-white/80 p-8 shadow-2xl shadow-blue-500/10 backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/80 dark:shadow-blue-500/5"
+      >
+        <!-- 认证方式切换 Tab (Pill Style with Sliding Indicator) -->
+        <div
+          class="relative mb-8 inline-flex w-full rounded-2xl bg-gray-100/50 p-1.5 dark:bg-gray-700/50"
+        >
+          <!-- 滑动指示器 -->
+          <div
+            class="absolute inset-y-1.5 left-1.5 w-[calc(50%-6px)] rounded-xl bg-white shadow-md transition-transform duration-300 dark:bg-gray-600"
+            :style="{
+              transform: authType === 'ldap' ? 'translateX(calc(100% + 12px))' : 'translateX(0)'
+            }"
+          ></div>
+          <!-- Tab 按钮 -->
           <button
-            :class="[
-              'flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+            class="relative z-10 flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors"
+            :class="
               authType === 'local'
-                ? 'bg-white text-blue-600 shadow-sm dark:bg-gray-800 dark:text-blue-400'
+                ? 'text-blue-600 dark:text-blue-400'
                 : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
-            ]"
+            "
             type="button"
             @click="authType = 'local'"
           >
-            Local Login
+            本地登录
           </button>
           <button
-            :class="[
-              'flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+            class="relative z-10 flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors"
+            :class="
               authType === 'ldap'
-                ? 'bg-white text-blue-600 shadow-sm dark:bg-gray-800 dark:text-blue-400'
+                ? 'text-blue-600 dark:text-blue-400'
                 : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
-            ]"
+            "
             type="button"
             @click="authType = 'ldap'"
           >
-            LDAP Login
+            LDAP 登录
           </button>
         </div>
 
         <form class="space-y-6" @submit.prevent="handleLogin">
+          <!-- 用户名输入 -->
           <div>
             <label
-              class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              class="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-300"
               for="username"
             >
-              Username
+              用户名
             </label>
-            <div class="mt-1">
+            <div class="relative">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                <svg
+                  class="h-5 w-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+              </div>
               <input
                 id="username"
                 v-model="form.username"
                 autocomplete="username"
-                class="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400 sm:text-sm"
+                class="block w-full rounded-xl border-2 border-gray-200 bg-gray-50/50 py-3 pl-11 pr-4 text-gray-900 placeholder-gray-400 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900/50 dark:text-white dark:placeholder-gray-500 dark:focus:border-blue-400 dark:focus:bg-gray-900 dark:focus:ring-blue-400/20"
                 :disabled="loading"
                 name="username"
-                placeholder="Enter your username"
+                placeholder="请输入用户名"
                 required
                 type="text"
               />
             </div>
           </div>
 
+          <!-- 密码输入 -->
           <div>
             <label
-              class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              class="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-300"
               for="password"
             >
-              Password
+              密码
             </label>
-            <div class="mt-1">
+            <div class="relative">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                <svg
+                  class="h-5 w-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  />
+                </svg>
+              </div>
               <input
                 id="password"
                 v-model="form.password"
                 autocomplete="current-password"
-                class="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400 sm:text-sm"
+                class="block w-full rounded-xl border-2 border-gray-200 bg-gray-50/50 py-3 pl-11 pr-4 text-gray-900 placeholder-gray-400 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900/50 dark:text-white dark:placeholder-gray-500 dark:focus:border-blue-400 dark:focus:bg-gray-900 dark:focus:ring-blue-400/20"
                 :disabled="loading"
                 name="password"
-                placeholder="Enter your password"
+                placeholder="请输入密码"
                 required
                 type="password"
               />
             </div>
           </div>
 
+          <!-- 错误提示 -->
           <div
             v-if="error"
-            class="rounded-md border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20"
+            class="flex items-start space-x-3 rounded-xl border-2 border-red-200 bg-red-50 p-4 dark:border-red-800/50 dark:bg-red-900/20"
           >
-            <div class="flex">
-              <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    clip-rule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                    fill-rule="evenodd"
-                  />
-                </svg>
-              </div>
-              <div class="ml-3">
-                <p class="text-sm text-red-700 dark:text-red-400">{{ error }}</p>
-              </div>
+            <div class="flex-shrink-0">
+              <svg
+                class="h-5 w-5 text-red-500 dark:text-red-400"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  clip-rule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                  fill-rule="evenodd"
+                />
+              </svg>
             </div>
+            <p class="text-sm font-medium text-red-700 dark:text-red-300">{{ error }}</p>
           </div>
 
+          <!-- 登录按钮 -->
           <div>
             <button
-              class="group relative flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-400 dark:focus:ring-offset-gray-800"
+              class="group relative flex w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-blue-500/30 transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-500/40 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:shadow-blue-500/20 dark:hover:shadow-blue-500/30 dark:focus:ring-offset-gray-800"
               :disabled="loading || !form.username || !form.password"
               type="submit"
             >
-              <span v-if="loading" class="absolute inset-y-0 left-0 flex items-center pl-3">
+              <span v-if="loading" class="absolute inset-y-0 left-0 flex items-center pl-4">
                 <svg
                   class="h-5 w-5 animate-spin text-white"
                   fill="none"
@@ -155,33 +204,36 @@
                   ></path>
                 </svg>
               </span>
-              {{ loading ? 'Signing In...' : 'Sign In' }}
+              {{ loading ? '登录中...' : '登录' }}
             </button>
           </div>
 
-          <div class="space-y-2">
-            <div v-if="authType === 'local'" class="text-center text-sm">
+          <!-- 快捷链接 -->
+          <div class="space-y-3 pt-2">
+            <div v-if="authType === 'local'" class="text-center">
               <router-link
-                class="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+                class="text-sm font-medium text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                 to="/forgot-password"
               >
-                Forgot Password?
+                忘记密码？
               </router-link>
             </div>
-            <div class="flex items-center justify-between text-sm">
+            <div
+              class="flex items-center justify-between border-t border-gray-200 pt-4 dark:border-gray-700"
+            >
               <router-link
                 v-if="authType === 'local'"
-                class="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+                class="text-sm font-medium text-gray-600 transition-colors hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
                 to="/user-register"
               >
-                Create Account
+                创建账户
               </router-link>
               <span v-else></span>
               <router-link
-                class="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+                class="text-sm font-medium text-gray-600 transition-colors hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
                 to="/admin-login"
               >
-                Admin Login
+                管理员登录
               </router-link>
             </div>
           </div>
@@ -214,7 +266,7 @@ const form = reactive({
 
 const handleLogin = async () => {
   if (!form.username || !form.password) {
-    error.value = 'Please enter both username and password'
+    error.value = '请输入用户名和密码'
     return
   }
 
@@ -228,11 +280,11 @@ const handleLogin = async () => {
       authType: authType.value
     })
 
-    showToast('Login successful!', 'success')
+    showToast('登录成功！', 'success')
     router.push('/user-dashboard')
   } catch (err) {
     console.error('Login error:', err)
-    error.value = err.response?.data?.message || err.message || 'Login failed'
+    error.value = err.response?.data?.message || err.message || '登录失败'
   } finally {
     loading.value = false
   }

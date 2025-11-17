@@ -19,6 +19,8 @@ const AccountsView = () => import('@/views/AccountsView.vue')
 const TutorialView = () => import('@/views/TutorialView.vue')
 const SettingsView = () => import('@/views/SettingsView.vue')
 const ApiStatsView = () => import('@/views/ApiStatsView.vue')
+// UI 预览页面
+const UIPreviewView = () => import('@/views/UIPreviewView.vue')
 
 const routes = [
   {
@@ -75,6 +77,12 @@ const routes = [
     path: '/verify-email/:token',
     name: 'EmailVerification',
     component: EmailVerificationView,
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/demo/ui-preview',
+    name: 'UIPreview',
+    component: UIPreviewView,
     meta: { requiresAuth: false }
   },
   {

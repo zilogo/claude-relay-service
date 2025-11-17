@@ -1,88 +1,130 @@
 <template>
-  <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-    <!-- 导航栏 -->
-    <nav class="bg-white shadow dark:bg-gray-800">
+  <div
+    class="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800"
+  >
+    <!-- 玻璃态导航栏 -->
+    <nav
+      class="sticky top-0 z-50 border-b border-gray-200/50 bg-white/90 backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/90"
+    >
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div class="flex h-16 justify-between">
-          <div class="flex items-center">
-            <div class="flex flex-shrink-0 items-center">
-              <svg
-                class="h-8 w-8 text-blue-600 dark:text-blue-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+        <div class="flex h-16 items-center justify-between">
+          <!-- Logo 和品牌 -->
+          <div class="flex items-center space-x-8">
+            <div class="flex items-center space-x-3">
+              <div
+                class="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-md"
               >
-                <path
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                />
-              </svg>
-              <span class="ml-2 text-xl font-bold text-gray-900 dark:text-white">Claude Relay</span>
-            </div>
-            <div class="ml-10">
-              <div class="flex items-baseline space-x-4">
-                <button
-                  :class="[
-                    'rounded-md px-3 py-2 text-sm font-medium',
-                    activeTab === 'overview'
-                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-                  ]"
-                  @click="handleTabChange('overview')"
+                <svg
+                  class="h-5 w-5 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  Overview
-                </button>
-                <button
-                  :class="[
-                    'rounded-md px-3 py-2 text-sm font-medium',
-                    activeTab === 'api-keys'
-                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-                  ]"
-                  @click="handleTabChange('api-keys')"
-                >
-                  API Keys
-                </button>
-                <button
-                  :class="[
-                    'rounded-md px-3 py-2 text-sm font-medium',
-                    activeTab === 'usage'
-                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-                  ]"
-                  @click="handleTabChange('usage')"
-                >
-                  Usage Stats
-                </button>
-                <button
-                  :class="[
-                    'rounded-md px-3 py-2 text-sm font-medium',
-                    activeTab === 'tutorial'
-                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-                  ]"
-                  @click="handleTabChange('tutorial')"
-                >
-                  Tutorial
-                </button>
+                  <path
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
               </div>
+              <span class="text-xl font-bold text-gray-900 dark:text-white">Claude Relay</span>
+            </div>
+
+            <!-- Tab 导航（带滑动指示器） -->
+            <div
+              class="relative hidden items-center rounded-2xl bg-gray-100/50 p-1.5 dark:bg-gray-700/50 lg:flex"
+            >
+              <!-- 滑动指示器 -->
+              <div
+                class="absolute left-1.5 top-1.5 h-[calc(100%-12px)] rounded-xl bg-white shadow-md transition-all duration-300 dark:bg-gray-600"
+                :style="{
+                  width: `calc(${100 / 4}% - 6px)`,
+                  transform: `translateX(calc(${
+                    activeTab === 'overview'
+                      ? 0
+                      : activeTab === 'api-keys'
+                        ? 100
+                        : activeTab === 'usage'
+                          ? 200
+                          : 300
+                  }% + ${
+                    activeTab === 'overview'
+                      ? 0
+                      : activeTab === 'api-keys'
+                        ? 6
+                        : activeTab === 'usage'
+                          ? 12
+                          : 18
+                  }px))`
+                }"
+              ></div>
+
+              <!-- Tab 按钮 -->
+              <button
+                class="relative z-10 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
+                :class="
+                  activeTab === 'overview'
+                    ? 'text-blue-600 dark:text-blue-400'
+                    : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                "
+                @click="handleTabChange('overview')"
+              >
+                总览
+              </button>
+              <button
+                class="relative z-10 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
+                :class="
+                  activeTab === 'api-keys'
+                    ? 'text-blue-600 dark:text-blue-400'
+                    : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                "
+                @click="handleTabChange('api-keys')"
+              >
+                API Keys
+              </button>
+              <button
+                class="relative z-10 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
+                :class="
+                  activeTab === 'usage'
+                    ? 'text-blue-600 dark:text-blue-400'
+                    : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                "
+                @click="handleTabChange('usage')"
+              >
+                使用统计
+              </button>
+              <button
+                class="relative z-10 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
+                :class="
+                  activeTab === 'tutorial'
+                    ? 'text-blue-600 dark:text-blue-400'
+                    : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                "
+                @click="handleTabChange('tutorial')"
+              >
+                教程
+              </button>
             </div>
           </div>
+
+          <!-- 用户区域 -->
           <div class="flex items-center space-x-4">
-            <div class="text-sm text-gray-700 dark:text-gray-300">
-              Welcome, <span class="font-medium">{{ userStore.userName }}</span>
+            <div class="hidden text-sm text-gray-700 dark:text-gray-300 sm:block">
+              欢迎，<span class="font-semibold text-gray-900 dark:text-white">{{
+                userStore.userName
+              }}</span>
             </div>
 
             <!-- 主题切换按钮 -->
             <ThemeToggle mode="icon" />
 
+            <!-- 登出按钮 -->
             <button
-              class="rounded-md px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+              class="rounded-xl px-4 py-2 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-gray-100"
               @click="handleLogout"
             >
-              Logout
+              登出
             </button>
           </div>
         </div>
@@ -94,225 +136,363 @@
       <!-- Overview Tab -->
       <div v-if="activeTab === 'overview'" class="space-y-6">
         <div>
-          <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Dashboard Overview</h1>
-          <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Welcome to your Claude Relay dashboard
+          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">仪表板总览</h1>
+          <p class="mt-2 text-base text-gray-600 dark:text-gray-400">
+            欢迎来到您的 Claude Relay 仪表板
           </p>
         </div>
 
         <!-- Stats Cards -->
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-5">
-          <div class="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <svg
-                    class="h-6 w-6 text-green-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M15 7a2 2 0 012 2m0 0a2 2 0 012 2m-2-2h-6m6 0v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9a2 2 0 012-2h6z"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                    />
-                  </svg>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-400">
-                      Active API Keys
-                    </dt>
-                    <dd class="text-lg font-medium text-gray-900 dark:text-white">
-                      {{ apiKeysStats.active }}
-                    </dd>
-                  </dl>
-                </div>
+          <!-- 活跃的 API Keys 卡片 -->
+          <div
+            class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50 p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-green-900/30 dark:to-emerald-900/30"
+          >
+            <div
+              class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-green-500/10 blur-3xl transition-all group-hover:bg-green-500/20"
+            ></div>
+            <div class="relative">
+              <div
+                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/30"
+              >
+                <svg
+                  class="h-7 w-7 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M15 7a2 2 0 012 2m0 0a2 2 0 012 2m-2-2h-6m6 0v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9a2 2 0 012-2h6z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-green-900 dark:text-green-100">
+                  活跃的 API Keys
+                </p>
+                <p class="mt-2 text-3xl font-bold text-green-900 dark:text-green-50">
+                  {{ apiKeysStats.active }}
+                </p>
               </div>
             </div>
           </div>
 
-          <div class="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <svg
-                    class="h-6 w-6 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                    />
-                  </svg>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-400">
-                      Deleted API Keys
-                    </dt>
-                    <dd class="text-lg font-medium text-gray-900 dark:text-white">
-                      {{ apiKeysStats.deleted }}
-                    </dd>
-                  </dl>
-                </div>
+          <!-- 已删除的 API Keys 卡片 -->
+          <div
+            class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-50 to-slate-50 p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-gray-800/50 dark:to-slate-800/50"
+          >
+            <div
+              class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-gray-500/10 blur-3xl transition-all group-hover:bg-gray-500/20"
+            ></div>
+            <div class="relative">
+              <div
+                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-gray-500 to-slate-600 shadow-lg shadow-gray-500/30"
+              >
+                <svg
+                  class="h-7 w-7 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  已删除的 API Keys
+                </p>
+                <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-50">
+                  {{ apiKeysStats.deleted }}
+                </p>
               </div>
             </div>
           </div>
 
-          <div class="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <svg
-                    class="h-6 w-6 text-blue-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M13 10V3L4 14h7v7l9-11h-7z"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                    />
-                  </svg>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-400">
-                      Total Requests
-                    </dt>
-                    <dd class="text-lg font-medium text-gray-900 dark:text-white">
-                      {{ formatNumber(userProfile?.totalUsage?.requests || 0) }}
-                    </dd>
-                  </dl>
-                </div>
+          <!-- 总请求数卡片 -->
+          <div
+            class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-blue-900/30 dark:to-cyan-900/30"
+          >
+            <div
+              class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-blue-500/10 blur-3xl transition-all group-hover:bg-blue-500/20"
+            ></div>
+            <div class="relative">
+              <div
+                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 shadow-lg shadow-blue-500/30"
+              >
+                <svg
+                  class="h-7 w-7 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-blue-900 dark:text-blue-100">总请求数</p>
+                <p class="mt-2 text-3xl font-bold text-blue-900 dark:text-blue-50">
+                  {{ formatNumber(userProfile?.totalUsage?.requests || 0) }}
+                </p>
               </div>
             </div>
           </div>
 
-          <div class="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <svg
-                    class="h-6 w-6 text-purple-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                    />
-                  </svg>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-400">
-                      Input Tokens
-                    </dt>
-                    <dd class="text-lg font-medium text-gray-900 dark:text-white">
-                      {{ formatNumber(userProfile?.totalUsage?.inputTokens || 0) }}
-                    </dd>
-                  </dl>
-                </div>
+          <!-- 输入令牌卡片 -->
+          <div
+            class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-50 to-violet-50 p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-purple-900/30 dark:to-violet-900/30"
+          >
+            <div
+              class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-purple-500/10 blur-3xl transition-all group-hover:bg-purple-500/20"
+            ></div>
+            <div class="relative">
+              <div
+                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-violet-600 shadow-lg shadow-purple-500/30"
+              >
+                <svg
+                  class="h-7 w-7 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-purple-900 dark:text-purple-100">输入令牌</p>
+                <p class="mt-2 text-3xl font-bold text-purple-900 dark:text-purple-50">
+                  {{ formatNumber(userProfile?.totalUsage?.inputTokens || 0) }}
+                </p>
               </div>
             </div>
           </div>
 
-          <div class="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <svg
-                    class="h-6 w-6 text-yellow-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                    />
-                  </svg>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-400">
-                      Total Cost
-                    </dt>
-                    <dd class="text-lg font-medium text-gray-900 dark:text-white">
-                      ${{ (userProfile?.totalUsage?.totalCost || 0).toFixed(4) }}
-                    </dd>
-                  </dl>
-                </div>
+          <!-- 总成本卡片 -->
+          <div
+            class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 to-yellow-50 p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-amber-900/30 dark:to-yellow-900/30"
+          >
+            <div
+              class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-amber-500/10 blur-3xl transition-all group-hover:bg-amber-500/20"
+            ></div>
+            <div class="relative">
+              <div
+                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-600 shadow-lg shadow-amber-500/30"
+              >
+                <svg
+                  class="h-7 w-7 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-amber-900 dark:text-amber-100">总成本</p>
+                <p class="mt-2 text-3xl font-bold text-amber-900 dark:text-amber-50">
+                  ${{ (userProfile?.totalUsage?.totalCost || 0).toFixed(4) }}
+                </p>
               </div>
             </div>
           </div>
         </div>
 
         <!-- User Info -->
-        <div class="rounded-lg bg-white shadow dark:bg-gray-800">
-          <div class="px-4 py-5 sm:p-6">
-            <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-white">
-              Account Information
+        <div
+          class="overflow-hidden rounded-3xl border border-gray-200/50 bg-white/80 shadow-xl backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/80"
+        >
+          <div class="bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-5">
+            <h3 class="flex items-center text-xl font-bold text-white">
+              <svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
+              账户信息
             </h3>
-            <div class="mt-5 border-t border-gray-200 dark:border-gray-700">
-              <dl class="divide-y divide-gray-200 dark:divide-gray-700">
-                <div class="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5">
-                  <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Username</dt>
-                  <dd class="mt-1 text-sm text-gray-900 dark:text-white sm:col-span-2 sm:mt-0">
-                    {{ userProfile?.username }}
-                  </dd>
-                </div>
-                <div class="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5">
-                  <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Display Name</dt>
-                  <dd class="mt-1 text-sm text-gray-900 dark:text-white sm:col-span-2 sm:mt-0">
-                    {{ userProfile?.displayName || 'N/A' }}
-                  </dd>
-                </div>
-                <div class="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5">
-                  <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Email</dt>
-                  <dd class="mt-1 text-sm text-gray-900 dark:text-white sm:col-span-2 sm:mt-0">
-                    {{ userProfile?.email || 'N/A' }}
-                  </dd>
-                </div>
-                <div class="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5">
-                  <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Role</dt>
-                  <dd class="mt-1 text-sm text-gray-900 dark:text-white sm:col-span-2 sm:mt-0">
-                    <span
-                      class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                    >
-                      {{ userProfile?.role || 'user' }}
-                    </span>
-                  </dd>
-                </div>
-                <div class="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5">
-                  <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Member Since</dt>
-                  <dd class="mt-1 text-sm text-gray-900 dark:text-white sm:col-span-2 sm:mt-0">
-                    {{ formatDate(userProfile?.createdAt) }}
-                  </dd>
-                </div>
-                <div class="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5">
-                  <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Last Login</dt>
-                  <dd class="mt-1 text-sm text-gray-900 dark:text-white sm:col-span-2 sm:mt-0">
-                    {{ formatDate(userProfile?.lastLoginAt) || 'N/A' }}
-                  </dd>
-                </div>
-              </dl>
-            </div>
+          </div>
+          <div class="px-6 py-6">
+            <dl class="space-y-4">
+              <div
+                class="flex items-center justify-between rounded-2xl bg-gray-50 px-5 py-4 dark:bg-gray-700/50"
+              >
+                <dt
+                  class="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300"
+                >
+                  <svg
+                    class="mr-3 h-5 w-5 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                    />
+                  </svg>
+                  用户名
+                </dt>
+                <dd class="text-base font-bold text-gray-900 dark:text-white">
+                  {{ userProfile?.username }}
+                </dd>
+              </div>
+              <div
+                class="flex items-center justify-between rounded-2xl bg-gray-50 px-5 py-4 dark:bg-gray-700/50"
+              >
+                <dt
+                  class="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300"
+                >
+                  <svg
+                    class="mr-3 h-5 w-5 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                    />
+                  </svg>
+                  显示名称
+                </dt>
+                <dd class="text-base font-bold text-gray-900 dark:text-white">
+                  {{ userProfile?.displayName || '未设置' }}
+                </dd>
+              </div>
+              <div
+                class="flex items-center justify-between rounded-2xl bg-gray-50 px-5 py-4 dark:bg-gray-700/50"
+              >
+                <dt
+                  class="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300"
+                >
+                  <svg
+                    class="mr-3 h-5 w-5 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                    />
+                  </svg>
+                  邮箱
+                </dt>
+                <dd class="text-base font-bold text-gray-900 dark:text-white">
+                  {{ userProfile?.email || '未设置' }}
+                </dd>
+              </div>
+              <div
+                class="flex items-center justify-between rounded-2xl bg-gray-50 px-5 py-4 dark:bg-gray-700/50"
+              >
+                <dt
+                  class="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300"
+                >
+                  <svg
+                    class="mr-3 h-5 w-5 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                    />
+                  </svg>
+                  角色
+                </dt>
+                <dd>
+                  <span
+                    class="inline-flex items-center rounded-full bg-gradient-to-r from-blue-500 to-purple-600 px-4 py-1.5 text-sm font-bold text-white shadow-md"
+                  >
+                    {{ userProfile?.role === 'admin' ? '管理员' : '用户' }}
+                  </span>
+                </dd>
+              </div>
+              <div
+                class="flex items-center justify-between rounded-2xl bg-gray-50 px-5 py-4 dark:bg-gray-700/50"
+              >
+                <dt
+                  class="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300"
+                >
+                  <svg
+                    class="mr-3 h-5 w-5 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                    />
+                  </svg>
+                  注册时间
+                </dt>
+                <dd class="text-base font-bold text-gray-900 dark:text-white">
+                  {{ formatDate(userProfile?.createdAt) }}
+                </dd>
+              </div>
+              <div
+                class="flex items-center justify-between rounded-2xl bg-gray-50 px-5 py-4 dark:bg-gray-700/50"
+              >
+                <dt
+                  class="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300"
+                >
+                  <svg
+                    class="mr-3 h-5 w-5 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                    />
+                  </svg>
+                  最后登录
+                </dt>
+                <dd class="text-base font-bold text-gray-900 dark:text-white">
+                  {{ formatDate(userProfile?.lastLoginAt) || '未记录' }}
+                </dd>
+              </div>
+            </dl>
           </div>
         </div>
       </div>
@@ -365,9 +545,9 @@ const formatNumber = (num) => {
 
 const formatDate = (dateString) => {
   if (!dateString) return null
-  return new Date(dateString).toLocaleDateString('en-US', {
+  return new Date(dateString).toLocaleDateString('zh-CN', {
     year: 'numeric',
-    month: 'short',
+    month: 'long',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
@@ -376,7 +556,7 @@ const formatDate = (dateString) => {
 
 const handleTabChange = (tab) => {
   activeTab.value = tab
-  // Refresh API keys stats when switching to overview tab
+  // 切换到总览标签时刷新 API Keys 统计
   if (tab === 'overview') {
     loadApiKeysStats()
   }
@@ -385,10 +565,10 @@ const handleTabChange = (tab) => {
 const handleLogout = async () => {
   try {
     await userStore.logout()
-    showToast('Logged out successfully', 'success')
+    showToast('登出成功', 'success')
     router.push('/user-login')
   } catch (error) {
-    showToast('Logout failed', 'error')
+    showToast('登出失败', 'error')
   }
 }
 
@@ -397,7 +577,7 @@ const loadUserProfile = async () => {
     userProfile.value = await userStore.getUserProfile()
   } catch (error) {
     console.error('Failed to load user profile:', error)
-    showToast('Failed to load user profile', 'error')
+    showToast('加载用户资料失败', 'error')
   }
 }
 

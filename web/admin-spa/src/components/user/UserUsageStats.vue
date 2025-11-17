@@ -1,184 +1,185 @@
 <template>
   <div class="space-y-6">
-    <div class="sm:flex sm:items-center">
-      <div class="sm:flex-auto">
-        <h1 class="text-2xl font-semibold text-gray-900">Usage Statistics</h1>
-        <p class="mt-2 text-sm text-gray-700">View your API usage statistics and costs</p>
+    <!-- Header -->
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">使用统计</h1>
+        <p class="mt-2 text-base text-gray-600 dark:text-gray-400">查看您的 API 使用统计和成本</p>
       </div>
-      <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
+      <div class="relative">
         <select
           v-model="selectedPeriod"
-          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+          class="block w-full appearance-none rounded-2xl border-2 border-gray-200 bg-white px-5 py-3 pr-10 text-sm font-semibold text-gray-900 transition-all focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:border-blue-400"
           @change="loadUsageStats"
         >
-          <option value="day">Last 24 Hours</option>
-          <option value="week">Last 7 Days</option>
-          <option value="month">Last 30 Days</option>
-          <option value="quarter">Last 90 Days</option>
+          <option value="day">最近 24 小时</option>
+          <option value="week">最近 7 天</option>
+          <option value="month">最近 30 天</option>
+          <option value="quarter">最近 90 天</option>
         </select>
+        <div
+          class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400"
+        >
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              d="M19 9l-7 7-7-7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+            />
+          </svg>
+        </div>
       </div>
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="py-12 text-center">
-      <svg
-        class="mx-auto h-8 w-8 animate-spin text-blue-600"
-        fill="none"
-        viewBox="0 0 24 24"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <circle
-          class="opacity-25"
-          cx="12"
-          cy="12"
-          r="10"
-          stroke="currentColor"
-          stroke-width="4"
-        ></circle>
-        <path
-          class="opacity-75"
-          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-          fill="currentColor"
-        ></path>
-      </svg>
-      <p class="mt-2 text-sm text-gray-500">Loading usage statistics...</p>
+    <div v-if="loading" class="flex flex-col items-center justify-center py-16">
+      <div class="relative">
+        <div class="h-20 w-20 rounded-full border-4 border-blue-200 dark:border-blue-900"></div>
+        <div
+          class="absolute top-0 h-20 w-20 animate-spin rounded-full border-4 border-transparent border-t-blue-600 dark:border-t-blue-400"
+        ></div>
+      </div>
+      <p class="mt-4 text-base font-medium text-gray-700 dark:text-gray-300">加载使用统计中...</p>
     </div>
 
     <!-- Stats Cards -->
     <div v-else class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-      <div class="overflow-hidden rounded-lg bg-white shadow">
-        <div class="p-5">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <svg
-                class="h-6 w-6 text-blue-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                />
-              </svg>
-            </div>
-            <div class="ml-5 w-0 flex-1">
-              <dl>
-                <dt class="truncate text-sm font-medium text-gray-500">Total Requests</dt>
-                <dd class="text-lg font-medium text-gray-900">
-                  {{ formatNumber(usageStats?.totalRequests || 0) }}
-                </dd>
-              </dl>
-            </div>
+      <!-- Total Requests Card -->
+      <div
+        class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-blue-900/30 dark:to-cyan-900/30"
+      >
+        <div
+          class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-blue-500/10 blur-3xl transition-all group-hover:bg-blue-500/20"
+        ></div>
+        <div class="relative">
+          <div
+            class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 shadow-lg shadow-blue-500/30"
+          >
+            <svg class="h-7 w-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                d="M13 10V3L4 14h7v7l9-11h-7z"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
           </div>
+          <p class="text-sm font-semibold text-blue-900 dark:text-blue-100">总请求数</p>
+          <p class="mt-2 text-3xl font-bold text-blue-900 dark:text-blue-50">
+            {{ formatNumber(usageStats?.totalRequests || 0) }}
+          </p>
         </div>
       </div>
 
-      <div class="overflow-hidden rounded-lg bg-white shadow">
-        <div class="p-5">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <svg
-                class="h-6 w-6 text-green-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                />
-              </svg>
-            </div>
-            <div class="ml-5 w-0 flex-1">
-              <dl>
-                <dt class="truncate text-sm font-medium text-gray-500">Input Tokens</dt>
-                <dd class="text-lg font-medium text-gray-900">
-                  {{ formatNumber(usageStats?.totalInputTokens || 0) }}
-                </dd>
-              </dl>
-            </div>
+      <!-- Input Tokens Card -->
+      <div
+        class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50 p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-green-900/30 dark:to-emerald-900/30"
+      >
+        <div
+          class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-green-500/10 blur-3xl transition-all group-hover:bg-green-500/20"
+        ></div>
+        <div class="relative">
+          <div
+            class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/30"
+          >
+            <svg class="h-7 w-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
           </div>
+          <p class="text-sm font-semibold text-green-900 dark:text-green-100">输入令牌</p>
+          <p class="mt-2 text-3xl font-bold text-green-900 dark:text-green-50">
+            {{ formatNumber(usageStats?.totalInputTokens || 0) }}
+          </p>
         </div>
       </div>
 
-      <div class="overflow-hidden rounded-lg bg-white shadow">
-        <div class="p-5">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <svg
-                class="h-6 w-6 text-purple-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                />
-              </svg>
-            </div>
-            <div class="ml-5 w-0 flex-1">
-              <dl>
-                <dt class="truncate text-sm font-medium text-gray-500">Output Tokens</dt>
-                <dd class="text-lg font-medium text-gray-900">
-                  {{ formatNumber(usageStats?.totalOutputTokens || 0) }}
-                </dd>
-              </dl>
-            </div>
+      <!-- Output Tokens Card -->
+      <div
+        class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-50 to-violet-50 p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-purple-900/30 dark:to-violet-900/30"
+      >
+        <div
+          class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-purple-500/10 blur-3xl transition-all group-hover:bg-purple-500/20"
+        ></div>
+        <div class="relative">
+          <div
+            class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-violet-600 shadow-lg shadow-purple-500/30"
+          >
+            <svg class="h-7 w-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
           </div>
+          <p class="text-sm font-semibold text-purple-900 dark:text-purple-100">输出令牌</p>
+          <p class="mt-2 text-3xl font-bold text-purple-900 dark:text-purple-50">
+            {{ formatNumber(usageStats?.totalOutputTokens || 0) }}
+          </p>
         </div>
       </div>
 
-      <div class="overflow-hidden rounded-lg bg-white shadow">
-        <div class="p-5">
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <svg
-                class="h-6 w-6 text-yellow-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                />
-              </svg>
-            </div>
-            <div class="ml-5 w-0 flex-1">
-              <dl>
-                <dt class="truncate text-sm font-medium text-gray-500">Total Cost</dt>
-                <dd class="text-lg font-medium text-gray-900">
-                  ${{ (usageStats?.totalCost || 0).toFixed(4) }}
-                </dd>
-              </dl>
-            </div>
+      <!-- Total Cost Card -->
+      <div
+        class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 to-yellow-50 p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-amber-900/30 dark:to-yellow-900/30"
+      >
+        <div
+          class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-amber-500/10 blur-3xl transition-all group-hover:bg-amber-500/20"
+        ></div>
+        <div class="relative">
+          <div
+            class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-600 shadow-lg shadow-amber-500/30"
+          >
+            <svg class="h-7 w-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
           </div>
+          <p class="text-sm font-semibold text-amber-900 dark:text-amber-100">总成本</p>
+          <p class="mt-2 text-3xl font-bold text-amber-900 dark:text-amber-50">
+            ${{ (usageStats?.totalCost || 0).toFixed(4) }}
+          </p>
         </div>
       </div>
     </div>
 
     <!-- Daily Usage Chart -->
-    <div v-if="!loading && usageStats" class="rounded-lg bg-white shadow">
-      <div class="px-4 py-5 sm:p-6">
-        <h3 class="mb-4 text-lg font-medium leading-6 text-gray-900">Daily Usage Trend</h3>
-
-        <!-- Placeholder for chart - you can integrate Chart.js or similar -->
+    <div
+      v-if="!loading && usageStats"
+      class="overflow-hidden rounded-3xl border border-gray-200/50 bg-white/80 shadow-xl backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/80"
+    >
+      <div class="bg-gradient-to-r from-indigo-500 to-blue-600 px-6 py-5">
+        <h3 class="flex items-center text-xl font-bold text-white">
+          <svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+            />
+          </svg>
+          每日使用趋势
+        </h3>
+      </div>
+      <div class="p-6">
+        <!-- Placeholder for chart -->
         <div
-          class="flex h-64 items-center justify-center rounded-lg border-2 border-dashed border-gray-300"
+          class="flex h-64 items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50/50 dark:border-gray-600 dark:bg-gray-700/30"
         >
           <div class="text-center">
             <svg
-              class="mx-auto h-12 w-12 text-gray-400"
+              class="mx-auto h-16 w-16 text-gray-400 dark:text-gray-500"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -190,10 +191,10 @@
                 stroke-width="2"
               />
             </svg>
-            <h3 class="mt-2 text-sm font-medium text-gray-900">Usage Chart</h3>
-            <p class="mt-1 text-sm text-gray-500">Daily usage trends would be displayed here</p>
-            <p class="mt-2 text-xs text-gray-400">
-              (Chart integration can be added with Chart.js, D3.js, or similar library)
+            <h3 class="mt-4 text-base font-bold text-gray-900 dark:text-white">使用趋势图表</h3>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">每日使用趋势将在这里显示</p>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-500">
+              (可集成 Chart.js、D3.js 或类似图表库)
             </p>
           </div>
         </div>
@@ -203,10 +204,22 @@
     <!-- Model Usage Breakdown -->
     <div
       v-if="!loading && usageStats && usageStats.modelStats?.length > 0"
-      class="rounded-lg bg-white shadow"
+      class="overflow-hidden rounded-3xl border border-gray-200/50 bg-white/80 shadow-xl backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/80"
     >
-      <div class="px-4 py-5 sm:p-6">
-        <h3 class="mb-4 text-lg font-medium leading-6 text-gray-900">Usage by Model</h3>
+      <div class="bg-gradient-to-r from-purple-500 to-pink-600 px-6 py-5">
+        <h3 class="flex items-center text-xl font-bold text-white">
+          <svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+            />
+          </svg>
+          按模型统计
+        </h3>
+      </div>
+      <div class="p-6">
         <div class="space-y-3">
           <div
             v-for="model in usageStats.modelStats"
@@ -231,48 +244,63 @@
     </div>
 
     <!-- Detailed Usage Table -->
-    <div v-if="!loading && userApiKeys.length > 0" class="rounded-lg bg-white shadow">
-      <div class="px-4 py-5 sm:p-6">
-        <h3 class="mb-4 text-lg font-medium leading-6 text-gray-900">Usage by API Key</h3>
-        <div class="overflow-hidden">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
+    <div
+      v-if="!loading && userApiKeys.length > 0"
+      class="overflow-hidden rounded-3xl border border-gray-200/50 bg-white/80 shadow-xl backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/80"
+    >
+      <div class="bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-5">
+        <h3 class="flex items-center text-xl font-bold text-white">
+          <svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+            />
+          </svg>
+          按 API Key 统计
+        </h3>
+      </div>
+      <div class="p-6">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead class="bg-gray-50 dark:bg-gray-700/50">
               <tr>
                 <th
-                  class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                  class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300"
                   scope="col"
                 >
                   API Key
                 </th>
                 <th
-                  class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                  class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300"
                   scope="col"
                 >
-                  Requests
+                  请求数
                 </th>
                 <th
-                  class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                  class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300"
                   scope="col"
                 >
-                  Input Tokens
+                  输入令牌
                 </th>
                 <th
-                  class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                  class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300"
                   scope="col"
                 >
-                  Output Tokens
+                  输出令牌
                 </th>
                 <th
-                  class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                  class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300"
                   scope="col"
                 >
-                  Cost
+                  成本
                 </th>
                 <th
-                  class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                  class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300"
                   scope="col"
                 >
-                  Status
+                  状态
                 </th>
               </tr>
             </thead>
@@ -297,20 +325,20 @@
                 <td class="whitespace-nowrap px-6 py-4">
                   <span
                     :class="[
-                      'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+                      'inline-flex items-center rounded-full px-3 py-1 text-xs font-bold',
                       apiKey.isDeleted === 'true' || apiKey.deletedAt
-                        ? 'bg-gray-100 text-gray-800'
+                        ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
                         : apiKey.isActive
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                     ]"
                   >
                     {{
                       apiKey.isDeleted === 'true' || apiKey.deletedAt
-                        ? 'Deleted'
+                        ? '已删除'
                         : apiKey.isActive
-                          ? 'Active'
-                          : 'Disabled'
+                          ? '活跃'
+                          : '已停用'
                     }}
                   </span>
                 </td>
@@ -324,25 +352,28 @@
     <!-- No Data State -->
     <div
       v-if="!loading && (!usageStats || usageStats.totalRequests === 0)"
-      class="py-12 text-center"
+      class="flex flex-col items-center justify-center py-20"
     >
-      <svg
-        class="mx-auto h-12 w-12 text-gray-400"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
+      <div
+        class="mb-6 flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800"
       >
-        <path
-          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-        />
-      </svg>
-      <h3 class="mt-2 text-sm font-medium text-gray-900">No usage data</h3>
-      <p class="mt-1 text-sm text-gray-500">
-        You haven't made any API requests yet. Create an API key and start using the service to see
-        usage statistics.
+        <svg
+          class="h-12 w-12 text-gray-400 dark:text-gray-500"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+          />
+        </svg>
+      </div>
+      <h3 class="text-xl font-bold text-gray-900 dark:text-white">暂无使用数据</h3>
+      <p class="mt-2 max-w-md text-center text-base text-gray-600 dark:text-gray-400">
+        您还没有发起任何 API 请求。创建一个 API Key 并开始使用服务来查看使用统计。
       </p>
     </div>
   </div>
@@ -374,14 +405,14 @@ const loadUsageStats = async () => {
   try {
     const [stats, apiKeys] = await Promise.all([
       userStore.getUserUsageStats({ period: selectedPeriod.value }),
-      userStore.getUserApiKeys(true) // Include deleted keys
+      userStore.getUserApiKeys(true) // 包含已删除的 keys
     ])
 
     usageStats.value = stats
     userApiKeys.value = apiKeys
   } catch (error) {
     console.error('Failed to load usage stats:', error)
-    showToast('Failed to load usage statistics', 'error')
+    showToast('加载使用统计失败', 'error')
   } finally {
     loading.value = false
   }

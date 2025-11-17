@@ -1,21 +1,28 @@
 <template>
   <div
-    class="relative flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 dark:bg-gray-900 sm:px-6 lg:px-8"
+    class="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-blue-50 via-white to-purple-50 px-4 py-12 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800"
   >
+    <!-- 装饰性背景元素 -->
+    <div
+      class="absolute left-1/4 top-1/4 h-96 w-96 animate-pulse rounded-full bg-blue-400/10 blur-3xl dark:bg-blue-500/5"
+    ></div>
+    <div
+      class="absolute bottom-1/4 right-1/4 h-96 w-96 animate-pulse rounded-full bg-purple-400/10 blur-3xl dark:bg-purple-500/5"
+      style="animation-delay: 1s"
+    ></div>
+
     <!-- 主题切换按钮 -->
     <div class="fixed right-4 top-4 z-10">
       <ThemeToggle mode="dropdown" />
     </div>
 
-    <div class="w-full max-w-md space-y-8">
-      <div>
-        <div class="mx-auto flex h-12 w-auto items-center justify-center">
-          <svg
-            class="h-8 w-8 text-blue-600 dark:text-blue-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+    <div class="relative z-10 w-full max-w-md">
+      <!-- Logo 和标题 -->
+      <div class="mb-8 text-center">
+        <div
+          class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/30 dark:shadow-blue-500/20"
+        >
+          <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
               stroke-linecap="round"
@@ -23,75 +30,124 @@
               stroke-width="2"
             />
           </svg>
-          <span class="ml-2 text-xl font-bold text-gray-900 dark:text-white">Claude Relay</span>
         </div>
-        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-          Create Account
-        </h2>
-        <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-          Register a new account to access the service
-        </p>
+        <h1 class="mb-2 text-3xl font-bold text-gray-900 dark:text-white">创建账户</h1>
+        <p class="text-sm text-gray-600 dark:text-gray-400">注册新账户以访问服务</p>
       </div>
 
-      <div class="rounded-lg bg-white px-6 py-8 shadow dark:bg-gray-800 dark:shadow-xl">
-        <form class="space-y-6" @submit.prevent="handleRegister">
+      <!-- 注册卡片 -->
+      <div
+        class="rounded-3xl border border-gray-200/50 bg-white/80 p-8 shadow-2xl shadow-blue-500/10 backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/80 dark:shadow-blue-500/5"
+      >
+        <form class="space-y-5" @submit.prevent="handleRegister">
+          <!-- 用户名输入 -->
           <div>
             <label
-              class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              class="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-300"
               for="username"
             >
-              Username <span class="text-red-500">*</span>
+              用户名 <span class="text-red-500">*</span>
             </label>
-            <div class="mt-1">
+            <div class="relative">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                <svg
+                  class="h-5 w-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+              </div>
               <input
                 id="username"
                 v-model="form.username"
                 autocomplete="username"
-                class="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400 sm:text-sm"
+                class="block w-full rounded-xl border-2 border-gray-200 bg-gray-50/50 py-3 pl-11 pr-4 text-gray-900 placeholder-gray-400 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900/50 dark:text-white dark:placeholder-gray-500 dark:focus:border-blue-400 dark:focus:bg-gray-900 dark:focus:ring-blue-400/20"
                 :disabled="loading"
                 name="username"
-                placeholder="Choose a username"
+                placeholder="请选择用户名"
                 required
                 type="text"
               />
             </div>
           </div>
 
+          <!-- 邮箱输入 -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="email">
-              Email <span class="text-red-500">*</span>
+            <label
+              class="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-300"
+              for="email"
+            >
+              邮箱 <span class="text-red-500">*</span>
             </label>
-            <div class="mt-1">
+            <div class="relative">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                <svg
+                  class="h-5 w-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
               <input
                 id="email"
                 v-model="form.email"
                 autocomplete="email"
-                class="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400 sm:text-sm"
+                class="block w-full rounded-xl border-2 border-gray-200 bg-gray-50/50 py-3 pl-11 pr-4 text-gray-900 placeholder-gray-400 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900/50 dark:text-white dark:placeholder-gray-500 dark:focus:border-blue-400 dark:focus:bg-gray-900 dark:focus:ring-blue-400/20"
                 :disabled="loading"
                 name="email"
-                placeholder="Enter your email"
+                placeholder="请输入邮箱"
                 required
                 type="email"
               />
             </div>
           </div>
 
+          <!-- 密码输入 -->
           <div>
             <label
-              class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              class="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-300"
               for="password"
             >
-              Password <span class="text-red-500">*</span>
+              密码 <span class="text-red-500">*</span>
             </label>
-            <div class="mt-1">
+            <div class="relative">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                <svg
+                  class="h-5 w-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  />
+                </svg>
+              </div>
               <input
                 id="password"
                 v-model="form.password"
                 autocomplete="new-password"
-                class="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400 sm:text-sm"
+                class="block w-full rounded-xl border-2 border-gray-200 bg-gray-50/50 py-3 pl-11 pr-4 text-gray-900 placeholder-gray-400 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900/50 dark:text-white dark:placeholder-gray-500 dark:focus:border-blue-400 dark:focus:bg-gray-900 dark:focus:ring-blue-400/20"
                 :disabled="loading"
                 name="password"
-                placeholder="Choose a password (min 8 characters)"
+                placeholder="请选择密码（至少8位字符）"
                 required
                 type="password"
               />
@@ -99,96 +155,131 @@
             </div>
           </div>
 
+          <!-- 确认密码输入 -->
           <div>
             <label
-              class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              class="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-300"
               for="confirmPassword"
             >
-              Confirm Password <span class="text-red-500">*</span>
+              确认密码 <span class="text-red-500">*</span>
             </label>
-            <div class="mt-1">
+            <div class="relative">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                <svg
+                  class="h-5 w-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                  />
+                </svg>
+              </div>
               <input
                 id="confirmPassword"
                 v-model="form.confirmPassword"
                 autocomplete="new-password"
-                class="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400 sm:text-sm"
+                class="block w-full rounded-xl border-2 border-gray-200 bg-gray-50/50 py-3 pl-11 pr-4 text-gray-900 placeholder-gray-400 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900/50 dark:text-white dark:placeholder-gray-500 dark:focus:border-blue-400 dark:focus:bg-gray-900 dark:focus:ring-blue-400/20"
                 :disabled="loading"
                 name="confirmPassword"
-                placeholder="Confirm your password"
+                placeholder="请确认密码"
                 required
                 type="password"
               />
             </div>
           </div>
 
+          <!-- 显示名称输入 -->
           <div>
             <label
-              class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              class="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-300"
               for="displayName"
             >
-              Display Name (Optional)
+              显示名称（可选）
             </label>
-            <div class="mt-1">
+            <div class="relative">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                <svg
+                  class="h-5 w-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
               <input
                 id="displayName"
                 v-model="form.displayName"
                 autocomplete="name"
-                class="relative block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-blue-500 focus:outline-none focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-400 dark:focus:ring-blue-400 sm:text-sm"
+                class="block w-full rounded-xl border-2 border-gray-200 bg-gray-50/50 py-3 pl-11 pr-4 text-gray-900 placeholder-gray-400 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900/50 dark:text-white dark:placeholder-gray-500 dark:focus:border-blue-400 dark:focus:bg-gray-900 dark:focus:ring-blue-400/20"
                 :disabled="loading"
                 name="displayName"
-                placeholder="Your display name"
+                placeholder="请输入显示名称"
                 type="text"
               />
             </div>
           </div>
 
+          <!-- 错误提示 -->
           <div
             v-if="error"
-            class="rounded-md border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20"
+            class="flex items-start space-x-3 rounded-xl border-2 border-red-200 bg-red-50 p-4 dark:border-red-800/50 dark:bg-red-900/20"
           >
-            <div class="flex">
-              <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    clip-rule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                    fill-rule="evenodd"
-                  />
-                </svg>
-              </div>
-              <div class="ml-3">
-                <p class="text-sm text-red-700 dark:text-red-400">{{ error }}</p>
-              </div>
+            <div class="flex-shrink-0">
+              <svg
+                class="h-5 w-5 text-red-500 dark:text-red-400"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  clip-rule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                  fill-rule="evenodd"
+                />
+              </svg>
             </div>
+            <p class="text-sm font-medium text-red-700 dark:text-red-300">{{ error }}</p>
           </div>
 
+          <!-- 成功提示 -->
           <div
             v-if="success"
-            class="rounded-md border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20"
+            class="flex items-start space-x-3 rounded-xl border-2 border-green-200 bg-green-50 p-4 dark:border-green-800/50 dark:bg-green-900/20"
           >
-            <div class="flex">
-              <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    clip-rule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    fill-rule="evenodd"
-                  />
-                </svg>
-              </div>
-              <div class="ml-3">
-                <p class="text-sm text-green-700 dark:text-green-400">{{ success }}</p>
-              </div>
+            <div class="flex-shrink-0">
+              <svg
+                class="h-5 w-5 text-green-500 dark:text-green-400"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  clip-rule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  fill-rule="evenodd"
+                />
+              </svg>
             </div>
+            <p class="text-sm font-medium text-green-700 dark:text-green-300">{{ success }}</p>
           </div>
 
-          <div>
+          <!-- 创建账户按钮 -->
+          <div class="pt-2">
             <button
-              class="group relative flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-400 dark:focus:ring-offset-gray-800"
+              class="group relative flex w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-blue-500/30 transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-500/40 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:shadow-blue-500/20 dark:hover:shadow-blue-500/30 dark:focus:ring-offset-gray-800"
               :disabled="loading || !isFormValid"
               type="submit"
             >
-              <span v-if="loading" class="absolute inset-y-0 left-0 flex items-center pl-3">
+              <span v-if="loading" class="absolute inset-y-0 left-0 flex items-center pl-4">
                 <svg
                   class="h-5 w-5 animate-spin text-white"
                   fill="none"
@@ -210,16 +301,17 @@
                   ></path>
                 </svg>
               </span>
-              {{ loading ? 'Creating Account...' : 'Create Account' }}
+              {{ loading ? '创建中...' : '创建账户' }}
             </button>
           </div>
 
-          <div class="text-center">
+          <!-- 快捷链接 -->
+          <div class="border-t border-gray-200 pt-4 text-center dark:border-gray-700">
             <router-link
-              class="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+              class="text-sm font-medium text-gray-600 transition-colors hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
               to="/user-login"
             >
-              Already have an account? Sign in
+              已有账户？立即登录
             </router-link>
           </div>
         </form>
@@ -270,13 +362,13 @@ const handleRegister = async () => {
 
   // 验证密码匹配
   if (form.password !== form.confirmPassword) {
-    error.value = 'Passwords do not match'
+    error.value = '密码不匹配'
     return
   }
 
   // 验证密码长度
   if (form.password.length < 8) {
-    error.value = 'Password must be at least 8 characters'
+    error.value = '密码至少需要8位字符'
     return
   }
 
@@ -291,9 +383,8 @@ const handleRegister = async () => {
     })
 
     if (response.data.success) {
-      success.value =
-        'Account created successfully! Please check your email for verification (if enabled). Redirecting to login...'
-      showToast('Registration successful! Please log in.', 'success')
+      success.value = '账户创建成功！请检查邮箱进行验证（如果启用）。正在跳转到登录页...'
+      showToast('注册成功！请登录。', 'success')
 
       // 2秒后跳转到登录页
       setTimeout(() => {
@@ -302,7 +393,7 @@ const handleRegister = async () => {
     }
   } catch (err) {
     console.error('Registration error:', err)
-    error.value = err.response?.data?.message || err.message || 'Registration failed'
+    error.value = err.response?.data?.message || err.message || '注册失败'
   } finally {
     loading.value = false
   }
