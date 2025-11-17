@@ -95,6 +95,7 @@
                 required
                 type="password"
               />
+              <PasswordStrengthMeter :password="form.password" />
             </div>
           </div>
 
@@ -234,6 +235,7 @@ import axios from 'axios'
 import { useThemeStore } from '@/stores/theme'
 import { showToast } from '@/utils/toast'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
+import PasswordStrengthMeter from '@/components/user/PasswordStrengthMeter.vue'
 import { API_PREFIX } from '@/config/api'
 
 const router = useRouter()

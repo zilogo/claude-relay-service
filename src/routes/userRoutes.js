@@ -48,6 +48,84 @@ function initRateLimiters() {
   return { ipRateLimiter, strictIpRateLimiter }
 }
 
+// 🔒 账户锁定相关函数
+const ACCOUNT_LOCK_PREFIX = 'account_lock:'
+const ACCOUNT_LOCK_DURATION = 900 // 15分钟（秒）
+const MAX_LOGIN_ATTEMPTS = 5 // 最多失败5次
+
+// 检查账户是否被锁定
+async function checkAccountLock(username) {
+  try {
+    const lockKey = `${ACCOUNT_LOCK_PREFIX}${username}`
+    const lockData = await redis.get(lockKey)
+
+    if (!lockData) {
+      return { locked: false, attempts: 0 }
+    }
+
+    const data = JSON.parse(lockData)
+    const now = Date.now()
+
+    // 检查是否已过锁定期
+    if (data.lockedUntil && now < data.lockedUntil) {
+      return {
+        locked: true,
+        attempts: data.attempts,
+        remainingSeconds: Math.ceil((data.lockedUntil - now) / 1000)
+      }
+    }
+
+    // 锁定期已过，重置
+    await redis.del(lockKey)
+    return { locked: false, attempts: 0 }
+  } catch (error) {
+    logger.error('❌ Error checking account lock:', error)
+    // 出错时默认不锁定
+    return { locked: false, attempts: 0 }
+  }
+}
+
+// 记录登录失败
+async function recordLoginFailure(username) {
+  try {
+    const lockKey = `${ACCOUNT_LOCK_PREFIX}${username}`
+    const lockData = await redis.get(lockKey)
+
+    let attempts = 1
+    if (lockData) {
+      const data = JSON.parse(lockData)
+      attempts = (data.attempts || 0) + 1
+    }
+
+    const newData = {
+      attempts,
+      lastAttempt: Date.now()
+    }
+
+    // 如果失败次数达到上限，锁定账户
+    if (attempts >= MAX_LOGIN_ATTEMPTS) {
+      newData.lockedUntil = Date.now() + ACCOUNT_LOCK_DURATION * 1000
+      logger.security(`🔒 Account locked due to too many failed attempts: ${username}`)
+    }
+
+    await redis.set(lockKey, JSON.stringify(newData), 'EX', ACCOUNT_LOCK_DURATION)
+    return attempts
+  } catch (error) {
+    logger.error('❌ Error recording login failure:', error)
+    return 0
+  }
+}
+
+// 清除登录失败记录（成功登录后）
+async function clearLoginFailures(username) {
+  try {
+    const lockKey = `${ACCOUNT_LOCK_PREFIX}${username}`
+    await redis.del(lockKey)
+  } catch (error) {
+    logger.error('❌ Error clearing login failures:', error)
+  }
+}
+
 // 🔐 用户登录端点
 router.post('/login', async (req, res) => {
   try {
@@ -311,8 +389,9 @@ router.post('/login/local', async (req, res) => {
     }
 
     // 验证输入格式
+    let validatedUsername
     try {
-      inputValidator.validateUsername(username)
+      validatedUsername = inputValidator.validateUsername(username)
       inputValidator.validatePassword(password)
     } catch (validationError) {
       return res.status(400).json({
@@ -329,10 +408,26 @@ router.post('/login/local', async (req, res) => {
       })
     }
 
-    // 本地认证
-    const authResult = await userService.authenticateLocalUser(username, password)
+    // 🔒 检查账户是否被锁定
+    const lockStatus = await checkAccountLock(validatedUsername)
+    if (lockStatus.locked) {
+      logger.security(
+        `🔒 Login attempt for locked account: ${validatedUsername} from IP: ${clientIp}`
+      )
+      return res.status(423).json({
+        error: 'Account locked',
+        message: `Too many failed login attempts. Please try again in ${lockStatus.remainingSeconds} seconds.`,
+        remainingSeconds: lockStatus.remainingSeconds
+      })
+    }
 
-    logger.info(`✅ Local user login successful: ${username} from IP: ${clientIp}`)
+    // 本地认证
+    const authResult = await userService.authenticateLocalUser(validatedUsername, password)
+
+    // ✅ 登录成功，清除失败记录
+    await clearLoginFailures(validatedUsername)
+
+    logger.info(`✅ Local user login successful: ${validatedUsername} from IP: ${clientIp}`)
 
     res.json({
       success: true,
@@ -351,6 +446,21 @@ router.post('/login/local', async (req, res) => {
     })
   } catch (error) {
     const clientIp = req.ip || req.connection.remoteAddress || 'unknown'
+    const { username } = req.body
+
+    // 记录登录失败
+    if (username) {
+      try {
+        const validatedUsername = inputValidator.validateUsername(username)
+        const attempts = await recordLoginFailure(validatedUsername)
+        logger.security(
+          `🚫 Failed local login attempt for ${validatedUsername} from IP: ${clientIp} (Attempt ${attempts}/${MAX_LOGIN_ATTEMPTS})`
+        )
+      } catch (err) {
+        // 用户名无效，不记录
+      }
+    }
+
     logger.info(`🚫 Failed local login attempt from IP: ${clientIp}`)
     logger.error('❌ Local user login error:', error)
 
@@ -439,7 +549,9 @@ router.post('/login/ldap', async (req, res) => {
     const authResult = await ldapService.authenticateUserCredentials(validatedUsername, password)
 
     if (!authResult.success) {
-      logger.info(`🚫 Failed LDAP login attempt for user: ${validatedUsername} from IP: ${clientIp}`)
+      logger.info(
+        `🚫 Failed LDAP login attempt for user: ${validatedUsername} from IP: ${clientIp}`
+      )
       return res.status(401).json({
         error: 'Authentication failed',
         message: authResult.message
@@ -535,6 +647,33 @@ router.post('/logout', authenticateUser, async (req, res) => {
     res.status(500).json({
       error: 'Logout error',
       message: 'Internal server error during logout'
+    })
+  }
+})
+
+// 🔍 检查密码强度（无需认证，供注册页面使用）
+router.post('/check-password-strength', (req, res) => {
+  try {
+    const { password } = req.body
+
+    if (!password || typeof password !== 'string') {
+      return res.status(400).json({
+        error: 'Invalid input',
+        message: 'Password is required'
+      })
+    }
+
+    const strengthInfo = inputValidator.calculatePasswordStrength(password)
+
+    res.json({
+      success: true,
+      strength: strengthInfo
+    })
+  } catch (error) {
+    logger.error('❌ Password strength check error:', error)
+    res.status(500).json({
+      error: 'Check error',
+      message: 'Failed to check password strength'
     })
   }
 })

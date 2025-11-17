@@ -1,5 +1,6 @@
 const redis = require('../models/redis')
 const crypto = require('crypto')
+const bcrypt = require('bcrypt')
 const logger = require('../utils/logger')
 const config = require('../../config/config')
 
@@ -36,36 +37,30 @@ class UserService {
     return this._encryptionKeyCache
   }
 
-  // 🔐 加密密码
-  _encryptPassword(password) {
+  // 🔐 哈希密码（使用 bcrypt）
+  async _hashPassword(password) {
     if (!password) {
       return ''
     }
 
     try {
-      const key = this._generateEncryptionKey()
-      const iv = crypto.randomBytes(16)
-
-      const cipher = crypto.createCipheriv(this.ENCRYPTION_ALGORITHM, key, iv)
-      let encrypted = cipher.update(password, 'utf8', 'hex')
-      encrypted += cipher.final('hex')
-
-      // 将IV和加密数据一起返回，用:分隔
-      return `${iv.toString('hex')}:${encrypted}`
+      const saltRounds = 10
+      const hashedPassword = await bcrypt.hash(password, saltRounds)
+      return hashedPassword
     } catch (error) {
-      logger.error('❌ Password encryption error:', error)
+      logger.error('❌ Password hashing error:', error)
       throw error
     }
   }
 
-  // 🔓 解密密码
-  _decryptPassword(encryptedPassword) {
+  // 🔓 解密旧密码（AES 加密，用于向后兼容）
+  _decryptLegacyPassword(encryptedPassword) {
     if (!encryptedPassword) {
       return ''
     }
 
     try {
-      // 检查是否是新格式（包含IV）
+      // 检查是否是旧格式（包含IV）
       if (encryptedPassword.includes(':')) {
         const parts = encryptedPassword.split(':')
         if (parts.length === 2) {
@@ -90,15 +85,27 @@ class UserService {
     }
   }
 
-  // 🔍 验证密码
-  async verifyPassword(password, encryptedPassword) {
+  // 🔍 验证密码（支持 bcrypt 和旧 AES 格式）
+  async verifyPassword(password, passwordHash) {
     try {
-      const decryptedPassword = this._decryptPassword(encryptedPassword)
-      return password === decryptedPassword
+      // 检查是否是 bcrypt 格式（以 $2b$ 或 $2a$ 开头）
+      if (passwordHash.startsWith('$2b$') || passwordHash.startsWith('$2a$')) {
+        // 使用 bcrypt 验证
+        return await bcrypt.compare(password, passwordHash)
+      } else {
+        // 尝试使用旧的 AES 解密方式（向后兼容）
+        const decryptedPassword = this._decryptLegacyPassword(passwordHash)
+        return password === decryptedPassword
+      }
     } catch (error) {
       logger.error('❌ Password verification error:', error)
       return false
     }
+  }
+
+  // 🔄 检查密码是否为旧格式
+  _isLegacyPasswordHash(passwordHash) {
+    return passwordHash && !passwordHash.startsWith('$2b$') && !passwordHash.startsWith('$2a$')
   }
 
   // 👤 创建或更新用户
@@ -701,8 +708,8 @@ class UserService {
         )
       }
 
-      // 加密密码
-      const encryptedPassword = this._encryptPassword(password)
+      // 使用 bcrypt 哈希密码
+      const hashedPassword = await this._hashPassword(password)
 
       // 创建用户ID
       const userId = this.generateUserId()
@@ -718,7 +725,7 @@ class UserService {
         role: config.userManagement.defaultUserRole,
         isActive: true,
         authType: 'local', // 标记为本地认证用户
-        passwordHash: encryptedPassword,
+        passwordHash: hashedPassword,
         passwordChangedAt: new Date().toISOString(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -780,6 +787,16 @@ class UserService {
         throw new Error('Invalid username or password')
       }
 
+      // 🔄 自动迁移旧密码格式到 bcrypt
+      if (this._isLegacyPasswordHash(user.passwordHash)) {
+        logger.info(`🔄 Migrating password to bcrypt for user: ${username}`)
+        const newPasswordHash = await this._hashPassword(password)
+        user.passwordHash = newPasswordHash
+        user.passwordChangedAt = new Date().toISOString()
+        await redis.set(`${this.userPrefix}${user.id}`, JSON.stringify(user))
+        logger.info(`✅ Password migrated successfully for user: ${username}`)
+      }
+
       // 更新最后登录时间
       await this.recordUserLogin(user.id)
 
@@ -830,11 +847,11 @@ class UserService {
         )
       }
 
-      // 加密新密码
-      const encryptedPassword = this._encryptPassword(newPassword)
+      // 使用 bcrypt 哈希新密码
+      const hashedPassword = await this._hashPassword(newPassword)
 
       // 更新用户密码
-      user.passwordHash = encryptedPassword
+      user.passwordHash = hashedPassword
       user.passwordChangedAt = new Date().toISOString()
       user.updatedAt = new Date().toISOString()
 
@@ -874,11 +891,11 @@ class UserService {
         )
       }
 
-      // 加密新密码
-      const encryptedPassword = this._encryptPassword(newPassword)
+      // 使用 bcrypt 哈希新密码
+      const hashedPassword = await this._hashPassword(newPassword)
 
       // 更新用户密码
-      user.passwordHash = encryptedPassword
+      user.passwordHash = hashedPassword
       user.passwordChangedAt = new Date().toISOString()
       user.updatedAt = new Date().toISOString()
 

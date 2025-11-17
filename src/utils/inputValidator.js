@@ -66,9 +66,10 @@ class InputValidator {
   /**
    * 验证密码强度
    * @param {string} password - 密码
+   * @param {object} options - 验证选项（可选）
    * @returns {boolean} 验证结果
    */
-  validatePassword(password) {
+  validatePassword(password, options = {}) {
     if (!password || typeof password !== 'string') {
       throw new Error('密码必须是非空字符串')
     }
@@ -83,7 +84,103 @@ class InputValidator {
       throw new Error('密码不能超过128个字符')
     }
 
+    // 默认启用强度要求（可通过配置或参数禁用）
+    const requireStrength = options.requireStrength !== false
+
+    if (requireStrength) {
+      // 检查是否包含小写字母
+      if (!/[a-z]/.test(password)) {
+        throw new Error('密码必须包含至少一个小写字母')
+      }
+
+      // 检查是否包含大写字母
+      if (!/[A-Z]/.test(password)) {
+        throw new Error('密码必须包含至少一个大写字母')
+      }
+
+      // 检查是否包含数字
+      if (!/[0-9]/.test(password)) {
+        throw new Error('密码必须包含至少一个数字')
+      }
+
+      // 检查是否包含特殊字符
+      if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+        throw new Error('密码必须包含至少一个特殊字符')
+      }
+    }
+
     return true
+  }
+
+  /**
+   * 计算密码强度（0-4）
+   * @param {string} password - 密码
+   * @returns {object} 强度信息
+   */
+  calculatePasswordStrength(password) {
+    if (!password || typeof password !== 'string') {
+      return { score: 0, level: 'none', feedback: [] }
+    }
+
+    let score = 0
+    const feedback = []
+
+    // 长度检查
+    if (password.length >= 8) {
+      score++
+    } else {
+      feedback.push('至少需要8个字符')
+    }
+
+    if (password.length >= 12) {
+      score++
+    }
+
+    // 包含小写字母
+    if (/[a-z]/.test(password)) {
+      score++
+    } else {
+      feedback.push('需要小写字母')
+    }
+
+    // 包含大写字母
+    if (/[A-Z]/.test(password)) {
+      score++
+    } else {
+      feedback.push('需要大写字母')
+    }
+
+    // 包含数字
+    if (/[0-9]/.test(password)) {
+      score++
+    } else {
+      feedback.push('需要数字')
+    }
+
+    // 包含特殊字符
+    if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      score++
+    } else {
+      feedback.push('需要特殊字符')
+    }
+
+    // 确定强度等级
+    let level = 'weak'
+    if (score >= 5) {
+      level = 'strong'
+    } else if (score >= 4) {
+      level = 'medium'
+    } else if (score >= 2) {
+      level = 'weak'
+    } else {
+      level = 'very-weak'
+    }
+
+    return {
+      score,
+      level,
+      feedback: feedback.length > 0 ? feedback : ['密码强度良好']
+    }
   }
 
   /**
