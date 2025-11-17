@@ -209,6 +209,79 @@ cp .env.example .env
 npm run setup  # 自动生成密钥并创建管理员账户
 ```
 
+## 邮件服务配置
+
+### SMTP 配置步骤
+
+邮件服务用于密码重置和邮箱验证功能。配置位置：`.env` 文件
+
+#### 163 邮箱配置示例
+```bash
+EMAIL_ENABLED=true
+EMAIL_SERVICE_TYPE=smtp
+SMTP_HOST=smtp.163.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=your-email@163.com
+SMTP_PASS=your-authorization-code  # ⚠️ 使用授权码，不是登录密码
+EMAIL_FROM_NAME=Your Service Name
+EMAIL_FROM_ADDRESS=your-email@163.com
+BASE_URL=http://localhost:3000  # 邮件中重置链接的域名
+```
+
+#### 其他邮箱提供商
+- **QQ邮箱**: `smtp.qq.com:465` (SSL) 或 `smtp.qq.com:587` (TLS)
+- **Gmail**: `smtp.gmail.com:465` (需启用"应用专用密码")
+- **企业邮箱**: 根据邮件服务商提供的 SMTP 配置
+
+#### 邮件功能配置
+```bash
+# 功能开关
+ALLOW_PASSWORD_RESET=true          # 启用密码重置
+REQUIRE_EMAIL_VERIFICATION=false   # 启用邮箱验证（可选）
+
+# 速率限制
+EMAIL_RATE_LIMIT_WINDOW=600       # 时间窗口（秒）
+EMAIL_RATE_LIMIT_MAX=3            # 窗口内最大发送次数
+
+# Token 过期时间
+PASSWORD_RESET_TOKEN_TTL=3600     # 密码重置 token 有效期（秒，默认1小时）
+EMAIL_VERIFICATION_TOKEN_TTL=86400 # 邮箱验证 token 有效期（秒，默认24小时）
+```
+
+### BASE_URL 配置说明
+
+`BASE_URL` 决定了邮件中重置链接的域名：
+
+- **本地开发**: `http://localhost:3000`
+- **公网部署**: `https://your-domain.com`
+- **内网部署**: `http://192.168.1.100:3000`
+
+⚠️ 修改 `BASE_URL` 后需重启服务才能生效。
+
+### 邮件模板自定义
+
+邮件模板位置：`src/services/emailService.js`
+
+- **密码重置模板**: `_renderPasswordResetTemplate()` 方法（第153行起）
+- **邮箱验证模板**: `_renderEmailVerificationTemplate()` 方法（第235行起）
+
+可自定义的内容：
+- 邮件标题、问候语、按钮文字
+- 样式和布局（HTML/CSS）
+- 提示信息和警告文字
+- 页脚信息
+
+### 常见邮件问题排查
+
+1. **邮件发送失败**: 检查 `logs/claude-relay-error-*.log` 查看详细错误
+2. **授权码错误**: 确认使用的是 SMTP 授权码，不是登录密码
+3. **邮件未收到**:
+   - 检查用户邮箱是否正确
+   - 查看垃圾邮件文件夹
+   - 确认 `EMAIL_ENABLED=true`
+4. **Redis 错误**: 如遇到 `redis.incr is not a function`，已在最新代码中修复
+
 ## Web界面功能
 
 ### OAuth账户添加流程
@@ -231,12 +304,62 @@ npm run setup  # 自动生成密钥并创建管理员账户
   - Azure OpenAI账户: Azure凭据和端点配置
   - Droid账户: Factory.ai API Key配置
   - CCR账户: CCR凭据配置
-- **用户管理**: 用户注册、登录、API Key分配（USER_MANAGEMENT_ENABLED启用时）
+- **用户管理**: 用户注册、登录、API Key分配（`USER_MANAGEMENT_ENABLED=true` 或 `LDAP_ENABLED=true` 时显示菜单）
+  - 菜单显示条件：后端 OEM settings API 返回 `userManagementEnabled` 或 `ldapEnabled` 为 true
+  - 相关文件：`src/routes/admin.js:7077`（后端）、`web/admin-spa/src/components/layout/TabBar.vue:63`（前端）
 - **系统日志**: 实时日志查看，多级别过滤，HTTP调试日志（DEBUG_HTTP_TRAFFIC启用时）
 - **Webhook配置**: Webhook URL管理、事件配置
 - **主题系统**: 支持明亮/暗黑模式切换，自动保存用户偏好设置
 - **成本分析**: 详细的token使用和成本统计（基于pricingService）
 - **缓存监控**: 解密缓存统计和性能监控
+
+## 前端语言配置
+
+### 当前语言状态
+
+**已支持中文：**
+- ✅ Element Plus 组件库（已配置中文：`web/admin-spa/src/main.js:4-5`）
+- ✅ 管理员登录页面（部分中文化）
+- ✅ 密码强度组件（已中文化）
+
+**仍为英文：**
+- ❌ 用户登录/注册页面（`UserLoginView.vue`, `UserRegisterView.vue`）
+- ❌ 密码重置页面（`ForgotPasswordView.vue`, `ResetPasswordView.vue`）
+- ❌ 邮箱验证页面（`EmailVerificationView.vue`）
+- ❌ 用户管理页面（`UserManagementView.vue`）
+
+### 国际化方案
+
+**当前实现：** 文本直接硬编码在 Vue 组件模板中，未使用 i18n 库。
+
+**修改方案：**
+
+1. **方案A：直接修改为中文**（快速简单）
+   - 直接替换模板中的英文文本为中文
+   - 优点：快速、无需额外依赖
+   - 缺点：无法支持多语言切换
+
+2. **方案B：引入 vue-i18n**（推荐用于多语言）
+   - 安装 vue-i18n 库，创建语言包
+   - 优点：专业、支持多语言切换、易维护
+   - 缺点：需要重构现有组件
+
+3. **方案C：JavaScript 对象映射**（平衡方案）
+   - 创建语言配置对象，通过计算属性使用
+   - 优点：可扩展、易维护、无需额外库
+   - 缺点：不如 vue-i18n 专业
+
+### 需要修改的文件
+
+如需实现中文界面，需修改以下文件：
+- `web/admin-spa/src/views/UserLoginView.vue`
+- `web/admin-spa/src/views/UserRegisterView.vue`
+- `web/admin-spa/src/views/ForgotPasswordView.vue`
+- `web/admin-spa/src/views/ResetPasswordView.vue`
+- `web/admin-spa/src/views/EmailVerificationView.vue`
+- `web/admin-spa/src/views/UserManagementView.vue`
+
+**注意：** 建议使用 API 方式集成用户功能，避免维护前端界面的多语言问题。
 
 ## 重要端点
 
@@ -279,11 +402,52 @@ npm run setup  # 自动生成密钥并创建管理员账户
 - `POST /admin/claude-accounts` - 创建Claude OAuth账户
 - 各平台账户CRUD端点（gemini、openai、bedrock、azure、droid、ccr）
 
-#### 用户管理（USER_MANAGEMENT_ENABLED启用时）
+#### 用户管理API（USER_MANAGEMENT_ENABLED启用时）
+
+**所有用户功能都可以通过 API 完全实现，无需前端界面！**
+
+##### 认证端点
+- `POST /users/login/local` - 本地用户登录
+- `POST /users/login/ldap` - LDAP用户登录
+- `POST /users/login` - 自动选择认证方式
 - `POST /users/register` - 用户注册
-- `POST /users/login` - 用户登录
-- `GET /users/profile` - 用户资料
-- `POST /users/api-keys` - 创建用户API Key
+- `POST /users/logout` - 用户登出
+
+##### 用户资料管理
+- `GET /users/profile` - 获取当前用户资料
+- `GET /users` - 获取用户列表（管理员）
+- `GET /users/:userId` - 获取指定用户详情（管理员）
+- `PATCH /users/:userId/status` - 更新用户状态（管理员）
+- `PATCH /users/:userId/role` - 更新用户角色（管理员）
+
+##### 密码管理
+- `POST /users/change-password` - 修改密码（需认证）
+- `POST /users/forgot-password` - 请求密码重置邮件
+- `POST /users/reset-password` - 使用Token重置密码
+- `POST /users/:userId/reset-password` - 管理员重置用户密码
+- `POST /users/check-password-strength` - 检查密码强度
+
+##### 邮箱验证
+- `POST /users/verify-email` - 验证邮箱
+- `POST /users/resend-verification` - 重新发送验证邮件
+
+##### API Key 管理
+- `GET /users/api-keys` - 获取用户的所有API Keys
+- `POST /users/api-keys` - 创建新的API Key
+- `DELETE /users/api-keys/:keyId` - 删除API Key
+- `POST /users/:userId/disable-keys` - 禁用用户所有Keys（管理员）
+
+##### 使用统计
+- `GET /users/usage-stats` - 获取用户使用统计
+- `GET /users/:userId/usage-stats` - 获取指定用户统计（管理员）
+- `GET /users/stats/overview` - 系统用户统计概览（管理员）
+
+**认证方式**（三种方式传递 sessionToken）：
+1. HTTP Header: `Authorization: Bearer <sessionToken>`
+2. Cookie: `sessionToken=<token>`
+3. 请求体: `{ "sessionToken": "<token>", ... }`
+
+**完整 API 文档和示例**: 参见项目文档或使用 Postman Collection 测试所有端点
 
 #### Webhook管理
 - `GET /admin/webhook/configs` - 获取Webhook配置
@@ -337,6 +501,21 @@ npm run setup  # 自动生成密钥并创建管理员账户
 11. **速率限制未清理**: rateLimitCleanupService每5分钟自动清理过期限流状态
 12. **成本统计不准确**: 运行 `npm run init:costs` 初始化成本数据，检查pricingService是否正确加载模型价格
 13. **缓存命中率低**: 查看缓存监控统计，调整LRU缓存大小配置
+14. **用户管理菜单不显示**:
+    - 确认 `USER_MANAGEMENT_ENABLED=true` 或 `LDAP_ENABLED=true`
+    - 检查后端 OEM settings API 是否返回 `userManagementEnabled` 或 `ldapEnabled`
+    - 相关文件：`src/routes/admin.js:7077`、`web/admin-spa/src/components/layout/TabBar.vue:63`
+15. **邮件发送失败**:
+    - 检查 `EMAIL_ENABLED=true` 和 SMTP 配置（host、port、user、pass）
+    - 确认使用 SMTP 授权码，不是登录密码
+    - 查看 `logs/claude-relay-error-*.log` 获取详细错误
+16. **密码重置邮件未收到**:
+    - 确认用户邮箱地址存在于系统中
+    - 检查垃圾邮件文件夹
+    - 查看日志中是否有 "Password reset requested for non-existent email" 警告
+17. **Redis 方法调用错误**（`redis.incr is not a function`）:
+    - 已在最新代码中修复（`src/services/userService.js:976, 1123`）
+    - 使用 `redis.getClient().incr()` 而不是 `redis.incr()`
 
 ### 调试工具
 
