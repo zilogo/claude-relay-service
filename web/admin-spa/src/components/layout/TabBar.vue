@@ -59,8 +59,8 @@ const tabs = computed(() => {
     { key: 'accounts', name: '账户管理', shortName: '账户', icon: 'fas fa-user-circle' }
   ]
 
-  // 只有在 LDAP 启用时才显示用户管理
-  if (authStore.oemSettings?.ldapEnabled) {
+  // 只有在用户管理或 LDAP 启用时才显示用户管理
+  if (authStore.oemSettings?.userManagementEnabled || authStore.oemSettings?.ldapEnabled) {
     baseTabs.push({
       key: 'userManagement',
       name: '用户管理',

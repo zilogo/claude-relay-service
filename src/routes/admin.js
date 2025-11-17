@@ -7068,12 +7068,13 @@ router.get('/oem-settings', async (req, res) => {
       }
     }
 
-    // 添加 LDAP 启用状态到响应中
+    // 添加 LDAP 和用户管理启用状态到响应中
     return res.json({
       success: true,
       data: {
         ...settings,
-        ldapEnabled: config.ldap && config.ldap.enabled === true
+        ldapEnabled: config.ldap && config.ldap.enabled === true,
+        userManagementEnabled: config.userManagement && config.userManagement.enabled === true
       }
     })
   } catch (error) {
