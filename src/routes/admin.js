@@ -7050,9 +7050,9 @@ router.get('/oem-settings', async (req, res) => {
     const client = redis.getClient()
     const oemSettings = await client.get('oem:settings')
 
-    // 默认设置
+    // 默认设置（从环境变量读取）
     const defaultSettings = {
-      siteName: 'Claude Relay Service',
+      siteName: config.web?.title || 'Claude Relay Service',
       siteIcon: '',
       siteIconData: '', // Base64编码的图标数据
       showAdminButton: true, // 是否显示管理后台按钮

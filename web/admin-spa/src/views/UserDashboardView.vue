@@ -28,7 +28,7 @@
                   />
                 </svg>
               </div>
-              <span class="text-xl font-bold text-gray-900 dark:text-white">Claude Relay</span>
+              <span class="text-xl font-bold text-gray-900 dark:text-white">{{ siteName }}</span>
             </div>
 
             <!-- Tab 导航（带滑动指示器） -->
@@ -138,7 +138,7 @@
         <div>
           <h1 class="text-3xl font-bold text-gray-900 dark:text-white">仪表板总览</h1>
           <p class="mt-2 text-base text-gray-600 dark:text-gray-400">
-            欢迎来到您的 Claude Relay 仪表板
+            欢迎来到您的 {{ siteName }} 仪表板
           </p>
         </div>
 
@@ -516,9 +516,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import { showToast } from '@/utils/toast'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
@@ -528,7 +529,11 @@ import TutorialView from '@/views/TutorialView.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
+const authStore = useAuthStore()
 const themeStore = useThemeStore()
+
+// 获取站点名称配置
+const siteName = computed(() => authStore.oemSettings?.siteName || 'Claude Relay')
 
 const activeTab = ref('overview')
 const userProfile = ref(null)
@@ -603,9 +608,11 @@ const loadApiKeysStats = async () => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   // 初始化主题
   themeStore.initTheme()
+  // 加载 OEM 设置以获取站点名称配置
+  await authStore.loadOemSettings()
   loadUserProfile()
   loadApiKeysStats()
 })

@@ -5,7 +5,7 @@
       <div>
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">我的 API Keys</h1>
         <p class="mt-2 text-base text-gray-600 dark:text-gray-400">
-          管理您的 API 密钥以访问 Claude Relay 服务
+          管理您的 API 密钥以访问 {{ siteName }} 服务
         </p>
       </div>
       <button
@@ -342,12 +342,17 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
+import { useAuthStore } from '@/stores/auth'
 import { showToast } from '@/utils/toast'
 import CreateApiKeyModal from './CreateApiKeyModal.vue'
 import ViewApiKeyModal from './ViewApiKeyModal.vue'
 import ConfirmModal from '@/components/common/ConfirmModal.vue'
 
 const userStore = useUserStore()
+const authStore = useAuthStore()
+
+// 获取站点名称配置
+const siteName = computed(() => authStore.oemSettings?.siteName || 'Claude Relay')
 
 const loading = ref(true)
 const apiKeys = ref([])
@@ -437,7 +442,9 @@ const handleApiKeyCreated = async () => {
   await loadApiKeys()
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // 加载 OEM 设置以获取站点名称配置
+  await authStore.loadOemSettings()
   loadApiKeys()
 })
 </script>
