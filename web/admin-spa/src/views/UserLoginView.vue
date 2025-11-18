@@ -40,7 +40,9 @@
         class="rounded-3xl border border-gray-200/50 bg-white/80 p-8 shadow-2xl shadow-blue-500/10 backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/80 dark:shadow-blue-500/5"
       >
         <!-- 认证方式切换 Tab (Pill Style with Sliding Indicator) -->
+        <!-- 只在 LDAP 启用时显示 Tab 切换 -->
         <div
+          v-if="isLdapEnabled"
           class="relative mb-8 inline-flex w-full rounded-2xl bg-gray-100/50 p-1.5 dark:bg-gray-700/50"
         >
           <!-- 滑动指示器 -->
@@ -209,8 +211,8 @@
           </div>
 
           <!-- 快捷链接 -->
-          <div class="space-y-3 pt-2">
-            <div v-if="authType === 'local'" class="text-center">
+          <div v-if="authType === 'local'" class="space-y-3 pt-2">
+            <div class="text-center">
               <router-link
                 class="text-sm font-medium text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                 to="/forgot-password"
@@ -218,22 +220,12 @@
                 忘记密码？
               </router-link>
             </div>
-            <div
-              class="flex items-center justify-between border-t border-gray-200 pt-4 dark:border-gray-700"
-            >
+            <div class="border-t border-gray-200 pt-4 text-left dark:border-gray-700">
               <router-link
-                v-if="authType === 'local'"
                 class="text-sm font-medium text-gray-600 transition-colors hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
                 to="/user-register"
               >
                 创建账户
-              </router-link>
-              <span v-else></span>
-              <router-link
-                class="text-sm font-medium text-gray-600 transition-colors hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
-                to="/admin-login"
-              >
-                管理员登录
               </router-link>
             </div>
           </div>
@@ -244,20 +236,25 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import { showToast } from '@/utils/toast'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
+const authStore = useAuthStore()
 const themeStore = useThemeStore()
 
 const loading = ref(false)
 const error = ref('')
 const authType = ref('local') // 默认本地登录
+
+// 检查 LDAP 是否启用
+const isLdapEnabled = computed(() => authStore.oemSettings?.ldapEnabled || false)
 
 const form = reactive({
   username: '',
@@ -290,9 +287,12 @@ const handleLogin = async () => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   // 初始化主题（因为该页面不在 MainLayout 内）
   themeStore.initTheme()
+
+  // 加载 OEM 设置以获取 LDAP 配置
+  await authStore.loadOemSettings()
 })
 </script>
 
