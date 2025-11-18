@@ -7,11 +7,11 @@ services:
   # 🚀 Claude Relay Service
   claude-relay:
     build: .
-    image: weishaw/claude-relay-service:latest
+    image: claude-relay-service:local
     restart: unless-stopped
     ports:
       # 绑定地址：生产环境建议使用反向代理，设置 BIND_HOST=127.0.0.1
-      - "${BIND_HOST:-0.0.0.0}:${PORT:-3000}:3000"
+      - '${BIND_HOST:-0.0.0.0}:${PORT:-3000}:3000'
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data
@@ -20,62 +20,125 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - HOST=0.0.0.0
-      
+
       # 🔐 安全配置（必填）
-      - JWT_SECRET=${JWT_SECRET}  # 必填：至少32字符的随机字符串
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY}  # 必填：32字符的加密密钥
+      - JWT_SECRET=${JWT_SECRET} # 必填：至少32字符的随机字符串
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY} # 必填：32字符的加密密钥
       - ADMIN_SESSION_TIMEOUT=${ADMIN_SESSION_TIMEOUT:-86400000}
       - API_KEY_PREFIX=${API_KEY_PREFIX:-cr_}
-      
+
       # 👤 管理员凭据（可选）
       - ADMIN_USERNAME=${ADMIN_USERNAME:-}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
-      
+
       # 📊 Redis 配置
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - REDIS_DB=${REDIS_DB:-0}
       - REDIS_ENABLE_TLS=${REDIS_ENABLE_TLS:-}
-      
+
       # 🎯 Claude API 配置
       - CLAUDE_API_URL=${CLAUDE_API_URL:-https://api.anthropic.com/v1/messages}
       - CLAUDE_API_VERSION=${CLAUDE_API_VERSION:-2023-06-01}
       - CLAUDE_BETA_HEADER=${CLAUDE_BETA_HEADER:-claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14}
-      
+
       # 🌐 代理配置
       - DEFAULT_PROXY_TIMEOUT=${DEFAULT_PROXY_TIMEOUT:-60000}
       - MAX_PROXY_RETRIES=${MAX_PROXY_RETRIES:-3}
-      
+
       # 📈 使用限制
       - DEFAULT_TOKEN_LIMIT=${DEFAULT_TOKEN_LIMIT:-1000000}
-      
+
       # 📝 日志配置
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - LOG_MAX_SIZE=${LOG_MAX_SIZE:-10m}
       - LOG_MAX_FILES=${LOG_MAX_FILES:-5}
-      
+
       # 🔧 系统配置
       - CLEANUP_INTERVAL=${CLEANUP_INTERVAL:-3600000}
       - TOKEN_USAGE_RETENTION=${TOKEN_USAGE_RETENTION:-2592000000}
       - HEALTH_CHECK_INTERVAL=${HEALTH_CHECK_INTERVAL:-60000}
       - TIMEZONE_OFFSET=${TIMEZONE_OFFSET:-8}
-      
+      - METRICS_WINDOW=${METRICS_WINDOW:-5}
+
+      # 🔗 会话管理配置
+      - STICKY_SESSION_TTL_HOURS=${STICKY_SESSION_TTL_HOURS:-1}
+      - STICKY_SESSION_RENEWAL_THRESHOLD_MINUTES=${STICKY_SESSION_RENEWAL_THRESHOLD_MINUTES:-15}
+
+      # 🚫 错误处理配置
+      - CLAUDE_OVERLOAD_HANDLING_MINUTES=${CLAUDE_OVERLOAD_HANDLING_MINUTES:-0}
+      - CLAUDE_CONSOLE_BLOCKED_HANDLING_MINUTES=${CLAUDE_CONSOLE_BLOCKED_HANDLING_MINUTES:-10}
+
+      # 🌐 高级代理配置
+      - PROXY_USE_IPV4=${PROXY_USE_IPV4:-true}
+      - REQUEST_TIMEOUT=${REQUEST_TIMEOUT:-600000}
+
       # 🎨 Web 界面配置
-      - WEB_TITLE=${WEB_TITLE:-Claude Relay Service}
-      - WEB_DESCRIPTION=${WEB_DESCRIPTION:-Multi-account Claude API relay service}
+      - WEB_TITLE=${WEB_TITLE:-AI TokenCloud Service}
+      - WEB_DESCRIPTION=${WEB_DESCRIPTION:-AI TokenCloud Service}
       - WEB_LOGO_URL=${WEB_LOGO_URL:-/assets/logo.png}
-      
+
       # 🛠️ 开发配置
       - DEBUG=${DEBUG:-false}
+      - DEBUG_HTTP_TRAFFIC=${DEBUG_HTTP_TRAFFIC:-false}
       - ENABLE_CORS=${ENABLE_CORS:-true}
       - TRUST_PROXY=${TRUST_PROXY:-true}
+
+      # 🔐 LDAP 认证配置
+      - LDAP_ENABLED=${LDAP_ENABLED:-false}
+      - LDAP_URL=${LDAP_URL:-}
+      - LDAP_BIND_DN=${LDAP_BIND_DN:-}
+      - LDAP_BIND_PASSWORD=${LDAP_BIND_PASSWORD:-}
+      - LDAP_SEARCH_BASE=${LDAP_SEARCH_BASE:-}
+      - LDAP_SEARCH_FILTER=${LDAP_SEARCH_FILTER:-(uid={{username}})}
+      - LDAP_SEARCH_ATTRIBUTES=${LDAP_SEARCH_ATTRIBUTES:-dn,uid,cn,mail,givenName,sn}
+      - LDAP_TIMEOUT=${LDAP_TIMEOUT:-5000}
+      - LDAP_CONNECT_TIMEOUT=${LDAP_CONNECT_TIMEOUT:-10000}
+      - LDAP_TLS_REJECT_UNAUTHORIZED=${LDAP_TLS_REJECT_UNAUTHORIZED:-true}
+      - LDAP_USER_ATTR_USERNAME=${LDAP_USER_ATTR_USERNAME:-uid}
+      - LDAP_USER_ATTR_DISPLAY_NAME=${LDAP_USER_ATTR_DISPLAY_NAME:-cn}
+      - LDAP_USER_ATTR_EMAIL=${LDAP_USER_ATTR_EMAIL:-mail}
+      - LDAP_USER_ATTR_FIRST_NAME=${LDAP_USER_ATTR_FIRST_NAME:-givenName}
+      - LDAP_USER_ATTR_LAST_NAME=${LDAP_USER_ATTR_LAST_NAME:-sn}
+
+      # 👥 用户管理配置
+      - USER_MANAGEMENT_ENABLED=${USER_MANAGEMENT_ENABLED:-true}
+      - DEFAULT_USER_ROLE=${DEFAULT_USER_ROLE:-user}
+      - USER_SESSION_TIMEOUT=${USER_SESSION_TIMEOUT:-86400000}
+      - MAX_API_KEYS_PER_USER=${MAX_API_KEYS_PER_USER:-1}
+      - ALLOW_USER_DELETE_API_KEYS=${ALLOW_USER_DELETE_API_KEYS:-true}
+
+      # 🔑 本地认证配置
+      - LOCAL_AUTH_ENABLED=${LOCAL_AUTH_ENABLED:-true}
+      - ALLOW_SELF_REGISTRATION=${ALLOW_SELF_REGISTRATION:-true}
+      - PASSWORD_MIN_LENGTH=${PASSWORD_MIN_LENGTH:-8}
+      - PASSWORD_MAX_LENGTH=${PASSWORD_MAX_LENGTH:-128}
+      - REQUIRE_PASSWORD_CHANGE=${REQUIRE_PASSWORD_CHANGE:-false}
+
+      # 📧 邮件服务配置
+      - EMAIL_ENABLED=${EMAIL_ENABLED:-false}
+      - EMAIL_SERVICE_TYPE=${EMAIL_SERVICE_TYPE:-smtp}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-465}
+      - SMTP_SECURE=${SMTP_SECURE:-true}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - EMAIL_FROM_NAME=${EMAIL_FROM_NAME:-Claude Relay Service}
+      - EMAIL_FROM_ADDRESS=${EMAIL_FROM_ADDRESS:-}
+      - BASE_URL=${BASE_URL:-http://localhost:3000}
+      - REQUIRE_EMAIL_VERIFICATION=${REQUIRE_EMAIL_VERIFICATION:-false}
+      - ALLOW_PASSWORD_RESET=${ALLOW_PASSWORD_RESET:-true}
+      - EMAIL_RATE_LIMIT_WINDOW=${EMAIL_RATE_LIMIT_WINDOW:-600}
+      - EMAIL_RATE_LIMIT_MAX=${EMAIL_RATE_LIMIT_MAX:-3}
+      - EMAIL_VERIFICATION_TOKEN_TTL=${EMAIL_VERIFICATION_TOKEN_TTL:-86400}
+      - PASSWORD_RESET_TOKEN_TTL=${PASSWORD_RESET_TOKEN_TTL:-3600}
     depends_on:
       - redis
     networks:
       - claude-relay-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -86,7 +149,7 @@ services:
     restart: unless-stopped
     # 仅在容器网络内部暴露端口，不映射到主机
     expose:
-      - "6379"
+      - '6379'
     # 注意：如需本地调试访问，可取消下行注释（生产环境禁用）
     # ports:
     #   - "127.0.0.1:${REDIS_PORT:-6379}:6379"
@@ -96,7 +159,7 @@ services:
     networks:
       - claude-relay-network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -106,7 +169,7 @@ services:
     image: rediscommander/redis-commander:latest
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${REDIS_WEB_PORT:-8081}:8081"
+      - '127.0.0.1:${REDIS_WEB_PORT:-8081}:8081'
     environment:
       - REDIS_HOSTS=local:redis:6379
     depends_on:
@@ -121,7 +184,7 @@ services:
     image: prom/prometheus:latest
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+      - '127.0.0.1:${PROMETHEUS_PORT:-9090}:9090'
     volumes:
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -141,7 +204,7 @@ services:
     image: grafana/grafana:latest
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${GRAFANA_PORT:-3001}:3000"
+      - '127.0.0.1:${GRAFANA_PORT:-3001}:3000'
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin123}
     volumes:
