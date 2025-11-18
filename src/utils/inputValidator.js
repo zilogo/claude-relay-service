@@ -104,7 +104,7 @@ class InputValidator {
       }
 
       // 检查是否包含特殊字符
-      if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) {
         throw new Error('密码必须包含至少一个特殊字符')
       }
     }
@@ -158,7 +158,7 @@ class InputValidator {
     }
 
     // 包含特殊字符
-    if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    if (/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) {
       score++
     } else {
       feedback.push('需要特殊字符')

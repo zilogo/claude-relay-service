@@ -1303,7 +1303,7 @@ router.post('/forgot-password', async (req, res) => {
     }
 
     // 生成重置Token并发送邮件
-    const result = await userService.generatePasswordResetToken(email.trim())
+    await userService.generatePasswordResetToken(email.trim())
 
     logger.info(`📧 Password reset requested for: ${email} from IP: ${clientIp}`)
 
@@ -1357,7 +1357,7 @@ router.post('/reset-password', async (req, res) => {
     }
 
     // 使用Token重置密码
-    const result = await userService.resetPasswordWithToken(token, newPassword)
+    await userService.resetPasswordWithToken(token, newPassword)
 
     logger.info(`🔓 Password reset successful from IP: ${clientIp}`)
 

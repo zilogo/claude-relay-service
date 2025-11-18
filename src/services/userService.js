@@ -749,7 +749,7 @@ class UserService {
       logger.info(`📝 Registered local user: ${username} (${user.id})`)
 
       // 返回用户信息（不包含密码哈希）
-      const { passwordHash, ...userWithoutPassword } = user
+      const { passwordHash: _passwordHash, ...userWithoutPassword } = user
       return userWithoutPassword
     } catch (error) {
       logger.error('❌ Error registering local user:', error)
@@ -806,7 +806,7 @@ class UserService {
       logger.info(`🔐 Local user authenticated: ${username} (${user.id})`)
 
       // 返回用户信息（不包含密码哈希）
-      const { passwordHash, ...userWithoutPassword } = user
+      const { passwordHash: _passwordHash, ...userWithoutPassword } = user
       return {
         user: userWithoutPassword,
         sessionToken
@@ -914,8 +914,6 @@ class UserService {
   // 📧 生成密码重置Token
   async generatePasswordResetToken(email) {
     try {
-      const crypto = require('crypto')
-
       // 检查邮件服务是否可用
       if (!config.email?.enabled || !config.email?.features?.allowPasswordReset) {
         throw new Error('Password reset feature is not enabled')
@@ -996,8 +994,6 @@ class UserService {
   // 🔓 使用Token重置密码
   async resetPasswordWithToken(resetToken, newPassword) {
     try {
-      const crypto = require('crypto')
-
       // 验证新密码长度
       if (
         newPassword.length < config.localAuth.passwordMinLength ||
@@ -1067,8 +1063,6 @@ class UserService {
   // 📧 生成邮箱验证Token
   async generateEmailVerificationToken(userId) {
     try {
-      const crypto = require('crypto')
-
       // 检查邮件服务是否可用
       if (!config.email?.enabled || !config.email?.features?.requireEmailVerification) {
         logger.warn('Email verification is not enabled, skipping token generation')
@@ -1143,8 +1137,6 @@ class UserService {
   // ✅ 验证邮箱
   async verifyEmail(verificationToken) {
     try {
-      const crypto = require('crypto')
-
       // 哈希Token进行查找
       const verificationTokenHash = crypto
         .createHash('sha256')

@@ -19,23 +19,25 @@ const AccountsView = () => import('@/views/AccountsView.vue')
 const TutorialView = () => import('@/views/TutorialView.vue')
 const SettingsView = () => import('@/views/SettingsView.vue')
 const ApiStatsView = () => import('@/views/ApiStatsView.vue')
-// UI 预览页面
-const UIPreviewView = () => import('@/views/UIPreviewView.vue')
+// UI 预览页面 (temporarily disabled - file missing)
+// const UIPreviewView = () => import('@/views/UIPreviewView.vue')
 
 const routes = [
   {
     path: '/',
     redirect: () => {
-      // 智能重定向：避免循环
-      const currentPath = window.location.pathname
-      const basePath = APP_CONFIG.basePath.replace(/\/$/, '') // 移除末尾斜杠
+      // 智能重定向：检查 hash 中是否已有路由
+      const hash = window.location.hash
 
-      // 如果当前路径已经是 basePath 或 basePath/，重定向到 api-stats
-      if (currentPath === basePath || currentPath === basePath + '/') {
-        return '/api-stats'
+      // 如果 hash 中已经有路由（如 #/reset-password/...），则不重定向
+      // 让 Vue Router 自动处理 hash 路由
+      if (hash && hash.length > 2 && hash.startsWith('#/') && hash !== '#/') {
+        // 提取 hash 中的路由路径（去掉 # 符号）
+        const hashRoute = hash.substring(1)
+        return hashRoute
       }
 
-      // 否则保持默认重定向
+      // 否则默认重定向到 api-stats
       return '/api-stats'
     }
   },
@@ -79,12 +81,13 @@ const routes = [
     component: EmailVerificationView,
     meta: { requiresAuth: false }
   },
-  {
-    path: '/demo/ui-preview',
-    name: 'UIPreview',
-    component: UIPreviewView,
-    meta: { requiresAuth: false }
-  },
+  // Temporarily disabled - UIPreviewView file missing
+  // {
+  //   path: '/demo/ui-preview',
+  //   name: 'UIPreview',
+  //   component: UIPreviewView,
+  //   meta: { requiresAuth: false }
+  // },
   {
     path: '/user-dashboard',
     name: 'UserDashboard',

@@ -926,6 +926,22 @@ proxy_request_buffering off;
 
 ---
 
+## 📚 项目文档
+
+### 技术文档
+
+- **[路由结构详解](docs/ROUTING.md)** - 前后端路由架构、工作原理及配置说明
+- **[邮件服务配置](docs/email-verification-password-reset.md)** - 邮箱验证和密码重置功能配置指南
+- **[项目架构说明](CLAUDE.md)** - 完整的项目架构和开发指南
+
+### 快速链接
+
+- **演示站点**: https://demo.pincc.ai/admin-next/login
+- **GitHub仓库**: https://github.com/Wei-Shaw/claude-relay-service
+- **Docker镜像**: https://hub.docker.com/r/weishaw/claude-relay-service
+
+---
+
 ## 📄 许可证
 
 本项目采用 [MIT许可证](LICENSE)。
