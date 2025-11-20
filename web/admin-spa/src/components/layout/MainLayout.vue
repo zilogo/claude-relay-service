@@ -43,8 +43,8 @@ const tabRouteMap = computed(() => {
     settings: '/settings'
   }
 
-  // 只有在 LDAP 启用时才包含用户管理路由
-  if (authStore.oemSettings?.ldapEnabled) {
+  // 只有在用户管理或 LDAP 启用时才包含用户管理路由
+  if (authStore.oemSettings?.userManagementEnabled || authStore.oemSettings?.ldapEnabled) {
     baseMap.userManagement = '/user-management'
   }
 
@@ -67,6 +67,7 @@ const initActiveTab = () => {
       Dashboard: 'dashboard',
       ApiKeys: 'apiKeys',
       Accounts: 'accounts',
+      UserManagement: 'userManagement',
       Tutorial: 'tutorial',
       Settings: 'settings'
     }
@@ -96,6 +97,7 @@ watch(
         Dashboard: 'dashboard',
         ApiKeys: 'apiKeys',
         Accounts: 'accounts',
+        UserManagement: 'userManagement',
         Tutorial: 'tutorial',
         Settings: 'settings'
       }
