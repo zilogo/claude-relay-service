@@ -9,7 +9,7 @@
         </p>
       </div>
       <button
-        class="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/30 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-500/40 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:shadow-blue-500/20 dark:hover:shadow-blue-500/30"
+        class="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#D97757] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-[#D97757]/30 transition-all hover:scale-105 hover:shadow-xl hover:shadow-[#D97757]/40 focus:outline-none focus:ring-2 focus:ring-[#D97757] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:shadow-[#D97757]/20 dark:hover:shadow-[#D97757]/30"
         :disabled="activeApiKeysCount >= maxApiKeys"
         @click="showCreateModal = true"
       >
@@ -56,9 +56,9 @@
     <!-- Loading State -->
     <div v-if="loading" class="flex flex-col items-center justify-center py-16">
       <div class="relative">
-        <div class="h-20 w-20 rounded-full border-4 border-blue-200 dark:border-blue-900"></div>
+        <div class="h-20 w-20 rounded-full border-4 border-[#E6E2DA] dark:border-gray-700"></div>
         <div
-          class="absolute top-0 h-20 w-20 animate-spin rounded-full border-4 border-transparent border-t-blue-600 dark:border-t-blue-400"
+          class="absolute top-0 h-20 w-20 animate-spin rounded-full border-4 border-transparent border-t-[#D97757]"
         ></div>
       </div>
       <p class="mt-4 text-base font-medium text-gray-700 dark:text-gray-300">加载 API Keys 中...</p>
@@ -78,7 +78,7 @@
             apiKey.isDeleted === 'true' || apiKey.deletedAt
               ? 'bg-gray-400'
               : apiKey.isActive
-                ? 'bg-green-400'
+                ? 'bg-[#D97757]'
                 : 'bg-red-400'
           "
         ></div>
@@ -94,7 +94,7 @@
                   apiKey.isDeleted === 'true' || apiKey.deletedAt
                     ? 'bg-gradient-to-br from-gray-400 to-gray-500'
                     : apiKey.isActive
-                      ? 'bg-gradient-to-br from-green-500 to-emerald-600'
+                      ? 'bg-[#D97757]'
                       : 'bg-gradient-to-br from-red-500 to-rose-600'
                 "
               >

@@ -10,7 +10,7 @@
       </div>
       <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
         <button
-          class="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 sm:w-auto"
+          class="inline-flex items-center justify-center rounded-md border border-transparent bg-[#D97757] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#c86847] focus:outline-none focus:ring-2 focus:ring-[#D97757] focus:ring-offset-2 disabled:opacity-50 sm:w-auto"
           :disabled="loading"
           @click="loadUsers"
         >
@@ -34,7 +34,7 @@
           <div class="flex items-center">
             <div class="flex-shrink-0">
               <svg
-                class="h-6 w-6 text-blue-500"
+                class="h-6 w-6 text-[#D97757]"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -183,7 +183,7 @@
                 </div>
                 <input
                   v-model="searchQuery"
-                  class="block w-full rounded-md border-gray-300 pl-10 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+                  class="block w-full rounded-md border-gray-300 pl-10 focus:border-[#D97757] focus:ring-[#D97757] dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
                   placeholder="Search users..."
                   type="search"
                   @input="debouncedSearch"
@@ -195,7 +195,7 @@
             <div>
               <select
                 v-model="selectedRole"
-                class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+                class="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#D97757] focus:ring-[#D97757] dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
                 @change="loadUsers"
               >
                 <option value="">All Roles</option>
@@ -208,7 +208,7 @@
             <div>
               <select
                 v-model="selectedStatus"
-                class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+                class="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#D97757] focus:ring-[#D97757] dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
                 @change="loadUsers"
               >
                 <option value="">All Status</option>
@@ -235,7 +235,7 @@
       <!-- Loading State -->
       <div v-if="loading" class="py-12 text-center">
         <svg
-          class="mx-auto h-8 w-8 animate-spin text-blue-600"
+          class="mx-auto h-8 w-8 animate-spin text-[#D97757]"
           fill="none"
           viewBox="0 0 24 24"
           xmlns="http://www.w3.org/2000/svg"
@@ -306,7 +306,7 @@
                         'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
                         user.role === 'admin'
                           ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                          : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                          : 'bg-[#E6A87C]/20 text-[#D97757] dark:bg-[#D97757]/20 dark:text-[#E6A87C]'
                       ]"
                     >
                       {{ user.role }}
@@ -336,7 +336,7 @@
             <div class="flex items-center space-x-2">
               <!-- View Usage Stats -->
               <button
-                class="inline-flex items-center rounded border border-transparent p-1 text-gray-400 hover:text-blue-600"
+                class="inline-flex items-center rounded border border-transparent p-1 text-gray-400 hover:text-[#D97757]"
                 title="View Usage Stats"
                 @click="viewUserStats(user)"
               >

@@ -1,13 +1,13 @@
 <template>
   <div
-    class="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-blue-50 via-white to-purple-50 px-4 py-12 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800"
+    class="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#F4F1EA] px-4 py-12 dark:bg-gray-900"
   >
     <!-- 装饰性背景元素 -->
     <div
-      class="absolute left-1/4 top-1/4 h-96 w-96 animate-pulse rounded-full bg-blue-400/10 blur-3xl dark:bg-blue-500/5"
+      class="absolute left-1/4 top-1/4 h-96 w-96 animate-pulse rounded-full bg-[#D97757]/8 blur-3xl dark:bg-[#D97757]/5"
     ></div>
     <div
-      class="absolute bottom-1/4 right-1/4 h-96 w-96 animate-pulse rounded-full bg-purple-400/10 blur-3xl dark:bg-purple-500/5"
+      class="absolute bottom-1/4 right-1/4 h-96 w-96 animate-pulse rounded-full bg-[#E6A87C]/8 blur-3xl dark:bg-[#E6A87C]/5"
       style="animation-delay: 1s"
     ></div>
 
@@ -20,7 +20,7 @@
       <!-- Logo 和标题 -->
       <div class="mb-8 text-center">
         <div
-          class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/30 dark:shadow-blue-500/20"
+          class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-[#D97757] shadow-lg shadow-[#D97757]/30 dark:shadow-[#D97757]/20"
         >
           <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -31,24 +31,26 @@
             />
           </svg>
         </div>
-        <h1 class="mb-2 text-3xl font-bold text-gray-900 dark:text-white">邮箱验证</h1>
-        <p class="text-sm text-gray-600 dark:text-gray-400">正在验证您的邮箱地址...</p>
+        <h1 class="mb-2 font-serif text-3xl font-bold text-gray-900 dark:text-white">邮箱验证</h1>
+        <p class="text-sm text-[#5f5f5f] dark:text-gray-400">正在验证您的邮箱地址...</p>
       </div>
 
       <!-- 验证卡片 -->
       <div
-        class="rounded-3xl border border-gray-200/50 bg-white/80 p-8 shadow-2xl shadow-blue-500/10 backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/80 dark:shadow-blue-500/5"
+        class="rounded-3xl border border-[#d8d5ce] bg-white p-8 shadow-xl dark:border-gray-700 dark:bg-gray-800"
       >
         <!-- 加载中状态 -->
         <div v-if="loading" class="flex flex-col items-center justify-center space-y-6 py-8">
           <div class="relative">
-            <div class="h-20 w-20 rounded-full border-4 border-blue-200 dark:border-blue-900"></div>
             <div
-              class="absolute top-0 h-20 w-20 animate-spin rounded-full border-4 border-transparent border-t-blue-600 dark:border-t-blue-400"
+              class="h-20 w-20 rounded-full border-4 border-[#E6E2DA] dark:border-gray-700"
+            ></div>
+            <div
+              class="absolute top-0 h-20 w-20 animate-spin rounded-full border-4 border-transparent border-t-[#D97757]"
             ></div>
           </div>
           <p class="text-base font-medium text-gray-700 dark:text-gray-300">正在验证邮箱...</p>
-          <p class="text-sm text-gray-500 dark:text-gray-400">请稍候片刻</p>
+          <p class="text-sm text-[#5f5f5f] dark:text-gray-400">请稍候片刻</p>
         </div>
 
         <!-- 验证成功 -->
@@ -87,7 +89,7 @@
             </div>
             <div class="mt-6">
               <router-link
-                class="inline-flex items-center rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
+                class="inline-flex items-center rounded-full bg-[#D97757] px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:scale-105 hover:bg-[#c86847] hover:shadow-lg"
                 to="/user-login"
               >
                 前往登录
@@ -122,7 +124,7 @@
             </p>
             <div class="mt-6">
               <router-link
-                class="inline-flex items-center rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
+                class="inline-flex items-center rounded-full bg-[#D97757] px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:scale-105 hover:bg-[#c86847] hover:shadow-lg"
                 to="/user-login"
               >
                 返回登录

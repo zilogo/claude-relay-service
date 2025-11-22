@@ -1,13 +1,13 @@
 <template>
   <div
-    class="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-blue-50 via-white to-purple-50 px-4 py-12 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800"
+    class="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#F4F1EA] px-4 py-12 dark:bg-gray-900"
   >
     <!-- 装饰性背景元素 -->
     <div
-      class="absolute left-1/4 top-1/4 h-96 w-96 animate-pulse rounded-full bg-blue-400/10 blur-3xl dark:bg-blue-500/5"
+      class="absolute left-1/4 top-1/4 h-96 w-96 animate-pulse rounded-full bg-[#D97757]/8 blur-3xl dark:bg-[#D97757]/5"
     ></div>
     <div
-      class="absolute bottom-1/4 right-1/4 h-96 w-96 animate-pulse rounded-full bg-purple-400/10 blur-3xl dark:bg-purple-500/5"
+      class="absolute bottom-1/4 right-1/4 h-96 w-96 animate-pulse rounded-full bg-[#E6A87C]/8 blur-3xl dark:bg-[#E6A87C]/5"
       style="animation-delay: 1s"
     ></div>
 
@@ -20,7 +20,7 @@
       <!-- Logo 和标题 -->
       <div class="mb-8 text-center">
         <div
-          class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg shadow-blue-500/30 dark:shadow-blue-500/20"
+          class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-[#D97757] shadow-lg shadow-[#D97757]/30 dark:shadow-[#D97757]/20"
         >
           <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -31,15 +31,15 @@
             />
           </svg>
         </div>
-        <h1 class="mb-2 text-3xl font-bold text-gray-900 dark:text-white">忘记密码</h1>
-        <p class="text-sm text-gray-600 dark:text-gray-400">
+        <h1 class="mb-2 font-serif text-3xl font-bold text-gray-900 dark:text-white">忘记密码</h1>
+        <p class="text-sm text-[#5f5f5f] dark:text-gray-400">
           输入您的邮箱地址，我们将发送密码重置链接
         </p>
       </div>
 
       <!-- 忘记密码卡片 -->
       <div
-        class="rounded-3xl border border-gray-200/50 bg-white/80 p-8 shadow-2xl shadow-blue-500/10 backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/80 dark:shadow-blue-500/5"
+        class="rounded-3xl border border-[#d8d5ce] bg-white p-8 shadow-xl dark:border-gray-700 dark:bg-gray-800"
       >
         <form v-if="!success" class="space-y-6" @submit.prevent="handleSubmit">
           <!-- 邮箱输入 -->
@@ -70,7 +70,7 @@
                 id="email"
                 v-model="form.email"
                 autocomplete="email"
-                class="block w-full rounded-xl border-2 border-gray-200 bg-gray-50/50 py-3 pl-11 pr-4 text-gray-900 placeholder-gray-400 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900/50 dark:text-white dark:placeholder-gray-500 dark:focus:border-blue-400 dark:focus:bg-gray-900 dark:focus:ring-blue-400/20"
+                class="block w-full rounded-xl border-2 border-[#d8d5ce] bg-[#F5F2EB] py-3 pl-11 pr-4 text-gray-900 placeholder-gray-400 transition-all focus:border-[#D97757] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900/50 dark:text-white dark:placeholder-gray-500 dark:focus:border-[#D97757] dark:focus:bg-gray-900 dark:focus:ring-[#D97757]/20"
                 :disabled="loading"
                 name="email"
                 placeholder="请输入邮箱地址"
@@ -104,7 +104,7 @@
           <!-- 发送按钮 -->
           <div class="pt-2">
             <button
-              class="group relative flex w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-blue-500/30 transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-500/40 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:shadow-blue-500/20 dark:hover:shadow-blue-500/30 dark:focus:ring-offset-gray-800"
+              class="group relative flex w-full items-center justify-center overflow-hidden rounded-full bg-[#D97757] px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-[#D97757]/30 transition-all hover:scale-[1.02] hover:bg-[#c86847] hover:shadow-xl hover:shadow-[#D97757]/40 focus:outline-none focus:ring-2 focus:ring-[#D97757] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:shadow-[#D97757]/20 dark:hover:shadow-[#D97757]/30 dark:focus:ring-offset-gray-800"
               :disabled="loading || !isFormValid"
               type="submit"
             >
@@ -162,9 +162,9 @@
         </div>
 
         <!-- 快捷链接 -->
-        <div class="mt-6 border-t border-gray-200 pt-4 text-center dark:border-gray-700">
+        <div class="mt-6 border-t border-[#d8d5ce] pt-4 text-center dark:border-gray-700">
           <router-link
-            class="text-sm font-medium text-gray-600 transition-colors hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
+            class="text-sm font-medium text-[#5f5f5f] transition-colors hover:text-[#D97757] dark:text-gray-400 dark:hover:text-[#E6A87C]"
             to="/user-login"
           >
             返回登录

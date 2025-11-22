@@ -73,8 +73,13 @@ body {
     -apple-system,
     BlinkMacSystemFont,
     'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    'Noto Sans SC',
     Roboto,
     sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   background: linear-gradient(
     135deg,
     var(--bg-gradient-start) 0%,

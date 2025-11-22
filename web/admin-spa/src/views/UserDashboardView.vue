@@ -1,7 +1,5 @@
 <template>
-  <div
-    class="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800"
-  >
+  <div class="min-h-screen bg-[#F4F1EA] dark:bg-gray-900">
     <!-- 玻璃态导航栏 -->
     <nav
       class="sticky top-0 z-50 border-b border-gray-200/50 bg-white/90 backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/90"
@@ -12,7 +10,7 @@
           <div class="flex items-center space-x-8">
             <div class="flex items-center space-x-3">
               <div
-                class="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-md"
+                class="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#D97757] shadow-md"
               >
                 <svg
                   class="h-5 w-5 text-white"
@@ -65,7 +63,7 @@
                 class="relative z-10 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
                 :class="
                   activeTab === 'overview'
-                    ? 'text-blue-600 dark:text-blue-400'
+                    ? 'text-[#D97757]'
                     : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
                 "
                 @click="handleTabChange('overview')"
@@ -76,7 +74,7 @@
                 class="relative z-10 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
                 :class="
                   activeTab === 'api-keys'
-                    ? 'text-blue-600 dark:text-blue-400'
+                    ? 'text-[#D97757]'
                     : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
                 "
                 @click="handleTabChange('api-keys')"
@@ -87,7 +85,7 @@
                 class="relative z-10 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
                 :class="
                   activeTab === 'usage'
-                    ? 'text-blue-600 dark:text-blue-400'
+                    ? 'text-[#D97757]'
                     : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
                 "
                 @click="handleTabChange('usage')"
@@ -98,7 +96,7 @@
                 class="relative z-10 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
                 :class="
                   activeTab === 'tutorial'
-                    ? 'text-blue-600 dark:text-blue-400'
+                    ? 'text-[#D97757]'
                     : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
                 "
                 @click="handleTabChange('tutorial')"
@@ -146,14 +144,14 @@
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-5">
           <!-- 活跃的 API Keys 卡片 -->
           <div
-            class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50 p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-green-900/30 dark:to-emerald-900/30"
+            class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#F4F1EA] to-[#E6E2DA] p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-gray-800/50 dark:to-gray-700/50"
           >
             <div
-              class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-green-500/10 blur-3xl transition-all group-hover:bg-green-500/20"
+              class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-[#D97757]/10 blur-3xl transition-all group-hover:bg-[#D97757]/20"
             ></div>
             <div class="relative">
               <div
-                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/30"
+                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#D97757] shadow-lg shadow-[#D97757]/30"
               >
                 <svg
                   class="h-7 w-7 text-white"
@@ -170,10 +168,10 @@
                 </svg>
               </div>
               <div>
-                <p class="text-sm font-semibold text-green-900 dark:text-green-100">
+                <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
                   活跃的 API Keys
                 </p>
-                <p class="mt-2 text-3xl font-bold text-green-900 dark:text-green-50">
+                <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-50">
                   {{ apiKeysStats.active }}
                 </p>
               </div>
@@ -218,14 +216,14 @@
 
           <!-- 总请求数卡片 -->
           <div
-            class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-blue-900/30 dark:to-cyan-900/30"
+            class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#F4F1EA] to-[#E6E2DA] p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-gray-800/50 dark:to-gray-700/50"
           >
             <div
-              class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-blue-500/10 blur-3xl transition-all group-hover:bg-blue-500/20"
+              class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-[#D97757]/10 blur-3xl transition-all group-hover:bg-[#D97757]/20"
             ></div>
             <div class="relative">
               <div
-                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 shadow-lg shadow-blue-500/30"
+                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#D97757] shadow-lg shadow-[#D97757]/30"
               >
                 <svg
                   class="h-7 w-7 text-white"
@@ -242,8 +240,8 @@
                 </svg>
               </div>
               <div>
-                <p class="text-sm font-semibold text-blue-900 dark:text-blue-100">总请求数</p>
-                <p class="mt-2 text-3xl font-bold text-blue-900 dark:text-blue-50">
+                <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">总请求数</p>
+                <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-50">
                   {{ formatNumber(userProfile?.totalUsage?.requests || 0) }}
                 </p>
               </div>
@@ -252,14 +250,14 @@
 
           <!-- 输入令牌卡片 -->
           <div
-            class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-50 to-violet-50 p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-purple-900/30 dark:to-violet-900/30"
+            class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#F4F1EA] to-[#E6E2DA] p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-gray-800/50 dark:to-gray-700/50"
           >
             <div
-              class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-purple-500/10 blur-3xl transition-all group-hover:bg-purple-500/20"
+              class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-[#D97757]/10 blur-3xl transition-all group-hover:bg-[#D97757]/20"
             ></div>
             <div class="relative">
               <div
-                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-violet-600 shadow-lg shadow-purple-500/30"
+                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#D97757] shadow-lg shadow-[#D97757]/30"
               >
                 <svg
                   class="h-7 w-7 text-white"
@@ -276,8 +274,8 @@
                 </svg>
               </div>
               <div>
-                <p class="text-sm font-semibold text-purple-900 dark:text-purple-100">输入令牌</p>
-                <p class="mt-2 text-3xl font-bold text-purple-900 dark:text-purple-50">
+                <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">输入令牌</p>
+                <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-50">
                   {{ formatNumber(userProfile?.totalUsage?.inputTokens || 0) }}
                 </p>
               </div>
@@ -323,7 +321,7 @@
         <div
           class="overflow-hidden rounded-3xl border border-gray-200/50 bg-white/80 shadow-xl backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/80"
         >
-          <div class="bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-5">
+          <div class="bg-[#D97757] px-6 py-5">
             <h3 class="flex items-center text-xl font-bold text-white">
               <svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -436,7 +434,7 @@
                 </dt>
                 <dd>
                   <span
-                    class="inline-flex items-center rounded-full bg-gradient-to-r from-blue-500 to-purple-600 px-4 py-1.5 text-sm font-bold text-white shadow-md"
+                    class="inline-flex items-center rounded-full bg-[#D97757] px-4 py-1.5 text-sm font-bold text-white shadow-md"
                   >
                     {{ userProfile?.role === 'admin' ? '管理员' : '用户' }}
                   </span>
