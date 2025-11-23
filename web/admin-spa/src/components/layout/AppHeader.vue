@@ -21,7 +21,8 @@
               <span class="font-mono text-xs text-gray-400 dark:text-gray-500 sm:text-sm"
                 >v{{ versionInfo.current || '...' }}</span
               >
-              <!-- 更新提示 -->
+              <!-- 2025-11-22: 暂时注释掉"新版本"按钮，保留版本检查功能，用户可在右上角菜单中查看更新信息 -->
+              <!--
               <a
                 v-if="versionInfo.hasUpdate"
                 class="inline-flex animate-pulse items-center gap-1 rounded-full border border-green-600 bg-green-500 px-2 py-0.5 text-xs text-white transition-colors hover:bg-green-600"
@@ -32,6 +33,7 @@
                 <i class="fas fa-arrow-up text-[10px]" />
                 <span>新版本</span>
               </a>
+              -->
             </div>
           </template>
         </LogoTitle>
