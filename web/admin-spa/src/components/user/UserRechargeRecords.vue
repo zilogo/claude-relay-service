@@ -12,12 +12,7 @@
         :disabled="records.length === 0 || exporting"
         @click="exportRecords"
       >
-        <svg
-          v-if="exporting"
-          class="h-4 w-4 animate-spin"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
+        <svg v-if="exporting" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
           <circle
             class="opacity-25"
             cx="12"
@@ -42,6 +37,223 @@
         </svg>
         {{ exporting ? '导出中...' : '导出 CSV' }}
       </button>
+    </div>
+
+    <!-- 在线充值区域（仅当支付功能启用时显示） -->
+    <div
+      v-if="paymentStore.isPaymentEnabled"
+      class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
+    >
+      <div class="border-b border-gray-200 bg-[#D97757] px-6 py-4 dark:border-gray-700">
+        <h3 class="flex items-center text-lg font-semibold text-white">
+          <svg class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          在线充值
+        </h3>
+      </div>
+      <div class="p-6">
+        <!-- 加载中 -->
+        <div v-if="paymentStore.configLoading" class="flex justify-center py-8">
+          <div class="flex items-center gap-3 text-gray-500">
+            <svg class="h-6 w-6 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              ></circle>
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+            <span>加载支付配置...</span>
+          </div>
+        </div>
+
+        <div v-else>
+          <!-- 套餐选择 -->
+          <div class="mb-6">
+            <label class="mb-3 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              选择充值套餐
+            </label>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <button
+                v-for="pkg in paymentStore.packages"
+                :key="pkg.id"
+                class="relative rounded-xl border-2 p-4 text-left transition-all hover:border-[#D97757] hover:shadow-md"
+                :class="
+                  selectedPackage?.id === pkg.id
+                    ? 'border-[#D97757] bg-[#D97757]/5 dark:bg-[#D97757]/10'
+                    : 'border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-700'
+                "
+                @click="selectPackage(pkg)"
+              >
+                <div class="mb-1 text-lg font-bold text-gray-900 dark:text-white">
+                  ¥{{ pkg.amountCny }}
+                </div>
+                <div class="text-sm text-gray-500 dark:text-gray-400">≈ ${{ pkg.amountUsd }}</div>
+                <div class="mt-2 text-xs font-medium text-[#D97757]">{{ pkg.name }}</div>
+                <!-- 选中标记 -->
+                <div
+                  v-if="selectedPackage?.id === pkg.id"
+                  class="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#D97757] text-white"
+                >
+                  <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fill-rule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- 自定义金额 -->
+          <div v-if="paymentStore.allowCustomAmount" class="mb-6">
+            <label class="mb-3 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              或输入自定义金额
+            </label>
+            <div class="flex gap-3">
+              <div class="relative flex-1">
+                <span
+                  class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500"
+                >
+                  {{ customCurrency === 'CNY' ? '¥' : '$' }}
+                </span>
+                <input
+                  v-model="customAmount"
+                  type="number"
+                  :min="paymentStore.limits.min"
+                  :max="
+                    customCurrency === 'CNY'
+                      ? paymentStore.limits.max * paymentStore.currency.exchangeRate
+                      : paymentStore.limits.max
+                  "
+                  placeholder="输入金额"
+                  class="block w-full rounded-xl border border-gray-300 bg-white py-2.5 pl-8 pr-3 text-gray-900 transition-colors focus:border-[#D97757] focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  @input="onCustomAmountChange"
+                />
+              </div>
+              <select
+                v-model="customCurrency"
+                class="rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-gray-900 transition-colors focus:border-[#D97757] focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              >
+                <option value="CNY">人民币 (¥)</option>
+                <option value="USD">美元 ($)</option>
+              </select>
+            </div>
+            <p v-if="customAmount" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              <template v-if="customCurrency === 'CNY'">
+                ≈ ${{ (customAmount / paymentStore.currency.exchangeRate).toFixed(2) }}
+              </template>
+              <template v-else> ≈ ¥{{ (customAmount * paymentStore.currency.exchangeRate).toFixed(2) }} </template>
+            </p>
+          </div>
+
+          <!-- 支付方式选择 -->
+          <div class="mb-6">
+            <label class="mb-3 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              选择支付方式
+            </label>
+            <div class="flex flex-wrap gap-3">
+              <button
+                v-for="method in paymentStore.paymentMethods"
+                :key="method.method"
+                class="flex items-center gap-2 rounded-xl border-2 px-4 py-2.5 transition-all hover:border-[#D97757]"
+                :class="
+                  selectedMethod?.method === method.method
+                    ? 'border-[#D97757] bg-[#D97757]/5 dark:bg-[#D97757]/10'
+                    : 'border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-700'
+                "
+                @click="selectMethod(method)"
+              >
+                <!-- 支付图标 -->
+                <span
+                  v-if="method.method === 'alipay'"
+                  class="text-lg font-bold text-blue-500"
+                >
+                  <svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                      d="M21.422 15.358c-.937-.239-1.968-.494-3.093-.772a36.796 36.796 0 001.81-4.366H16.32V8.628h5.15V7.68h-5.15V5.07h-2.316c-.274 0-.496.222-.496.496V7.68H8.32v.948h5.188v1.592H9.266v.948h7.813c-.451 1.208-.986 2.377-1.601 3.493-3.183-.692-5.806-.87-7.248.175-2.122 1.538-2.294 4.468.357 5.935 1.927 1.066 4.608.337 6.416-1.64.793.472 1.663.992 2.609 1.562.936.566 1.846 1.072 2.728 1.52a.992.992 0 001.345-.403l.008-.015c.212-.391.194-.805-.054-1.1-.249-.295-.495-.577-.738-.846zm-11.6 3.88c-1.303.932-3.056 1.232-4.001.564-1.157-.82-.894-2.748.589-3.622 1.14-.67 2.882-.505 4.918.01a8.606 8.606 0 01-1.506 3.048z"
+                    />
+                  </svg>
+                </span>
+                <span
+                  v-else-if="method.method === 'wxpay'"
+                  class="text-lg font-bold text-green-500"
+                >
+                  <svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                      d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 01.213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295.095 0 .182-.05.248-.126l1.89-1.11c.164-.096.359-.144.554-.126.559.08 1.127.126 1.701.126.36 0 .714-.017 1.063-.05A6.601 6.601 0 018.1 14.12c0-3.81 3.693-6.897 8.25-6.897.275 0 .547.012.816.035C16.166 4.228 12.713 2.188 8.691 2.188zM5.336 6.83c.673 0 1.218.544 1.218 1.215s-.545 1.215-1.218 1.215c-.674 0-1.22-.544-1.22-1.215s.546-1.215 1.22-1.215zm6.618 0c.673 0 1.218.544 1.218 1.215s-.545 1.215-1.218 1.215c-.673 0-1.218-.544-1.218-1.215s.545-1.215 1.218-1.215zM16.35 8.508c-3.937 0-7.129 2.71-7.129 6.05s3.192 6.05 7.13 6.05c.71 0 1.397-.087 2.05-.249a.513.513 0 01.38.065l1.416.832c.048.05.109.09.18.09.112 0 .203-.094.203-.21 0-.052-.02-.102-.034-.15l-.288-1.11a.453.453 0 01.157-.478c1.37-1.02 2.25-2.572 2.25-4.302 0-3.34-3.191-6.05-7.128-6.05zm-2.742 3.378c.5 0 .906.404.906.903s-.405.902-.906.902-.907-.403-.907-.902.406-.903.907-.903zm5.465 0c.5 0 .907.404.907.903s-.406.902-.907.902c-.5 0-.906-.403-.906-.902s.406-.903.906-.903z"
+                    />
+                  </svg>
+                </span>
+                <span v-else class="text-gray-400">
+                  <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                    />
+                  </svg>
+                </span>
+                <span class="font-medium text-gray-900 dark:text-white">{{ method.name }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 充值按钮 -->
+          <div class="flex items-center justify-between">
+            <div class="text-sm text-gray-500 dark:text-gray-400">
+              <template v-if="displayAmount">
+                支付金额：<span class="font-semibold text-gray-900 dark:text-white">{{
+                  displayAmount
+                }}</span>
+              </template>
+            </div>
+            <button
+              class="inline-flex items-center gap-2 rounded-xl bg-[#D97757] px-6 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-[#c86747] focus:outline-none focus:ring-2 focus:ring-[#D97757] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="!canSubmit || paymentStore.orderLoading"
+              @click="createPaymentOrder"
+            >
+              <svg
+                v-if="paymentStore.orderLoading"
+                class="h-4 w-4 animate-spin"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              {{ paymentStore.orderLoading ? '创建订单中...' : '立即充值' }}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 余额概览卡片 -->
@@ -300,9 +512,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
+import { usePaymentStore } from '@/stores/payment'
 import { showToast } from '@/utils/toast'
 
 const userStore = useUserStore()
+const paymentStore = usePaymentStore()
 
 const loading = ref(true)
 const exporting = ref(false)
@@ -312,7 +526,108 @@ const totalRecords = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(20)
 
+// 支付相关状态
+const selectedPackage = ref(null)
+const selectedMethod = ref(null)
+const customAmount = ref('')
+const customCurrency = ref('CNY')
+
 const totalPages = computed(() => Math.ceil(totalRecords.value / pageSize.value))
+
+// 计算是否可以提交
+const canSubmit = computed(() => {
+  // 必须选择支付方式
+  if (!selectedMethod.value) return false
+
+  // 必须有金额（套餐或自定义）
+  if (selectedPackage.value) return true
+  if (customAmount.value && parseFloat(customAmount.value) > 0) return true
+
+  return false
+})
+
+// 显示金额
+const displayAmount = computed(() => {
+  if (selectedPackage.value) {
+    return `¥${selectedPackage.value.amountCny} (≈$${selectedPackage.value.amountUsd})`
+  }
+  if (customAmount.value) {
+    const amount = parseFloat(customAmount.value)
+    if (customCurrency.value === 'CNY') {
+      return `¥${amount.toFixed(2)} (≈$${(amount / paymentStore.currency.exchangeRate).toFixed(2)})`
+    }
+    return `$${amount.toFixed(2)} (≈¥${(amount * paymentStore.currency.exchangeRate).toFixed(2)})`
+  }
+  return ''
+})
+
+// 选择套餐
+const selectPackage = (pkg) => {
+  selectedPackage.value = pkg
+  customAmount.value = '' // 清空自定义金额
+}
+
+// 选择支付方式
+const selectMethod = (method) => {
+  selectedMethod.value = method
+}
+
+// 自定义金额变化时清空套餐选择
+const onCustomAmountChange = () => {
+  if (customAmount.value) {
+    selectedPackage.value = null
+  }
+}
+
+// 创建支付订单
+const createPaymentOrder = async () => {
+  if (!canSubmit.value) return
+
+  try {
+    let amount, currency, packageId
+
+    if (selectedPackage.value) {
+      amount = selectedPackage.value.amountCny
+      currency = 'CNY'
+      packageId = selectedPackage.value.id
+    } else {
+      amount = parseFloat(customAmount.value)
+      currency = customCurrency.value
+      packageId = null
+    }
+
+    const order = await paymentStore.createOrder({
+      amount,
+      currency,
+      provider: selectedMethod.value.provider,
+      paymentMethod: selectedMethod.value.method,
+      packageId
+    })
+
+    showToast('订单创建成功，正在跳转支付页面...', 'success')
+
+    // 跳转到支付页面
+    if (order.payUrl) {
+      window.location.href = order.payUrl
+    }
+  } catch (error) {
+    console.error('Failed to create payment order:', error)
+    showToast(error.response?.data?.error || error.message || '创建订单失败', 'error')
+  }
+}
+
+// 加载支付配置
+const loadPaymentConfig = async () => {
+  try {
+    await paymentStore.loadConfig()
+    // 默认选择第一个支付方式
+    if (paymentStore.paymentMethods.length > 0) {
+      selectedMethod.value = paymentStore.paymentMethods[0]
+    }
+  } catch (error) {
+    console.error('Failed to load payment config:', error)
+  }
+}
 
 const formatDate = (dateString) => {
   if (!dateString) return '-'
@@ -423,5 +738,6 @@ const exportRecords = async () => {
 onMounted(() => {
   loadBalanceInfo()
   loadRecords()
+  loadPaymentConfig()
 })
 </script>
