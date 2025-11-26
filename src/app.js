@@ -27,6 +27,7 @@ const droidRoutes = require('./routes/droidRoutes')
 const userRoutes = require('./routes/userRoutes')
 const azureOpenaiRoutes = require('./routes/azureOpenaiRoutes')
 const webhookRoutes = require('./routes/webhook')
+const paymentRoutes = require('./routes/paymentRoutes')
 
 // Import middleware
 const {
@@ -275,6 +276,7 @@ class Application {
       this.app.use('/droid', droidRoutes) // Droid (Factory.ai) API 转发
       this.app.use('/azure', azureOpenaiRoutes)
       this.app.use('/admin/webhook', webhookRoutes)
+      this.app.use('/payment', paymentRoutes) // 支付路由
 
       // 🏠 根路径重定向到新版管理界面
       this.app.get('/', (req, res) => {
