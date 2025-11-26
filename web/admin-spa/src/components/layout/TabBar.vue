@@ -59,14 +59,22 @@ const tabs = computed(() => {
     { key: 'accounts', name: '账户管理', shortName: '账户', icon: 'fas fa-user-circle' }
   ]
 
-  // 只有在用户管理或 LDAP 启用时才显示用户管理
+  // 只有在用户管理或 LDAP 启用时才显示用户管理和充值记录
   if (authStore.oemSettings?.userManagementEnabled || authStore.oemSettings?.ldapEnabled) {
-    baseTabs.push({
-      key: 'userManagement',
-      name: '用户管理',
-      shortName: '用户',
-      icon: 'fas fa-users'
-    })
+    baseTabs.push(
+      {
+        key: 'userManagement',
+        name: '用户管理',
+        shortName: '用户',
+        icon: 'fas fa-users'
+      },
+      {
+        key: 'rechargeRecords',
+        name: '充值记录',
+        shortName: '充值',
+        icon: 'fas fa-receipt'
+      }
+    )
   }
 
   baseTabs.push(

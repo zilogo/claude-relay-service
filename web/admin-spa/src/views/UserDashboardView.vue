@@ -37,24 +37,8 @@
               <div
                 class="absolute left-1.5 top-1.5 h-[calc(100%-12px)] rounded-xl bg-white shadow-md transition-all duration-300 dark:bg-gray-600"
                 :style="{
-                  width: `calc(${100 / 4}% - 6px)`,
-                  transform: `translateX(calc(${
-                    activeTab === 'overview'
-                      ? 0
-                      : activeTab === 'api-keys'
-                        ? 100
-                        : activeTab === 'usage'
-                          ? 200
-                          : 300
-                  }% + ${
-                    activeTab === 'overview'
-                      ? 0
-                      : activeTab === 'api-keys'
-                        ? 6
-                        : activeTab === 'usage'
-                          ? 12
-                          : 18
-                  }px))`
+                  width: `calc(${100 / 5}% - 6px)`,
+                  transform: `translateX(calc(${tabIndicatorPosition}% + ${tabIndicatorOffset}px))`
                 }"
               ></div>
 
@@ -91,6 +75,17 @@
                 @click="handleTabChange('usage')"
               >
                 使用统计
+              </button>
+              <button
+                class="relative z-10 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
+                :class="
+                  activeTab === 'recharge'
+                    ? 'text-[#D97757]'
+                    : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                "
+                @click="handleTabChange('recharge')"
+              >
+                充值记录
               </button>
               <button
                 class="relative z-10 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
@@ -549,6 +544,11 @@
         <UserUsageStats />
       </div>
 
+      <!-- Recharge Records Tab -->
+      <div v-else-if="activeTab === 'recharge'">
+        <UserRechargeRecords />
+      </div>
+
       <!-- Tutorial Tab -->
       <div v-else-if="activeTab === 'tutorial'" class="space-y-6">
         <TutorialView />
@@ -567,6 +567,7 @@ import { showToast } from '@/utils/toast'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import UserApiKeysManager from '@/components/user/UserApiKeysManager.vue'
 import UserUsageStats from '@/components/user/UserUsageStats.vue'
+import UserRechargeRecords from '@/components/user/UserRechargeRecords.vue'
 import TutorialView from '@/views/TutorialView.vue'
 
 const router = useRouter()
@@ -578,6 +579,29 @@ const themeStore = useThemeStore()
 const siteName = computed(() => authStore.oemSettings?.siteName || 'Claude Relay')
 
 const activeTab = ref('overview')
+
+// Tab 指示器位置计算（5 个 Tab）
+const tabIndicatorPosition = computed(() => {
+  const positions = {
+    overview: 0,
+    'api-keys': 100,
+    usage: 200,
+    recharge: 300,
+    tutorial: 400
+  }
+  return positions[activeTab.value] || 0
+})
+
+const tabIndicatorOffset = computed(() => {
+  const offsets = {
+    overview: 0,
+    'api-keys': 6,
+    usage: 12,
+    recharge: 18,
+    tutorial: 24
+  }
+  return offsets[activeTab.value] || 0
+})
 const userProfile = ref(null)
 const apiKeysStats = ref({ active: 0, deleted: 0 })
 const balanceInfo = ref(null)

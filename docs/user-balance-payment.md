@@ -1,9 +1,9 @@
 # 用户余额与支付功能方案
 
-> 版本: v1.1
+> 版本: v1.2
 > 创建日期: 2025-11-26
 > 更新日期: 2025-11-26
-> 状态: **第一阶段已完成** ✅
+> 状态: **第二阶段已完成** ✅
 
 ## 1. 需求概述
 
@@ -166,7 +166,7 @@ API 请求流程:
 | 阶段 | 名称 | 核心功能 | 状态 |
 |------|------|----------|------|
 | **第一阶段** | 基础余额系统 | 余额字段、手动充值、余额检查、前端显示 | ✅ **已完成** |
-| 第二阶段 | 充值记录详情 | 充值记录详情页面、导出功能 | ⏳ 待开发 |
+| **第二阶段** | 充值记录详情 | 充值记录详情页面、导出功能 | ✅ **已完成** |
 | 第三阶段 | 自助支付 | 支付网关集成（支付宝/微信/Stripe） | ⏳ 待开发 |
 
 ---
@@ -243,13 +243,46 @@ if (validation.keyData.userId) {
 
 ---
 
-### 3.3 第二阶段：充值记录详情（待开发）
+### 3.3 第二阶段：充值记录详情 ✅ 已完成
 
-| 序号 | 任务 | 说明 |
-|------|------|------|
-| 2.1 | 充值记录列表页面 | 用户仪表板新增 Tab 显示充值记录 |
-| 2.2 | 管理员充值记录页面 | 管理后台查看所有充值记录 |
-| 2.3 | 记录导出功能 | 支持导出 CSV/Excel |
+#### 3.3.1 任务清单
+
+| 序号 | 任务 | 文件 | 状态 |
+|------|------|------|------|
+| 2.1 | 用户充值记录 Tab | `web/admin-spa/src/components/user/UserRechargeRecords.vue` | ✅ |
+| 2.2 | 用户仪表板集成 | `web/admin-spa/src/views/UserDashboardView.vue` | ✅ |
+| 2.3 | 管理员充值记录页面 | `web/admin-spa/src/views/RechargeRecordsView.vue` | ✅ |
+| 2.4 | 路由和导航配置 | `web/admin-spa/src/router/index.js` | ✅ |
+| 2.5 | 标签栏菜单更新 | `web/admin-spa/src/components/layout/TabBar.vue` | ✅ |
+| 2.6 | 布局路由映射 | `web/admin-spa/src/components/layout/MainLayout.vue` | ✅ |
+| 2.7 | CSV 导出功能 | 用户端和管理端均已实现 | ✅ |
+
+#### 3.3.2 实现详情
+
+##### 用户充值记录组件 (UserRechargeRecords.vue)
+
+功能特点：
+- 余额概览卡片：显示当前余额、累计充值、累计消费、可用余额
+- 充值记录表格：时间、金额、类型、备注、变动前后余额
+- 分页支持：每页 10 条记录
+- CSV 导出：支持导出所有充值记录（UTF-8 BOM 格式兼容 Excel）
+
+##### 管理员充值记录页面 (RechargeRecordsView.vue)
+
+功能特点：
+- 统计卡片：总充值金额、充值次数、充值用户数、平均充值金额
+- 筛选功能：用户名搜索、充值类型、时间范围
+- 充值记录表格：包含用户列、操作员信息
+- 分页支持：每页 20 条记录
+- CSV 导出：支持导出筛选后的记录
+
+##### 导航菜单更新
+
+在「用户管理」菜单后新增「充值记录」菜单项：
+- 菜单 Key: `rechargeRecords`
+- 路由路径: `/recharge-records`
+- 图标: `fas fa-receipt`
+- 显示条件: `userManagementEnabled` 或 `ldapEnabled` 为 true
 
 ---
 
@@ -346,8 +379,13 @@ try {
 | 文件路径 | 修改类型 | 说明 |
 |----------|----------|------|
 | `web/admin-spa/src/stores/user.js` | 修改 | 添加余额查询方法 |
-| `web/admin-spa/src/views/UserDashboardView.vue` | 修改 | 添加余额卡片显示 |
+| `web/admin-spa/src/views/UserDashboardView.vue` | 修改 | 添加余额卡片显示、充值记录 Tab |
 | `web/admin-spa/src/views/UserManagementView.vue` | 修改 | 添加充值按钮和弹窗 |
+| `web/admin-spa/src/components/user/UserRechargeRecords.vue` | **新增** | 用户充值记录组件（第二阶段） |
+| `web/admin-spa/src/views/RechargeRecordsView.vue` | **新增** | 管理员充值记录页面（第二阶段） |
+| `web/admin-spa/src/components/layout/TabBar.vue` | 修改 | 新增充值记录菜单项（第二阶段） |
+| `web/admin-spa/src/components/layout/MainLayout.vue` | 修改 | 新增充值记录路由映射（第二阶段） |
+| `web/admin-spa/src/router/index.js` | 修改 | 新增充值记录路由（第二阶段） |
 
 ---
 

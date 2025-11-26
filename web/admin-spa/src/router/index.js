@@ -12,6 +12,7 @@ const ResetPasswordView = () => import('@/views/ResetPasswordView.vue')
 const EmailVerificationView = () => import('@/views/EmailVerificationView.vue')
 const UserDashboardView = () => import('@/views/UserDashboardView.vue')
 const UserManagementView = () => import('@/views/UserManagementView.vue')
+const RechargeRecordsView = () => import('@/views/RechargeRecordsView.vue')
 const MainLayout = () => import('@/components/layout/MainLayout.vue')
 const DashboardView = () => import('@/views/DashboardView.vue')
 const ApiKeysView = () => import('@/views/ApiKeysView.vue')
@@ -169,6 +170,18 @@ const routes = [
         path: '',
         name: 'UserManagement',
         component: UserManagementView
+      }
+    ]
+  },
+  {
+    path: '/recharge-records',
+    component: MainLayout,
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'RechargeRecords',
+        component: RechargeRecordsView
       }
     ]
   },
