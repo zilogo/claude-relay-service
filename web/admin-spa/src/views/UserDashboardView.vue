@@ -141,7 +141,7 @@
         </div>
 
         <!-- Stats Cards -->
-        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-5">
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <!-- 活跃的 API Keys 卡片 -->
           <div
             class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#F4F1EA] to-[#E6E2DA] p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-gray-800/50 dark:to-gray-700/50"
@@ -311,6 +311,50 @@
                 <p class="text-sm font-semibold text-amber-900 dark:text-amber-100">总成本</p>
                 <p class="mt-2 text-3xl font-bold text-amber-900 dark:text-amber-50">
                   ${{ (userProfile?.totalUsage?.totalCost || 0).toFixed(4) }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 可用余额卡片 -->
+          <div
+            class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 to-green-50 p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-emerald-900/30 dark:to-green-900/30"
+          >
+            <div
+              class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-emerald-500/10 blur-3xl transition-all group-hover:bg-emerald-500/20"
+            ></div>
+            <div class="relative">
+              <div
+                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/30"
+              >
+                <svg
+                  class="h-7 w-7 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-emerald-900 dark:text-emerald-100">可用余额</p>
+                <p
+                  class="mt-2 text-3xl font-bold"
+                  :class="
+                    (balanceInfo?.availableBalance || 0) > 0
+                      ? 'text-emerald-900 dark:text-emerald-50'
+                      : 'text-red-600 dark:text-red-400'
+                  "
+                >
+                  ${{ (balanceInfo?.availableBalance || 0).toFixed(4) }}
+                </p>
+                <p class="mt-1 text-xs text-emerald-700 dark:text-emerald-300">
+                  已充值: ${{ (balanceInfo?.totalRecharge || 0).toFixed(2) }}
                 </p>
               </div>
             </div>
@@ -536,6 +580,7 @@ const siteName = computed(() => authStore.oemSettings?.siteName || 'Claude Relay
 const activeTab = ref('overview')
 const userProfile = ref(null)
 const apiKeysStats = ref({ active: 0, deleted: 0 })
+const balanceInfo = ref(null)
 
 const formatNumber = (num) => {
   if (num >= 1000000) {
@@ -606,6 +651,15 @@ const loadApiKeysStats = async () => {
   }
 }
 
+const loadBalanceInfo = async () => {
+  try {
+    balanceInfo.value = await userStore.getUserBalance()
+  } catch (error) {
+    console.error('Failed to load balance info:', error)
+    balanceInfo.value = null
+  }
+}
+
 onMounted(async () => {
   // 初始化主题
   themeStore.initTheme()
@@ -613,6 +667,7 @@ onMounted(async () => {
   await authStore.loadOemSettings()
   loadUserProfile()
   loadApiKeysStats()
+  loadBalanceInfo()
 })
 </script>
 

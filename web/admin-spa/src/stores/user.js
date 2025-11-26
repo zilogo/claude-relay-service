@@ -178,6 +178,28 @@ export const useUserStore = defineStore('user', {
       }
     },
 
+    // 💰 获取用户余额信息
+    async getUserBalance() {
+      try {
+        const response = await axios.get(`${API_BASE}/balance`)
+        return response.data.success ? response.data.data : null
+      } catch (error) {
+        console.error('Failed to fetch balance:', error)
+        throw error
+      }
+    },
+
+    // 💰 获取用户充值记录
+    async getRechargeRecords(params = {}) {
+      try {
+        const response = await axios.get(`${API_BASE}/recharge-records`, { params })
+        return response.data.success ? response.data.data : { records: [], total: 0 }
+      } catch (error) {
+        console.error('Failed to fetch recharge records:', error)
+        throw error
+      }
+    },
+
     // 🧹 清除认证信息
     clearAuth() {
       this.user = null

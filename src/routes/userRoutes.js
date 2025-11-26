@@ -719,6 +719,47 @@ router.get('/profile', authenticateUser, async (req, res) => {
   }
 })
 
+// 💰 获取当前用户余额信息
+router.get('/balance', authenticateUser, async (req, res) => {
+  try {
+    const balanceInfo = await userService.getBalanceInfo(req.user.id)
+
+    res.json({
+      success: true,
+      data: balanceInfo
+    })
+  } catch (error) {
+    logger.error('❌ Get balance error:', error)
+    res.status(500).json({
+      error: 'Balance error',
+      message: 'Failed to retrieve balance information'
+    })
+  }
+})
+
+// 💰 获取当前用户充值记录
+router.get('/recharge-records', authenticateUser, async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query
+
+    const result = await userService.getRechargeRecords(req.user.id, {
+      page: parseInt(page),
+      limit: parseInt(limit)
+    })
+
+    res.json({
+      success: true,
+      data: result
+    })
+  } catch (error) {
+    logger.error('❌ Get recharge records error:', error)
+    res.status(500).json({
+      error: 'Recharge records error',
+      message: 'Failed to retrieve recharge records'
+    })
+  }
+})
+
 // 🔑 获取用户的API Keys
 router.get('/api-keys', authenticateUser, async (req, res) => {
   try {

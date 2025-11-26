@@ -145,7 +145,11 @@ class UserService {
             inputTokens: 0,
             outputTokens: 0,
             totalCost: 0
-          }
+          },
+          // 余额相关字段
+          balance: 0,
+          totalRecharge: 0,
+          lastRechargeAt: null
         }
       } else {
         // 更新现有用户信息
@@ -736,7 +740,11 @@ class UserService {
           inputTokens: 0,
           outputTokens: 0,
           totalCost: 0
-        }
+        },
+        // 余额相关字段
+        balance: 0,
+        totalRecharge: 0,
+        lastRechargeAt: null
       }
 
       // 保存用户信息
@@ -1198,6 +1206,255 @@ class UserService {
       return await this.generateEmailVerificationToken(userId)
     } catch (error) {
       logger.error('❌ Error resending verification email:', error)
+      throw error
+    }
+  }
+
+  // ============================================
+  // 💰 余额管理相关方法
+  // ============================================
+
+  /**
+   * 获取用户余额信息
+   * @param {string} userId - 用户ID
+   * @returns {object} 余额信息
+   */
+  async getBalanceInfo(userId) {
+    try {
+      const user = await this.getUserById(userId, true) // 需要计算 totalCost
+      if (!user) {
+        throw new Error('User not found')
+      }
+
+      const balance = parseFloat(user.balance) || 0
+      const totalRecharge = parseFloat(user.totalRecharge) || 0
+      const totalCost = user.totalUsage?.totalCost || 0
+      const availableBalance = balance - totalCost
+
+      return {
+        balance,
+        totalRecharge,
+        totalCost,
+        availableBalance,
+        lastRechargeAt: user.lastRechargeAt || null
+      }
+    } catch (error) {
+      logger.error('❌ Error getting balance info:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 为用户充值
+   * @param {string} userId - 用户ID
+   * @param {number} amount - 充值金额（美元）
+   * @param {object} operator - 操作者信息 { id, name }
+   * @param {string} remark - 备注
+   * @returns {object} 充值结果
+   */
+  async rechargeBalance(userId, amount, operator = {}, remark = '') {
+    try {
+      // 验证金额
+      const rechargeAmount = parseFloat(amount)
+      if (isNaN(rechargeAmount) || rechargeAmount <= 0) {
+        throw new Error('Invalid recharge amount: must be a positive number')
+      }
+
+      // 获取用户（不计算 usage，避免循环依赖）
+      const user = await this.getUserById(userId, false)
+      if (!user) {
+        throw new Error('User not found')
+      }
+
+      // 计算新余额
+      const balanceBefore = parseFloat(user.balance) || 0
+      const balanceAfter = balanceBefore + rechargeAmount
+      const totalRechargeBefore = parseFloat(user.totalRecharge) || 0
+
+      // 生成充值记录ID
+      const recordId = `rec_${crypto.randomBytes(8).toString('hex')}`
+      const now = new Date().toISOString()
+
+      // 创建充值记录
+      const rechargeRecord = {
+        id: recordId,
+        userId,
+        username: user.username,
+        amount: rechargeAmount,
+        balanceBefore,
+        balanceAfter,
+        type: 'manual',
+        source: 'admin',
+        operatorId: operator.id || '',
+        operatorName: operator.name || 'system',
+        remark: remark || '',
+        createdAt: now
+      }
+
+      // 更新用户余额
+      user.balance = balanceAfter
+      user.totalRecharge = totalRechargeBefore + rechargeAmount
+      user.lastRechargeAt = now
+      user.updatedAt = now
+
+      // 使用 Redis 事务保证原子性
+      const client = redis.getClientSafe()
+      const multi = client.multi()
+
+      // 保存用户信息
+      multi.set(`${this.userPrefix}${userId}`, JSON.stringify(user))
+
+      // 保存充值记录
+      multi.set(`recharge_record:${recordId}`, JSON.stringify(rechargeRecord))
+
+      // 添加到用户充值记录列表（按时间倒序）
+      multi.lpush(`user_recharge_records:${userId}`, recordId)
+
+      // 添加到全局充值记录列表
+      multi.lpush('recharge_records:all', recordId)
+
+      await multi.exec()
+
+      logger.success(
+        `💰 User ${user.username} (${userId}) recharged $${rechargeAmount.toFixed(2)} by ${operator.name || 'system'}, balance: $${balanceBefore.toFixed(2)} -> $${balanceAfter.toFixed(2)}`
+      )
+
+      return {
+        recordId,
+        userId,
+        username: user.username,
+        amount: rechargeAmount,
+        balanceBefore,
+        balanceAfter,
+        balance: balanceAfter,
+        totalRecharge: user.totalRecharge,
+        operatorName: operator.name || 'system',
+        createdAt: now
+      }
+    } catch (error) {
+      logger.error('❌ Error recharging balance:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 获取用户充值记录
+   * @param {string} userId - 用户ID
+   * @param {object} options - 分页选项
+   * @returns {object} 充值记录列表
+   */
+  async getRechargeRecords(userId, options = {}) {
+    try {
+      const { page = 1, limit = 20 } = options
+      const client = redis.getClientSafe()
+
+      // 获取用户充值记录ID列表
+      const recordIds = await client.lrange(`user_recharge_records:${userId}`, 0, -1)
+
+      if (!recordIds || recordIds.length === 0) {
+        return {
+          records: [],
+          total: 0,
+          page,
+          limit,
+          totalPages: 0
+        }
+      }
+
+      // 获取所有充值记录
+      const records = []
+      for (const recordId of recordIds) {
+        const recordData = await client.get(`recharge_record:${recordId}`)
+        if (recordData) {
+          records.push(JSON.parse(recordData))
+        }
+      }
+
+      // 分页
+      const total = records.length
+      const startIndex = (page - 1) * limit
+      const endIndex = startIndex + limit
+      const paginatedRecords = records.slice(startIndex, endIndex)
+
+      return {
+        records: paginatedRecords,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    } catch (error) {
+      logger.error('❌ Error getting recharge records:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 获取所有充值记录（管理员用）
+   * @param {object} options - 分页和过滤选项
+   * @returns {object} 充值记录列表
+   */
+  async getAllRechargeRecords(options = {}) {
+    try {
+      const { page = 1, limit = 20 } = options
+      const client = redis.getClientSafe()
+
+      // 获取全局充值记录ID列表
+      const recordIds = await client.lrange('recharge_records:all', 0, -1)
+
+      if (!recordIds || recordIds.length === 0) {
+        return {
+          records: [],
+          total: 0,
+          page,
+          limit,
+          totalPages: 0
+        }
+      }
+
+      // 获取所有充值记录
+      const records = []
+      for (const recordId of recordIds) {
+        const recordData = await client.get(`recharge_record:${recordId}`)
+        if (recordData) {
+          records.push(JSON.parse(recordData))
+        }
+      }
+
+      // 分页
+      const total = records.length
+      const startIndex = (page - 1) * limit
+      const endIndex = startIndex + limit
+      const paginatedRecords = records.slice(startIndex, endIndex)
+
+      return {
+        records: paginatedRecords,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    } catch (error) {
+      logger.error('❌ Error getting all recharge records:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 检查用户余额是否足够
+   * @param {string} userId - 用户ID
+   * @returns {object} 余额检查结果
+   */
+  async checkBalance(userId) {
+    try {
+      const balanceInfo = await this.getBalanceInfo(userId)
+
+      return {
+        sufficient: balanceInfo.availableBalance > 0,
+        ...balanceInfo
+      }
+    } catch (error) {
+      logger.error('❌ Error checking balance:', error)
       throw error
     }
   }

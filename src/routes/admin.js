@@ -215,6 +215,139 @@ router.post('/users/:userId/reset-password', authenticateAdmin, async (req, res)
   }
 })
 
+// 💰 用户充值（管理员功能）
+router.post('/users/:userId/recharge', authenticateAdmin, async (req, res) => {
+  try {
+    const userService = require('../services/userService')
+    const { userId } = req.params
+    const { amount, remark } = req.body
+
+    // 验证金额
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      return res.status(400).json({
+        error: 'Invalid amount',
+        message: '充值金额必须大于0'
+      })
+    }
+
+    // 执行充值
+    const result = await userService.rechargeBalance(
+      userId,
+      parseFloat(amount),
+      { id: req.admin.id, name: req.admin.username },
+      remark || ''
+    )
+
+    logger.info(
+      `💰 Admin ${req.admin.username} recharged $${parseFloat(amount).toFixed(2)} for user: ${userId}`
+    )
+
+    res.json({
+      success: true,
+      data: result
+    })
+  } catch (error) {
+    logger.error('❌ Recharge error:', error)
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        error: 'User not found',
+        message: error.message
+      })
+    }
+
+    if (error.message.includes('Invalid recharge amount')) {
+      return res.status(400).json({
+        error: 'Invalid amount',
+        message: error.message
+      })
+    }
+
+    res.status(500).json({
+      error: 'Recharge error',
+      message: 'Internal server error during recharge'
+    })
+  }
+})
+
+// 💰 获取用户余额信息（管理员功能）
+router.get('/users/:userId/balance', authenticateAdmin, async (req, res) => {
+  try {
+    const userService = require('../services/userService')
+    const { userId } = req.params
+
+    const balanceInfo = await userService.getBalanceInfo(userId)
+
+    res.json({
+      success: true,
+      data: balanceInfo
+    })
+  } catch (error) {
+    logger.error('❌ Get balance error:', error)
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        error: 'User not found',
+        message: error.message
+      })
+    }
+
+    res.status(500).json({
+      error: 'Get balance error',
+      message: 'Internal server error'
+    })
+  }
+})
+
+// 💰 获取用户充值记录（管理员功能）
+router.get('/users/:userId/recharge-records', authenticateAdmin, async (req, res) => {
+  try {
+    const userService = require('../services/userService')
+    const { userId } = req.params
+    const { page = 1, limit = 20 } = req.query
+
+    const result = await userService.getRechargeRecords(userId, {
+      page: parseInt(page),
+      limit: parseInt(limit)
+    })
+
+    res.json({
+      success: true,
+      data: result
+    })
+  } catch (error) {
+    logger.error('❌ Get recharge records error:', error)
+    res.status(500).json({
+      error: 'Get recharge records error',
+      message: 'Internal server error'
+    })
+  }
+})
+
+// 💰 获取所有充值记录（管理员功能）
+router.get('/recharge-records', authenticateAdmin, async (req, res) => {
+  try {
+    const userService = require('../services/userService')
+    const { page = 1, limit = 20 } = req.query
+
+    const result = await userService.getAllRechargeRecords({
+      page: parseInt(page),
+      limit: parseInt(limit)
+    })
+
+    res.json({
+      success: true,
+      data: result
+    })
+  } catch (error) {
+    logger.error('❌ Get all recharge records error:', error)
+    res.status(500).json({
+      error: 'Get recharge records error',
+      message: 'Internal server error'
+    })
+  }
+})
+
 // 🔑 API Keys 管理
 
 // 调试：获取API Key费用详情

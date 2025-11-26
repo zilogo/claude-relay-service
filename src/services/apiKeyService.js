@@ -334,7 +334,9 @@ class ApiKeyService {
           totalCost,
           weeklyOpusCost: (await redis.getWeeklyOpusCost(keyData.id)) || 0,
           tags,
-          usage
+          usage,
+          userId: keyData.userId || '', // 添加用户ID用于余额检查
+          userUsername: keyData.userUsername || ''
         }
       }
     } catch (error) {

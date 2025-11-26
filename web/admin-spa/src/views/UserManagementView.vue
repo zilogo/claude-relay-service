@@ -402,6 +402,22 @@
                 </svg>
               </button>
 
+              <!-- Recharge Balance -->
+              <button
+                class="inline-flex items-center rounded border border-transparent p-1 text-gray-400 hover:text-emerald-600"
+                title="Recharge Balance"
+                @click="openRechargeModal(user)"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+              </button>
+
               <!-- Change Role -->
               <button
                 class="inline-flex items-center rounded border border-transparent p-1 text-gray-400 hover:text-purple-600"
@@ -471,6 +487,176 @@
       @close="showRoleModal = false"
       @updated="handleUserUpdated"
     />
+
+    <!-- Recharge Modal -->
+    <div
+      v-if="showRechargeModal"
+      class="fixed inset-0 z-50 overflow-y-auto"
+      aria-labelledby="modal-title"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        class="flex min-h-screen items-end justify-center px-4 pb-20 pt-4 text-center sm:block sm:p-0"
+      >
+        <!-- Background overlay -->
+        <div
+          class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity dark:bg-gray-900 dark:bg-opacity-75"
+          aria-hidden="true"
+          @click="showRechargeModal = false"
+        ></div>
+
+        <!-- Modal panel -->
+        <div
+          class="inline-block transform overflow-hidden rounded-lg bg-white text-left align-bottom shadow-xl transition-all dark:bg-gray-800 sm:my-8 sm:w-full sm:max-w-md sm:align-middle"
+        >
+          <div class="bg-white px-4 pb-4 pt-5 dark:bg-gray-800 sm:p-6 sm:pb-4">
+            <div class="sm:flex sm:items-start">
+              <div
+                class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900 sm:mx-0 sm:h-10 sm:w-10"
+              >
+                <svg
+                  class="h-6 w-6 text-emerald-600 dark:text-emerald-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+              </div>
+              <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                <h3
+                  id="modal-title"
+                  class="text-lg font-medium leading-6 text-gray-900 dark:text-white"
+                >
+                  用户充值
+                </h3>
+                <div class="mt-2">
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    为用户 <span class="font-semibold">{{ selectedUser?.username }}</span> 充值
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 space-y-4">
+              <!-- Current Balance -->
+              <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-700">
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">当前余额</span>
+                  <span class="font-medium text-gray-900 dark:text-white">
+                    ${{ (rechargeForm.currentBalance || 0).toFixed(4) }}
+                  </span>
+                </div>
+                <div class="mt-2 flex justify-between">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">已消费</span>
+                  <span class="font-medium text-gray-900 dark:text-white">
+                    ${{ (rechargeForm.totalCost || 0).toFixed(4) }}
+                  </span>
+                </div>
+                <div
+                  class="mt-2 flex justify-between border-t border-gray-200 pt-2 dark:border-gray-600"
+                >
+                  <span class="text-sm font-medium text-gray-600 dark:text-gray-400">可用余额</span>
+                  <span
+                    class="font-bold"
+                    :class="
+                      (rechargeForm.availableBalance || 0) > 0 ? 'text-emerald-600' : 'text-red-600'
+                    "
+                  >
+                    ${{ (rechargeForm.availableBalance || 0).toFixed(4) }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Amount Input -->
+              <div>
+                <label
+                  for="recharge-amount"
+                  class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  充值金额 (USD)
+                </label>
+                <div class="relative mt-1 rounded-md shadow-sm">
+                  <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <span class="text-gray-500 dark:text-gray-400 sm:text-sm">$</span>
+                  </div>
+                  <input
+                    id="recharge-amount"
+                    v-model.number="rechargeForm.amount"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    class="block w-full rounded-md border-gray-300 pl-7 pr-12 focus:border-emerald-500 focus:ring-emerald-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <!-- Remark Input -->
+              <div>
+                <label
+                  for="recharge-remark"
+                  class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  备注（可选）
+                </label>
+                <input
+                  id="recharge-remark"
+                  v-model="rechargeForm.remark"
+                  type="text"
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+                  placeholder="例如：首次充值"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-gray-50 px-4 py-3 dark:bg-gray-700 sm:flex sm:flex-row-reverse sm:px-6">
+            <button
+              type="button"
+              class="inline-flex w-full justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:ml-3 sm:w-auto sm:text-sm"
+              :disabled="!rechargeForm.amount || rechargeForm.amount <= 0 || rechargeLoading"
+              @click="handleRecharge"
+            >
+              <svg
+                v-if="rechargeLoading"
+                class="-ml-1 mr-2 h-4 w-4 animate-spin text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              确认充值
+            </button>
+            <button
+              type="button"
+              class="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 sm:ml-3 sm:mt-0 sm:w-auto sm:text-sm"
+              @click="showRechargeModal = false"
+            >
+              取消
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -493,7 +679,16 @@ const selectedStatus = ref('')
 const showStatsModal = ref(false)
 const showConfirmModal = ref(false)
 const showRoleModal = ref(false)
+const showRechargeModal = ref(false)
+const rechargeLoading = ref(false)
 const selectedUser = ref(null)
+const rechargeForm = ref({
+  currentBalance: 0,
+  totalCost: 0,
+  availableBalance: 0,
+  amount: null,
+  remark: ''
+})
 
 const confirmAction = ref({
   title: '',
@@ -623,6 +818,61 @@ const disableUserApiKeys = (user) => {
 const changeUserRole = (user) => {
   selectedUser.value = user
   showRoleModal.value = true
+}
+
+const openRechargeModal = async (user) => {
+  selectedUser.value = user
+  rechargeForm.value = {
+    currentBalance: 0,
+    totalCost: 0,
+    availableBalance: 0,
+    amount: null,
+    remark: ''
+  }
+
+  try {
+    // 获取用户余额信息
+    const response = await apiClient.get(`/users/${user.id}/balance`)
+    if (response.success) {
+      rechargeForm.value.currentBalance = response.data.balance || 0
+      rechargeForm.value.totalCost = response.data.totalCost || 0
+      rechargeForm.value.availableBalance = response.data.availableBalance || 0
+    }
+  } catch (error) {
+    console.error('Failed to fetch user balance:', error)
+  }
+
+  showRechargeModal.value = true
+}
+
+const handleRecharge = async () => {
+  if (!rechargeForm.value.amount || rechargeForm.value.amount <= 0) {
+    showToast('请输入有效的充值金额', 'error')
+    return
+  }
+
+  rechargeLoading.value = true
+  try {
+    const response = await apiClient.post(`/admin/users/${selectedUser.value.id}/recharge`, {
+      amount: rechargeForm.value.amount,
+      remark: rechargeForm.value.remark || ''
+    })
+
+    if (response.success) {
+      showToast(
+        `充值成功！余额: $${response.data.balanceBefore.toFixed(2)} → $${response.data.balanceAfter.toFixed(2)}`,
+        'success'
+      )
+      showRechargeModal.value = false
+      // 刷新用户列表
+      await loadUsers()
+    }
+  } catch (error) {
+    console.error('Failed to recharge:', error)
+    showToast(error.response?.data?.message || '充值失败', 'error')
+  } finally {
+    rechargeLoading.value = false
+  }
 }
 
 const handleConfirmAction = async () => {
