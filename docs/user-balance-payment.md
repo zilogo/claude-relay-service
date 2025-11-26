@@ -1,9 +1,9 @@
 # 用户余额与支付功能方案
 
-> 版本: v1.2
+> 版本: v1.3
 > 创建日期: 2025-11-26
 > 更新日期: 2025-11-26
-> 状态: **第二阶段已完成** ✅
+> 状态: **第三阶段已完成** ✅
 
 ## 1. 需求概述
 
@@ -17,7 +17,7 @@
 - ✅ 管理员可为用户手动充值
 - ✅ API 调用时检查余额是否足够
 - ✅ 用户可查看余额和充值记录
-- ⏳ （后续）支持自助支付充值
+- ✅ 支持自助支付充值（ZPAY 支付宝/微信）
 
 ---
 
@@ -167,7 +167,7 @@ API 请求流程:
 |------|------|----------|------|
 | **第一阶段** | 基础余额系统 | 余额字段、手动充值、余额检查、前端显示 | ✅ **已完成** |
 | **第二阶段** | 充值记录详情 | 充值记录详情页面、导出功能 | ✅ **已完成** |
-| 第三阶段 | 自助支付 | 支付网关集成（支付宝/微信/Stripe） | ⏳ 待开发 |
+| **第三阶段** | 自助支付 | ZPAY支付网关集成（支付宝/微信） | ✅ **已完成** |
 
 ---
 
@@ -286,15 +286,123 @@ if (validation.keyData.userId) {
 
 ---
 
-### 3.4 第三阶段：自助支付（待开发）
+### 3.4 第三阶段：自助支付 ✅ 已完成
 
-| 序号 | 任务 | 说明 |
-|------|------|------|
-| 3.1 | 支付网关选型 | 支付宝/微信/Stripe |
-| 3.2 | 订单服务 | 创建订单、订单状态管理 |
-| 3.3 | 支付回调处理 | 接收支付通知、更新余额 |
-| 3.4 | 前端充值页面 | 选择金额、发起支付 |
-| 3.5 | 支付安全 | 签名验证、防重放攻击 |
+#### 3.4.1 任务清单
+
+| 序号 | 任务 | 文件 | 状态 |
+|------|------|------|------|
+| 3.1.1 | 更新 config.js 添加支付配置 | `config/config.js` | ✅ |
+| 3.1.2 | 创建 ZPAY 支付服务 | `src/services/zpayService.js` | ✅ |
+| 3.1.3 | 创建支付服务抽象层 | `src/services/paymentService.js` | ✅ |
+| 3.1.4 | 创建支付路由 | `src/routes/paymentRoutes.js` | ✅ |
+| 3.1.5 | 注册路由到 app.js | `src/app.js` | ✅ |
+| 3.1.6 | 更新环境变量示例 | `.env.example` | ✅ |
+| 3.2.1 | 创建支付 Store | `web/admin-spa/src/stores/payment.js` | ✅ |
+| 3.2.2 | 更新充值记录组件 | `web/admin-spa/src/components/user/UserRechargeRecords.vue` | ✅ |
+
+#### 3.4.2 实现详情
+
+##### 系统架构
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      前端充值界面                            │
+│          (UserRechargeRecords.vue - 在线充值区域)           │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   支付路由 (paymentRoutes.js)                │
+│     POST /payment/orders                                    │
+│     POST /payment/webhook/zpay                              │
+│     GET  /payment/orders                                    │
+│     GET  /payment/orders/:orderId                           │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│              支付服务抽象层 (paymentService.js)              │
+│     - createOrder(userId, options)                          │
+│     - handleCallback(provider, data)                        │
+│     - getOrderStatus(orderId)                               │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  zpayService.js                              │
+│                  (支付宝/微信聚合支付)                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+##### 环境变量配置
+
+```bash
+# 支付系统配置
+PAYMENT_ENABLED=true                      # 启用支付功能
+PAYMENT_EXCHANGE_RATE=7.2                 # 汇率（人民币转美元）
+PAYMENT_DEFAULT_CURRENCY=CNY              # 默认货币
+PAYMENT_MIN_AMOUNT=1                      # 最小充值（美元）
+PAYMENT_MAX_AMOUNT=1000                   # 最大充值（美元）
+PAYMENT_ALLOW_CUSTOM_AMOUNT=true          # 允许自定义金额
+PAYMENT_ORDER_EXPIRE_MINUTES=30           # 订单过期时间
+
+# ZPAY 配置
+ZPAY_ENABLED=true
+ZPAY_PID=你的商户ID
+ZPAY_KEY=你的商户密钥
+ZPAY_API_URL=https://zpayz.cn
+ZPAY_PAYMENT_METHODS=alipay,wxpay
+```
+
+##### 支付订单数据结构
+
+```javascript
+{
+  id: 'order_xxxxxxxx',           // 订单ID
+  userId: 'user_xxx',             // 用户ID
+  username: 'john',               // 用户名
+  amount: 70.00,                  // 支付金额（原始货币）
+  currency: 'CNY',                // 货币类型
+  amountUsd: 10.00,               // 美元金额
+  exchangeRate: 7.0,              // 汇率
+  packageId: 'pkg_10',            // 套餐ID
+  packageName: '基础套餐',         // 套餐名称
+  provider: 'zpay',               // 支付渠道
+  paymentMethod: 'alipay',        // 支付方式
+  tradeNo: 'xxx',                 // 第三方交易号
+  status: 'pending',              // pending/paid/failed/expired
+  payUrl: 'https://...',          // 支付链接
+  createdAt: '...',
+  paidAt: null,
+  expiredAt: '...'
+}
+```
+
+##### 前端实现
+
+用户充值界面功能：
+- 套餐选择：显示预设套餐（如 ¥70/$10、¥350/$50、¥700/$100）
+- 自定义金额：支持人民币/美元输入，自动换算
+- 支付方式：支付宝、微信支付图标选择
+- 实时显示：支付金额预览
+- 一键充值：创建订单后自动跳转支付页面
+
+##### 安全机制
+
+1. **签名验证**: MD5 签名验证回调真实性
+2. **幂等处理**: 订单状态检查防重复充值
+3. **金额验证**: 回调金额与订单金额比对
+4. **订单过期**: 30分钟自动过期清理
+5. **速率限制**: 每用户每分钟最多3个订单
+
+##### 测试策略
+
+开发环境提供模拟回调接口：
+```bash
+POST /payment/test/simulate-callback
+Body: { "orderId": "order_xxx", "success": true }
+```
 
 ---
 
