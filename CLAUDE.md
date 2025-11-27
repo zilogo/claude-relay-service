@@ -4,6 +4,82 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 这个文件为 Claude Code (claude.ai/code) 提供在此代码库中工作的指导。
 
+---
+
+## 变更记录 (Changelog)
+
+### 2025-11-27 20:38:37 - AI 上下文初始化
+- 完成项目全仓清点：识别 98 个核心源代码文件（src/、scripts/、cli/、config/）
+- 生成模块结构图（Mermaid）：可视化展示 7 大核心模块及其层次关系
+- 创建 `.claude/index.json` 索引文件：记录模块元数据、覆盖率统计、关键路径
+- 扫描覆盖率：核心代码 100%，前端代码 60+ Vue 组件已识别
+- 模块划分：后端服务层（35个服务）、路由层（13个路由）、工具层（20+工具）、前端 SPA（Vue 3 + Element Plus）
+
+---
+
+## 模块结构图
+
+```mermaid
+graph TD
+    A["(根) Claude Relay Service"] --> B["src/ 后端核心"];
+    A --> C["web/ 前端界面"];
+    A --> D["scripts/ 运维脚本"];
+    A --> E["cli/ 命令行工具"];
+    A --> F["config/ 配置管理"];
+    A --> G["resources/ 资源文件"];
+
+    B --> B1["services/ 服务层 (35个服务)"];
+    B --> B2["routes/ 路由层 (13个路由)"];
+    B --> B3["middleware/ 中间件层"];
+    B --> B4["utils/ 工具层 (20+工具)"];
+    B --> B5["validators/ 验证器层"];
+    B --> B6["models/ 数据模型"];
+
+    B1 --> B1A["账户管理服务 (8类账户)"];
+    B1 --> B1B["统一调度器 (4个调度器)"];
+    B1 --> B1C["转发服务 (8个转发器)"];
+    B1 --> B1D["用户&认证服务"];
+    B1 --> B1E["定价&成本服务"];
+
+    B2 --> B2A["API转发路由"];
+    B2 --> B2B["管理后台路由"];
+    B2 --> B2C["用户路由"];
+    B2 --> B2D["支付路由"];
+
+    C --> C1["admin-spa/ Vue 3 SPA"];
+    C --> C2["frontpage-source/ 入口页面"];
+
+    C1 --> C1A["views/ 页面组件 (15+)"];
+    C1 --> C1B["components/ 可复用组件 (60+)"];
+    C1 --> C1C["stores/ Pinia 状态管理"];
+    C1 --> C1D["router/ Vue Router"];
+
+    D --> D1["服务管理脚本"];
+    D --> D2["数据迁移脚本"];
+    D --> D3["测试脚本 (12+)"];
+    D --> D4["监控脚本"];
+
+    E --> E1["CLI 主入口"];
+
+    F --> F1["配置模板"];
+    F --> F2["定价源数据"];
+
+    G --> G1["模型定价数据"];
+
+    click B1A "#账户管理服务" "账户管理服务详情"
+    click B1B "#统一调度器" "统一调度器详情"
+    click B2A "#api转发端点多路由支持" "API转发路由详情"
+    click C1 "#web界面功能" "前端界面功能详情"
+
+    style A fill:#e1f5ff,stroke:#0288d1,stroke-width:3px
+    style B fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style C fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style B1 fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    style C1 fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px
+```
+
+---
+
 ## 项目概述
 
 Claude Relay Service 是一个多平台 AI API 中转服务，支持 **Claude (官方/Console)、Gemini、OpenAI Responses (Codex)、AWS Bedrock、Azure OpenAI、Droid (Factory.ai)、CCR** 等多种账户类型。提供完整的多账户管理、API Key 认证、代理配置、用户管理、LDAP认证、Webhook通知和现代化 Web 管理界面。该服务作为客户端（如 Claude Code、Gemini CLI、Codex、Droid CLI、Cherry Studio 等）与 AI API 之间的中间件，提供认证、限流、监控、定价计算、成本统计等功能。
@@ -579,37 +655,17 @@ EMAIL_VERIFICATION_TOKEN_TTL=86400 # 邮箱验证 token 有效期（秒，默认
 
 ### 常见文件位置
 
-- 核心服务逻辑：`src/services/` 目录（30+服务文件）
+- 核心服务逻辑：`src/services/` 目录（35个服务文件）
 - 路由处理：`src/routes/` 目录（api.js、admin.js、geminiRoutes.js、openaiRoutes.js等13个路由文件）
-- 中间件：`src/middleware/` 目录（auth.js、browserFallback.js、debugInterceptor.js等）
+- 中间件：`src/middleware/` 目录（auth.js、browserFallback.js等）
 - 配置管理：`config/config.js`（完整的多平台配置）
 - Redis 模型：`src/models/redis.js`
-- 工具函数：`src/utils/` 目录
-  - `logger.js` - 日志系统
-  - `oauthHelper.js` - OAuth工具
-  - `proxyHelper.js` - 代理工具
-  - `sessionHelper.js` - 会话管理
-  - `cacheMonitor.js` - 缓存监控
-  - `costCalculator.js` - 成本计算
-  - `rateLimitHelper.js` - 速率限制
-  - `webhookNotifier.js` - Webhook通知
-  - `tokenMask.js` - Token脱敏
-  - `workosOAuthHelper.js` - WorkOS OAuth
-  - `modelHelper.js` - 模型工具
-  - `inputValidator.js` - 输入验证
+- 工具函数：`src/utils/` 目录（20+工具文件）
 - CLI工具：`cli/index.js` 和 `src/cli/` 目录
-- 脚本目录：`scripts/` 目录
-  - `setup.js` - 初始化脚本
-  - `manage.js` - 服务管理
-  - `migrate-apikey-expiry.js` - API Key过期迁移
-  - `fix-usage-stats.js` - 使用统计修复
-  - `data-transfer.js` / `data-transfer-enhanced.js` - 数据导入导出
-  - `update-model-pricing.js` - 模型价格更新
-  - `test-pricing-fallback.js` - 价格回退测试
-  - `debug-redis-keys.js` - Redis调试
+- 脚本目录：`scripts/` 目录（25个脚本文件）
 - 前端主题管理：`web/admin-spa/src/stores/theme.js`
-- 前端组件：`web/admin-spa/src/components/` 目录
-- 前端页面：`web/admin-spa/src/views/` 目录
+- 前端组件：`web/admin-spa/src/components/` 目录（60+组件）
+- 前端页面：`web/admin-spa/src/views/` 目录（15+页面）
 - 初始化数据：`data/init.json`（管理员凭据存储）
 - 日志目录：`logs/`（各类日志文件）
 
@@ -753,6 +809,21 @@ npm run test:pricing-fallback  # 测试价格回退
 # 监控
 npm run monitor  # 增强监控脚本
 ```
+
+---
+
+## 模块索引
+
+| 模块路径 | 职责描述 | 入口文件 | 语言 | 文档链接 |
+|---------|---------|---------|------|---------|
+| `src/` | 后端核心代码 | `app.js` | Node.js | [src/CLAUDE.md](src/CLAUDE.md) |
+| `web/admin-spa/` | 前端管理界面 | `src/main.js` | Vue 3 | [web/admin-spa/CLAUDE.md](web/admin-spa/CLAUDE.md) |
+| `scripts/` | 运维脚本集合 | - | Node.js | [scripts/CLAUDE.md](scripts/CLAUDE.md) |
+| `cli/` | 命令行工具 | `index.js` | Node.js | [cli/CLAUDE.md](cli/CLAUDE.md) |
+| `config/` | 配置管理 | `config.js` | Node.js | - |
+| `web/frontpage-source/` | 入口页面源码 | - | Vue 3 | - |
+
+---
 
 # important-instruction-reminders
 
