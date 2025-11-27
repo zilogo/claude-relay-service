@@ -142,16 +142,12 @@ router.get('/orders', authenticateUser, async (req, res) => {
   }
 })
 
-/**
- * ZPAY 支付回调
- * POST /payment/webhook/zpay
- * 第三方支付平台回调，无需认证
- */
-router.post('/webhook/zpay', async (req, res) => {
+const handleZpayWebhook = async (req, res) => {
   try {
     logger.info('[PaymentRoutes] ZPAY webhook received', {
       body: req.body,
-      query: req.query
+      query: req.query,
+      method: req.method
     })
 
     // ZPAY 可能通过 POST body 或 GET query 传递参数
@@ -166,7 +162,14 @@ router.post('/webhook/zpay', async (req, res) => {
     // 返回错误状态，ZPAY 会重试
     res.status(400).send('fail')
   }
-})
+}
+
+/**
+ * ZPAY 支付回调
+ * 支持第三方使用 POST / GET 调用 /payment/webhook/zpay
+ */
+router.post('/webhook/zpay', handleZpayWebhook)
+router.get('/webhook/zpay', handleZpayWebhook)
 
 /**
  * ZPAY 支付同步回调（用户支付后跳转）
