@@ -9,6 +9,7 @@ const inputValidator = require('../utils/inputValidator')
 const { RateLimiterRedis } = require('rate-limiter-flexible')
 const redis = require('../models/redis')
 const { authenticateUser, authenticateUserOrAdmin, requireAdmin } = require('../middleware/auth')
+const CostCalculator = require('../utils/costCalculator')
 
 // 🚦 配置登录速率限制
 // 只基于IP地址限制，避免攻击者恶意锁定特定账户
@@ -983,6 +984,101 @@ router.get('/usage-stats', authenticateUser, async (req, res) => {
     res.status(500).json({
       error: 'Usage stats error',
       message: 'Failed to retrieve usage statistics'
+    })
+  }
+})
+
+// 📊 获取用户使用趋势（用于图表展示）
+router.get('/usage-trend', authenticateUser, async (req, res) => {
+  try {
+    const { days = 7 } = req.query
+    const daysCount = Math.min(parseInt(days) || 7, 90) // 最多90天
+
+    // 获取用户的所有 API Keys
+    const userApiKeys = await apiKeyService.getUserApiKeys(req.user.id, true)
+    const apiKeyIds = userApiKeys.map((key) => key.id)
+
+    if (apiKeyIds.length === 0) {
+      return res.json({
+        success: true,
+        trend: []
+      })
+    }
+
+    const client = redis.getClientSafe()
+    const trendData = []
+    const today = new Date()
+
+    // 获取过去N天的数据
+    for (let i = 0; i < daysCount; i++) {
+      const date = new Date(today)
+      date.setDate(date.getDate() - i)
+      const dateStr = redis.getDateStringInTimezone(date)
+
+      let dayInputTokens = 0
+      let dayOutputTokens = 0
+      let dayRequests = 0
+      let dayCacheCreateTokens = 0
+      let dayCacheReadTokens = 0
+      let dayCost = 0
+
+      // 遍历用户的每个 API Key，汇总当天数据
+      for (const keyId of apiKeyIds) {
+        // 获取该 Key 当天的使用数据
+        const dailyKey = `usage:daily:${keyId}:${dateStr}`
+        const data = await client.hgetall(dailyKey)
+
+        if (data && Object.keys(data).length > 0) {
+          const inputTokens = parseInt(data.inputTokens) || 0
+          const outputTokens = parseInt(data.outputTokens) || 0
+          const cacheCreateTokens = parseInt(data.cacheCreateTokens) || 0
+          const cacheReadTokens = parseInt(data.cacheReadTokens) || 0
+          const requests = parseInt(data.requests) || 0
+
+          dayInputTokens += inputTokens
+          dayOutputTokens += outputTokens
+          dayCacheCreateTokens += cacheCreateTokens
+          dayCacheReadTokens += cacheReadTokens
+          dayRequests += requests
+        }
+      }
+
+      // 计算成本（使用默认模型价格）
+      if (dayInputTokens > 0 || dayOutputTokens > 0) {
+        const usage = {
+          input_tokens: dayInputTokens,
+          output_tokens: dayOutputTokens,
+          cache_creation_input_tokens: dayCacheCreateTokens,
+          cache_read_input_tokens: dayCacheReadTokens
+        }
+        const costResult = CostCalculator.calculateCost(usage, 'unknown')
+        dayCost = costResult.costs.total
+      }
+
+      trendData.push({
+        date: dateStr,
+        inputTokens: dayInputTokens,
+        outputTokens: dayOutputTokens,
+        requests: dayRequests,
+        cacheCreateTokens: dayCacheCreateTokens,
+        cacheReadTokens: dayCacheReadTokens,
+        tokens: dayInputTokens + dayOutputTokens,
+        cost: dayCost
+      })
+    }
+
+    // 按日期升序排列（最早的在前）
+    trendData.reverse()
+
+    res.json({
+      success: true,
+      trend: trendData
+    })
+  } catch (error) {
+    logger.error('❌ Get user usage trend error:', error)
+    res.status(500).json({
+      error: 'Usage trend error',
+      message: 'Failed to retrieve usage trend'
     })
   }
 })

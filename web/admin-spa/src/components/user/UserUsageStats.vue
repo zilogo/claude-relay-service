@@ -173,8 +173,13 @@
         </h3>
       </div>
       <div class="p-6">
-        <!-- Placeholder for chart -->
+        <!-- 趋势图表 -->
+        <div v-if="trendData.length > 0" class="relative" style="height: 300px">
+          <canvas ref="chartCanvas" />
+        </div>
+        <!-- 无数据状态 -->
         <div
+          v-else
           class="flex h-64 items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50/50 dark:border-gray-600 dark:bg-gray-700/30"
         >
           <div class="text-center">
@@ -191,11 +196,8 @@
                 stroke-width="2"
               />
             </svg>
-            <h3 class="mt-4 text-base font-bold text-gray-900 dark:text-white">使用趋势图表</h3>
-            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">每日使用趋势将在这里显示</p>
-            <p class="mt-2 text-xs text-gray-500 dark:text-gray-500">
-              (可集成 Chart.js、D3.js 或类似图表库)
-            </p>
+            <h3 class="mt-4 text-base font-bold text-gray-900 dark:text-white">暂无使用数据</h3>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">该时间段内没有使用记录</p>
           </div>
         </div>
       </div>
@@ -349,9 +351,9 @@
       </div>
     </div>
 
-    <!-- No Data State -->
+    <!-- No Data State - 仅在统计数据和趋势数据都为空时显示 -->
     <div
-      v-if="!loading && (!usageStats || usageStats.totalRequests === 0)"
+      v-if="!loading && (!usageStats || usageStats.totalRequests === 0) && trendData.length === 0"
       class="flex flex-col items-center justify-center py-20"
     >
       <div
@@ -380,8 +382,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { Chart } from 'chart.js/auto'
 import { useUserStore } from '@/stores/user'
+import { useChartConfig } from '@/composables/useChartConfig'
 import { showToast } from '@/utils/toast'
 
 const userStore = useUserStore()
@@ -390,6 +394,9 @@ const loading = ref(true)
 const selectedPeriod = ref('week')
 const usageStats = ref(null)
 const userApiKeys = ref([])
+const trendData = ref([])
+const chartCanvas = ref(null)
+let chart = null
 
 const formatNumber = (num) => {
   if (num >= 1000000) {
@@ -400,16 +407,151 @@ const formatNumber = (num) => {
   return num.toString()
 }
 
+// 根据时间周期计算天数
+const getPeriodDays = (period) => {
+  const periodMap = {
+    day: 1,
+    week: 7,
+    month: 30,
+    quarter: 90
+  }
+  return periodMap[period] || 7
+}
+
+// 创建图表
+const createChart = () => {
+  if (!chartCanvas.value || !trendData.value.length) return
+
+  if (chart) {
+    chart.destroy()
+  }
+
+  const { getGradient } = useChartConfig()
+  const ctx = chartCanvas.value.getContext('2d')
+
+  const labels = trendData.value.map((item) => item.date)
+
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '请求次数',
+          data: trendData.value.map((item) => item.requests),
+          borderColor: '#D97757',
+          backgroundColor: getGradient(ctx, '#D97757', 0.1),
+          yAxisID: 'y',
+          tension: 0.4,
+          fill: true
+        },
+        {
+          label: 'Token使用量',
+          data: trendData.value.map((item) => item.tokens),
+          borderColor: '#667eea',
+          backgroundColor: getGradient(ctx, '#667eea', 0.1),
+          yAxisID: 'y1',
+          tension: 0.4,
+          fill: true
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: {
+            usePointStyle: true,
+            padding: 20
+          }
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: function (context) {
+              let label = context.dataset.label || ''
+              if (label) {
+                label += ': '
+              }
+              if (context.parsed.y !== null) {
+                label += new Intl.NumberFormat('zh-CN').format(context.parsed.y)
+              }
+              return label
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          display: true,
+          grid: {
+            display: false
+          }
+        },
+        y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          title: {
+            display: true,
+            text: '请求次数'
+          },
+          ticks: {
+            callback: function (value) {
+              if (value >= 1000) {
+                return (value / 1000).toFixed(0) + 'K'
+              }
+              return value
+            }
+          }
+        },
+        y1: {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          title: {
+            display: true,
+            text: 'Token使用量'
+          },
+          grid: {
+            drawOnChartArea: false
+          },
+          ticks: {
+            callback: function (value) {
+              if (value >= 1000000) {
+                return (value / 1000000).toFixed(1) + 'M'
+              } else if (value >= 1000) {
+                return (value / 1000).toFixed(0) + 'K'
+              }
+              return value
+            }
+          }
+        }
+      }
+    }
+  })
+}
+
 const loadUsageStats = async () => {
   loading.value = true
   try {
-    const [stats, apiKeys] = await Promise.all([
+    const days = getPeriodDays(selectedPeriod.value)
+    const [stats, apiKeys, trend] = await Promise.all([
       userStore.getUserUsageStats({ period: selectedPeriod.value }),
-      userStore.getUserApiKeys(true) // 包含已删除的 keys
+      userStore.getUserApiKeys(true), // 包含已删除的 keys
+      userStore.getUserUsageTrend({ days })
     ])
 
     usageStats.value = stats
     userApiKeys.value = apiKeys
+    trendData.value = trend
   } catch (error) {
     console.error('Failed to load usage stats:', error)
     showToast('加载使用统计失败', 'error')
@@ -418,8 +560,27 @@ const loadUsageStats = async () => {
   }
 }
 
+// 监听趋势数据变化，更新图表（使用 nextTick 确保 DOM 已更新）
+watch(
+  () => trendData.value,
+  (newVal) => {
+    if (newVal && newVal.length > 0) {
+      nextTick(() => {
+        createChart()
+      })
+    }
+  },
+  { deep: true }
+)
+
 onMounted(() => {
   loadUsageStats()
+})
+
+onUnmounted(() => {
+  if (chart) {
+    chart.destroy()
+  }
 })
 </script>
 

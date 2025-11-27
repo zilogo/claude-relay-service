@@ -178,6 +178,17 @@ export const useUserStore = defineStore('user', {
       }
     },
 
+    // 📈 获取使用趋势（用于图表）
+    async getUserUsageTrend(params = {}) {
+      try {
+        const response = await axios.get(`${API_BASE}/usage-trend`, { params })
+        return response.data.success ? response.data.trend : []
+      } catch (error) {
+        console.error('Failed to fetch usage trend:', error)
+        throw error
+      }
+    },
+
     // 💰 获取用户余额信息
     async getUserBalance() {
       try {
