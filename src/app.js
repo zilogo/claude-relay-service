@@ -256,6 +256,37 @@ class Application {
         logger.warn('⚠️ Admin SPA dist directory not found, skipping /admin-next route')
       }
 
+      // 🏠 Frontpage 入口页面静态文件服务
+      const frontpagePath = path.join(__dirname, '..', 'web', 'frontpage')
+      if (fs.existsSync(frontpagePath) && fs.existsSync(path.join(frontpagePath, 'index.html'))) {
+        // 版本化静态资源（长期缓存）
+        this.app.use(
+          '/assets',
+          express.static(path.join(frontpagePath, 'assets'), {
+            maxAge: '1y',
+            immutable: true
+          })
+        )
+
+        // 媒体资源（中期缓存）
+        this.app.use(
+          '/img',
+          express.static(path.join(frontpagePath, 'img'), {
+            maxAge: '7d'
+          })
+        )
+        this.app.use(
+          '/mp4',
+          express.static(path.join(frontpagePath, 'mp4'), {
+            maxAge: '7d'
+          })
+        )
+
+        logger.info('✅ Frontpage static files mounted at /assets, /img, /mp4')
+      } else {
+        logger.warn('⚠️ Frontpage dist directory not found, skipping frontpage static routes')
+      }
+
       // 🛣️ 路由
       this.app.use('/api', apiRoutes)
       this.app.use('/api', unifiedRoutes) // 统一智能路由（支持 /v1/chat/completions 等）
@@ -278,9 +309,16 @@ class Application {
       this.app.use('/admin/webhook', webhookRoutes)
       this.app.use('/payment', paymentRoutes) // 支付路由
 
-      // 🏠 根路径重定向到新版管理界面
+      // 🏠 根路径服务 Frontpage 首页
       this.app.get('/', (req, res) => {
-        res.redirect('/admin-next/api-stats')
+        const frontpageIndex = path.join(__dirname, '..', 'web', 'frontpage', 'index.html')
+        if (fs.existsSync(frontpageIndex)) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+          res.sendFile(frontpageIndex)
+        } else {
+          // 回退：重定向到管理界面
+          res.redirect('/admin-next/')
+        }
       })
 
       // 🏥 增强的健康检查端点
