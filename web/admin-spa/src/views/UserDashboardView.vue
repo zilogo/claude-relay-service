@@ -96,7 +96,7 @@
                 "
                 @click="handleTabChange('tutorial')"
               >
-                教程
+                使用手册
               </button>
             </div>
           </div>
@@ -549,9 +549,9 @@
         <UserRechargeRecords />
       </div>
 
-      <!-- Tutorial Tab -->
+      <!-- 使用手册 Tab -->
       <div v-else-if="activeTab === 'tutorial'" class="space-y-6">
-        <TutorialView />
+        <UserManualView />
       </div>
     </main>
   </div>
@@ -568,7 +568,7 @@ import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import UserApiKeysManager from '@/components/user/UserApiKeysManager.vue'
 import UserUsageStats from '@/components/user/UserUsageStats.vue'
 import UserRechargeRecords from '@/components/user/UserRechargeRecords.vue'
-import TutorialView from '@/views/TutorialView.vue'
+import UserManualView from '@/components/user/UserManualView.vue'
 
 const router = useRouter()
 const userStore = useUserStore()

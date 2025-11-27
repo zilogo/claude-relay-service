@@ -51,6 +51,7 @@ declare module 'vue' {
     UsageDetailModal: typeof import('./src/components/apikeys/UsageDetailModal.vue')['default']
     UsageTrend: typeof import('./src/components/dashboard/UsageTrend.vue')['default']
     UserApiKeysManager: typeof import('./src/components/user/UserApiKeysManager.vue')['default']
+    UserManualView: typeof import('./src/components/user/UserManualView.vue')['default']
     UserRechargeRecords: typeof import('./src/components/user/UserRechargeRecords.vue')['default']
     UserUsageStats: typeof import('./src/components/user/UserUsageStats.vue')['default']
     UserUsageStatsModal: typeof import('./src/components/admin/UserUsageStatsModal.vue')['default']
