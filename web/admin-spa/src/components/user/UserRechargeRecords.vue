@@ -81,7 +81,8 @@
         </div>
 
         <div v-else>
-          <!-- 套餐选择 -->
+          <!-- [已禁用] 套餐选择 - 暂时不需要套餐功能，仅支持自定义金额充值 -->
+          <!--
           <div class="mb-6">
             <label class="mb-3 block text-sm font-medium text-gray-700 dark:text-gray-300">
               选择充值套餐
@@ -103,7 +104,6 @@
                 </div>
                 <div class="text-sm text-gray-500 dark:text-gray-400">≈ ${{ pkg.amountUsd }}</div>
                 <div class="mt-2 text-xs font-medium text-[#D97757]">{{ pkg.name }}</div>
-                <!-- 选中标记 -->
                 <div
                   v-if="selectedPackage?.id === pkg.id"
                   class="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#D97757] text-white"
@@ -119,33 +119,32 @@
               </button>
             </div>
           </div>
+          -->
 
           <!-- 自定义金额 -->
           <div v-if="paymentStore.allowCustomAmount" class="mb-6">
             <label class="mb-3 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              或输入自定义金额
+              输入充值金额（人民币）
             </label>
             <div class="flex gap-3">
               <div class="relative flex-1">
                 <span
                   class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500"
                 >
-                  {{ customCurrency === 'CNY' ? '¥' : '$' }}
+                  ¥
                 </span>
                 <input
                   v-model="customAmount"
                   type="number"
                   :min="paymentStore.limits.min"
-                  :max="
-                    customCurrency === 'CNY'
-                      ? paymentStore.limits.max * paymentStore.currency.exchangeRate
-                      : paymentStore.limits.max
-                  "
+                  :max="paymentStore.limits.max * paymentStore.currency.exchangeRate"
                   placeholder="输入金额"
                   class="block w-full rounded-xl border border-gray-300 bg-white py-2.5 pl-8 pr-3 text-gray-900 transition-colors focus:border-[#D97757] focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                   @input="onCustomAmountChange"
                 />
               </div>
+              <!-- [已禁用] 货币选择 - 暂时只支持人民币充值 -->
+              <!--
               <select
                 v-model="customCurrency"
                 class="rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-gray-900 transition-colors focus:border-[#D97757] focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
@@ -153,12 +152,11 @@
                 <option value="CNY">人民币 (¥)</option>
                 <option value="USD">美元 ($)</option>
               </select>
+              -->
             </div>
+            <!-- 显示对应美元金额 -->
             <p v-if="customAmount" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              <template v-if="customCurrency === 'CNY'">
-                ≈ ${{ (customAmount / paymentStore.currency.exchangeRate).toFixed(2) }}
-              </template>
-              <template v-else> ≈ ¥{{ (customAmount * paymentStore.currency.exchangeRate).toFixed(2) }} </template>
+              ≈ ${{ (customAmount / paymentStore.currency.exchangeRate).toFixed(2) }}
             </p>
           </div>
 
