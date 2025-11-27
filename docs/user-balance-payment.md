@@ -339,20 +339,30 @@ if (validation.keyData.userId) {
 
 ```bash
 # 支付系统配置
-PAYMENT_ENABLED=true                      # 启用支付功能
-PAYMENT_EXCHANGE_RATE=7.2                 # 汇率（人民币转美元）
-PAYMENT_DEFAULT_CURRENCY=CNY              # 默认货币
-PAYMENT_MIN_AMOUNT=1                      # 最小充值（美元）
-PAYMENT_MAX_AMOUNT=1000                   # 最大充值（美元）
-PAYMENT_ALLOW_CUSTOM_AMOUNT=true          # 允许自定义金额
-PAYMENT_ORDER_EXPIRE_MINUTES=30           # 订单过期时间
+PAYMENT_ENABLED=true                         # 启用支付功能
+PAYMENT_MIN_AMOUNT=1                         # 支持 RECHARGE_MIN_AMOUNT
+PAYMENT_MAX_AMOUNT=1000                      # 支持 RECHARGE_MAX_AMOUNT
+PAYMENT_ALLOW_CUSTOM_AMOUNT=true             # 支持 ALLOW_CUSTOM_AMOUNT
+PAYMENT_DEFAULT_CURRENCY=CNY                 # 支持 DEFAULT_CURRENCY
+PAYMENT_EXCHANGE_RATE=7.2                    # 支持 EXCHANGE_RATE
+PAYMENT_ORDER_EXPIRE_MINUTES=30              # 支持 ZPAY_ORDER_EXPIRE_MINUTES
+MAX_ORDERS_PER_MINUTE=3
+PAYMENT_PACKAGES=[]                          # JSON 字符串，定义充值套餐
 
 # ZPAY 配置
 ZPAY_ENABLED=true
 ZPAY_PID=你的商户ID
 ZPAY_KEY=你的商户密钥
 ZPAY_API_URL=https://zpayz.cn
+ZPAY_SUBMIT_URL=https://zpayz.cn/submit.php
+ZPAY_QUERY_URL=https://zpayz.cn/api.php
 ZPAY_PAYMENT_METHODS=alipay,wxpay
+ZPAY_ORDER_PREFIX=ORD_
+ZPAY_NOTIFY_URL=https://example.com/payment/zpay/notify
+ZPAY_RETURN_URL=https://example.com/payment/zpay/return
+ZPAY_NOTIFY_USER=false
+ZPAY_IP_WHITELIST=
+ZPAY_REQUIRE_HTTPS=true
 ```
 
 ##### 支付订单数据结构

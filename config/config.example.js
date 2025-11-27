@@ -1,6 +1,32 @@
 const path = require('path')
 require('dotenv').config()
 
+const pickEnv = (...names) => {
+  for (const name of names) {
+    if (Object.prototype.hasOwnProperty.call(process.env, name)) {
+      const value = process.env[name]
+      if (value !== '') {
+        return value
+      }
+    }
+  }
+  return undefined
+}
+
+const getIntEnv = (defaultValue, ...names) => {
+  const raw = pickEnv(...names)
+  if (raw === undefined) return defaultValue
+  const value = parseInt(raw, 10)
+  return Number.isFinite(value) ? value : defaultValue
+}
+
+const getFloatEnv = (defaultValue, ...names) => {
+  const raw = pickEnv(...names)
+  if (raw === undefined) return defaultValue
+  const value = parseFloat(raw)
+  return Number.isFinite(value) ? value : defaultValue
+}
+
 const config = {
   // 🌐 服务器配置
   server: {
@@ -99,7 +125,11 @@ const config = {
     tokenUsageRetention: parseInt(process.env.TOKEN_USAGE_RETENTION) || 2592000000, // 30天
     healthCheckInterval: parseInt(process.env.HEALTH_CHECK_INTERVAL) || 60000, // 1分钟
     timezone: process.env.SYSTEM_TIMEZONE || 'Asia/Shanghai', // 默认UTC+8（中国时区）
-    timezoneOffset: parseInt(process.env.TIMEZONE_OFFSET) || 8 // UTC偏移小时数，默认+8
+    timezoneOffset: parseInt(process.env.TIMEZONE_OFFSET) || 8, // UTC偏移小时数，默认+8
+    metricsWindow: (() => {
+      const minutes = getIntEnv(5, 'METRICS_WINDOW')
+      return Math.min(Math.max(minutes, 1), 60)
+    })() // 实时指标窗口（分钟，限制在1-60之间）
   },
 
   // 🎨 Web界面配置
@@ -212,20 +242,26 @@ const config = {
     baseUrl: process.env.BASE_URL || `http://localhost:${parseInt(process.env.PORT) || 3000}`,
 
     // 充值金额限制
-    minAmount: parseFloat(process.env.RECHARGE_MIN_AMOUNT) || 1,
-    maxAmount: parseFloat(process.env.RECHARGE_MAX_AMOUNT) || 10000,
-    allowCustomAmount: process.env.ALLOW_CUSTOM_AMOUNT !== 'false',
+    minAmount: getFloatEnv(1, 'PAYMENT_MIN_AMOUNT', 'RECHARGE_MIN_AMOUNT'),
+    maxAmount: getFloatEnv(10000, 'PAYMENT_MAX_AMOUNT', 'RECHARGE_MAX_AMOUNT'),
+    allowCustomAmount: (() => {
+      const flag = pickEnv('ALLOW_CUSTOM_AMOUNT', 'PAYMENT_ALLOW_CUSTOM_AMOUNT')
+      return flag === undefined ? true : flag !== 'false'
+    })(),
 
     // 货币配置
-    defaultCurrency: process.env.DEFAULT_CURRENCY || 'CNY',
-    exchangeRate: parseFloat(process.env.EXCHANGE_RATE) || 7.2,
+    defaultCurrency: pickEnv('PAYMENT_DEFAULT_CURRENCY', 'DEFAULT_CURRENCY') || 'CNY',
+    exchangeRate: getFloatEnv(7.2, 'PAYMENT_EXCHANGE_RATE', 'EXCHANGE_RATE'),
 
     // 订单配置
-    orderExpireMinutes: parseInt(process.env.ZPAY_ORDER_EXPIRE_MINUTES) || 30,
-    maxOrdersPerMinute: parseInt(process.env.MAX_ORDERS_PER_MINUTE) || 3,
+    orderExpireMinutes: getIntEnv(30, 'PAYMENT_ORDER_EXPIRE_MINUTES', 'ZPAY_ORDER_EXPIRE_MINUTES'),
+    maxOrdersPerMinute: getIntEnv(3, 'MAX_ORDERS_PER_MINUTE'),
 
     // 充值套餐（JSON格式）
-    packages: process.env.PAYMENT_PACKAGES ? JSON.parse(process.env.PAYMENT_PACKAGES) : [],
+    packages: (() => {
+      const raw = pickEnv('PAYMENT_PACKAGES')
+      return raw ? JSON.parse(raw) : []
+    })(),
 
     // ZPay 配置
     zpay: {
