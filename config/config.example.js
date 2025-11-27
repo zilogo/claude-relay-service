@@ -206,6 +206,50 @@ const config = {
     }
   },
 
+  // 💳 支付系统配置
+  payment: {
+    enabled: process.env.PAYMENT_ENABLED === 'true',
+    baseUrl: process.env.BASE_URL || `http://localhost:${parseInt(process.env.PORT) || 3000}`,
+
+    // 充值金额限制
+    minAmount: parseFloat(process.env.RECHARGE_MIN_AMOUNT) || 1,
+    maxAmount: parseFloat(process.env.RECHARGE_MAX_AMOUNT) || 10000,
+    allowCustomAmount: process.env.ALLOW_CUSTOM_AMOUNT !== 'false',
+
+    // 货币配置
+    defaultCurrency: process.env.DEFAULT_CURRENCY || 'CNY',
+    exchangeRate: parseFloat(process.env.EXCHANGE_RATE) || 7.2,
+
+    // 订单配置
+    orderExpireMinutes: parseInt(process.env.ZPAY_ORDER_EXPIRE_MINUTES) || 30,
+    maxOrdersPerMinute: parseInt(process.env.MAX_ORDERS_PER_MINUTE) || 3,
+
+    // 充值套餐（JSON格式）
+    packages: process.env.PAYMENT_PACKAGES ? JSON.parse(process.env.PAYMENT_PACKAGES) : [],
+
+    // ZPay 配置
+    zpay: {
+      enabled: process.env.ZPAY_ENABLED === 'true',
+      pid: process.env.ZPAY_PID || '',
+      key: process.env.ZPAY_KEY || '',
+      apiUrl: process.env.ZPAY_API_URL || 'https://zpayz.cn',
+      submitUrl: process.env.ZPAY_SUBMIT_URL || 'https://zpayz.cn/submit.php',
+      queryUrl: process.env.ZPAY_QUERY_URL || 'https://zpayz.cn/api.php',
+      paymentMethods: process.env.ZPAY_PAYMENT_METHODS
+        ? process.env.ZPAY_PAYMENT_METHODS.split(',').map((m) => m.trim())
+        : ['alipay', 'wxpay'],
+      orderPrefix: process.env.ZPAY_ORDER_PREFIX || 'ORD_',
+      notifyUrl: process.env.ZPAY_NOTIFY_URL || '',
+      returnUrl: process.env.ZPAY_RETURN_URL || '',
+      notifyUser: process.env.ZPAY_NOTIFY_USER === 'true',
+      ipWhitelist: process.env.ZPAY_IP_WHITELIST
+        ? process.env.ZPAY_IP_WHITELIST.split(',').map((ip) => ip.trim()).filter(Boolean)
+        : [],
+      requireHttps:
+        process.env.ZPAY_REQUIRE_HTTPS !== 'false' && process.env.NODE_ENV === 'production'
+    }
+  },
+
   // 📢 Webhook通知配置
   webhook: {
     enabled: process.env.WEBHOOK_ENABLED !== 'false', // 默认启用

@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # 🚀 Claude Relay Service
+  claude-relay:
+    build: .
+    image: claude-relay-service:local
+    restart: unless-stopped
+    ports:
+      - "${BIND_HOST:-0.0.0.0}:${PORT:-3000}:3000"
+    volumes:
+      - crs_logs:/app/logs
+      - crs_data:/app/data
+    environment:
+      # 🔐 安全配置（必填）
+      - JWT_SECRET=mvFfeZVqKN6oAk7941BEsrtk54ivpQcA # 必填：至少32字符的随机字符串
+      - ENCRYPTION_KEY=R2D5ltl9MMMUmJVDWMeiRUhZf3DKS55c # 必填：32字符的加密密钥
+    env_file:
+      - .env.example
+    depends_on:
+      - redis
+    networks:
+      - claude-relay-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 📊 Redis Database
+  redis:
+    image: docker.1ms.run/library/redis:7-alpine
+    restart: unless-stopped
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --save 60 1 --appendonly yes --appendfsync everysec
+    networks:
+      - claude-relay-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  crs_logs:
+    driver: local
+  crs_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  claude-relay-network:
+    driver: bridge
