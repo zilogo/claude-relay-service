@@ -257,8 +257,12 @@ class Application {
       }
 
       // 🏠 Frontpage 入口页面静态文件服务
+      const frontpageEnabled = config.frontpage?.enabled === true
       const frontpagePath = path.join(__dirname, '..', 'web', 'frontpage')
-      if (fs.existsSync(frontpagePath) && fs.existsSync(path.join(frontpagePath, 'index.html'))) {
+      const frontpageExists =
+        fs.existsSync(frontpagePath) && fs.existsSync(path.join(frontpagePath, 'index.html'))
+
+      if (frontpageEnabled && frontpageExists) {
         // 版本化静态资源（长期缓存）
         this.app.use(
           '/assets',
@@ -283,6 +287,8 @@ class Application {
         )
 
         logger.info('✅ Frontpage static files mounted at /assets, /img, /mp4')
+      } else if (!frontpageEnabled) {
+        logger.info('ℹ️ Frontpage disabled via FRONTPAGE_ENABLED=false')
       } else {
         logger.warn('⚠️ Frontpage dist directory not found, skipping frontpage static routes')
       }
@@ -311,10 +317,9 @@ class Application {
 
       // 🏠 根路径服务 Frontpage 首页
       this.app.get('/', (req, res) => {
-        const frontpageIndex = path.join(__dirname, '..', 'web', 'frontpage', 'index.html')
-        if (fs.existsSync(frontpageIndex)) {
+        if (frontpageEnabled && frontpageExists) {
           res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
-          res.sendFile(frontpageIndex)
+          res.sendFile(path.join(frontpagePath, 'index.html'))
         } else {
           // 回退：重定向到管理界面
           res.redirect('/admin-next/')

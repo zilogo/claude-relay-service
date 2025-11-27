@@ -296,6 +296,12 @@ const config = {
     retries: parseInt(process.env.WEBHOOK_RETRIES) || 3 // 重试3次
   },
 
+  // 🏠 Frontpage 入口页面配置
+  frontpage: {
+    enabled: process.env.FRONTPAGE_ENABLED === 'true', // 默认禁用，需显式启用
+    geminiApiKey: process.env.GEMINI_API_KEY || ''
+  },
+
   // 🛠️ 开发配置
   development: {
     debug: process.env.DEBUG === 'true',
