@@ -1396,14 +1396,7 @@ class UserService {
    */
   async getAllRechargeRecords(options = {}) {
     try {
-      const {
-        page = 1,
-        limit = 20,
-        username,
-        type,
-        startDate,
-        endDate
-      } = options
+      const { page = 1, limit = 20, username, type, startDate, endDate } = options
       const client = redis.getClientSafe()
 
       const parsePositiveInt = (value, defaultValue) => {
@@ -1480,10 +1473,16 @@ class UserService {
 
         if (shouldFilterByDate) {
           const recordTimestamp = parseDateToTimestamp(record.createdAt)
-          if (startTimestamp !== null && (recordTimestamp === null || recordTimestamp < startTimestamp)) {
+          if (
+            startTimestamp !== null &&
+            (recordTimestamp === null || recordTimestamp < startTimestamp)
+          ) {
             return false
           }
-          if (endTimestamp !== null && (recordTimestamp === null || recordTimestamp > endTimestamp)) {
+          if (
+            endTimestamp !== null &&
+            (recordTimestamp === null || recordTimestamp > endTimestamp)
+          ) {
             return false
           }
         }

@@ -1146,10 +1146,10 @@ const securityMiddleware = (req, res, next) => {
       [
         "default-src 'self'",
         "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://cdn.bootcdn.net",
-        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.bootcdn.net",
-        "font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net",
+        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://fonts.googleapis.com",
+        "font-src 'self' https://cdnjs.cloudflare.com https://cdn.bootcdn.net https://fonts.gstatic.com https://fonts.googleapis.com",
         "img-src 'self' data:",
-        "connect-src 'self'",
+        "connect-src 'self' https://generativelanguage.googleapis.com https://*.googleapis.com",
         "frame-ancestors 'none'",
         "base-uri 'self'",
         "form-action 'self'"

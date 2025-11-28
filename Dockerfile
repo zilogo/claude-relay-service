@@ -25,8 +25,8 @@ WORKDIR /app/web/frontpage-source
 # 📦 复制 frontpage 依赖文件（需要先 checkout submodule）
 COPY web/frontpage-source/package*.json ./
 
-# 🔽 安装依赖
-RUN npm ci
+# 🔽 安装依赖（需要包含 dev 依赖以使用 Vite）
+RUN npm ci --include=dev
 
 # 📋 复制 frontpage 源代码
 COPY web/frontpage-source/ ./
