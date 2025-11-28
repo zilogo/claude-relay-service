@@ -1396,20 +1396,43 @@ class UserService {
    */
   async getAllRechargeRecords(options = {}) {
     try {
-      const { page = 1, limit = 20 } = options
+      const {
+        page = 1,
+        limit = 20,
+        username,
+        type,
+        startDate,
+        endDate
+      } = options
       const client = redis.getClientSafe()
+
+      const parsePositiveInt = (value, defaultValue) => {
+        const parsed = parseInt(value, 10)
+        return Number.isNaN(parsed) || parsed <= 0 ? defaultValue : parsed
+      }
+
+      const pageNumber = parsePositiveInt(page, 1)
+      const limitNumber = parsePositiveInt(limit, 20)
+
+      const baseResponse = {
+        records: [],
+        total: 0,
+        page: pageNumber,
+        limit: limitNumber,
+        totalPages: 0,
+        stats: {
+          totalAmount: 0,
+          totalCount: 0,
+          userCount: 0,
+          avgAmount: 0
+        }
+      }
 
       // 获取全局充值记录ID列表
       const recordIds = await client.lrange('recharge_records:all', 0, -1)
 
       if (!recordIds || recordIds.length === 0) {
-        return {
-          records: [],
-          total: 0,
-          page,
-          limit,
-          totalPages: 0
-        }
+        return baseResponse
       }
 
       // 获取所有充值记录
@@ -1421,18 +1444,82 @@ class UserService {
         }
       }
 
-      // 分页
-      const total = records.length
-      const startIndex = (page - 1) * limit
-      const endIndex = startIndex + limit
-      const paginatedRecords = records.slice(startIndex, endIndex)
+      const usernameFilter =
+        typeof username === 'string' && username.trim().length > 0
+          ? username.trim().toLowerCase()
+          : ''
+      const typeFilter =
+        typeof type === 'string' && type.trim().length > 0 ? type.trim().toLowerCase() : ''
+
+      const parseDateToTimestamp = (value) => {
+        if (!value) {
+          return null
+        }
+        const timestamp = Date.parse(value)
+        return Number.isNaN(timestamp) ? null : timestamp
+      }
+
+      const startTimestamp = parseDateToTimestamp(startDate)
+      const endTimestamp = parseDateToTimestamp(endDate)
+      const shouldFilterByDate = startTimestamp !== null || endTimestamp !== null
+
+      const filteredRecords = records.filter((record) => {
+        if (usernameFilter) {
+          const recordUsername = (record.username || '').toLowerCase()
+          if (!recordUsername.includes(usernameFilter)) {
+            return false
+          }
+        }
+
+        if (typeFilter) {
+          const recordType = (record.type || '').toLowerCase()
+          if (recordType !== typeFilter) {
+            return false
+          }
+        }
+
+        if (shouldFilterByDate) {
+          const recordTimestamp = parseDateToTimestamp(record.createdAt)
+          if (startTimestamp !== null && (recordTimestamp === null || recordTimestamp < startTimestamp)) {
+            return false
+          }
+          if (endTimestamp !== null && (recordTimestamp === null || recordTimestamp > endTimestamp)) {
+            return false
+          }
+        }
+
+        return true
+      })
+
+      const total = filteredRecords.length
+      const startIndex = (pageNumber - 1) * limitNumber
+      const endIndex = startIndex + limitNumber
+      const paginatedRecords = filteredRecords.slice(startIndex, endIndex)
+
+      const totalAmountRaw = filteredRecords.reduce((sum, record) => {
+        const amount = parseFloat(record.amount)
+        return sum + (Number.isNaN(amount) ? 0 : amount)
+      }, 0)
+      const totalAmount = Number(totalAmountRaw.toFixed(2))
+      const totalCount = total
+      const uniqueUserIds = filteredRecords
+        .map((record) => record.userId)
+        .filter((userId) => !!userId)
+      const userCount = uniqueUserIds.length > 0 ? new Set(uniqueUserIds).size : 0
+      const avgAmount = totalCount > 0 ? Number((totalAmountRaw / totalCount).toFixed(2)) : 0
 
       return {
         records: paginatedRecords,
         total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit)
+        page: pageNumber,
+        limit: limitNumber,
+        totalPages: total > 0 ? Math.ceil(total / limitNumber) : 0,
+        stats: {
+          totalAmount,
+          totalCount,
+          userCount,
+          avgAmount
+        }
       }
     } catch (error) {
       logger.error('❌ Error getting all recharge records:', error)

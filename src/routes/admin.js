@@ -328,11 +328,23 @@ router.get('/users/:userId/recharge-records', authenticateAdmin, async (req, res
 router.get('/recharge-records', authenticateAdmin, async (req, res) => {
   try {
     const userService = require('../services/userService')
-    const { page = 1, limit = 20 } = req.query
+    const {
+      page = 1,
+      pageSize,
+      username,
+      type,
+      startDate,
+      endDate,
+      limit: legacyLimit
+    } = req.query
 
     const result = await userService.getAllRechargeRecords({
-      page: parseInt(page),
-      limit: parseInt(limit)
+      page,
+      limit: pageSize ?? legacyLimit ?? 20,
+      username,
+      type,
+      startDate,
+      endDate
     })
 
     res.json({
