@@ -1,3 +1,4 @@
 [submodule "web/frontpage-source"]
 	path = web/frontpage-source
 	url = git@github.com:zilogo/tokencloud_frontpage.git
+	branch = main
