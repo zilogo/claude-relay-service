@@ -140,13 +140,17 @@
               <div>
                 <span class="text-gray-500">Input Tokens:</span>
                 <span class="ml-2 font-medium">{{
-                  formatNumber(apiKey.usage.inputTokens || 0)
+                  formatNumber(
+                    (apiKey.usage.inputTokens || 0) + (apiKey.usage.cacheCreateTokens || 0)
+                  )
                 }}</span>
               </div>
               <div>
                 <span class="text-gray-500">Output Tokens:</span>
                 <span class="ml-2 font-medium">{{
-                  formatNumber(apiKey.usage.outputTokens || 0)
+                  formatNumber(
+                    (apiKey.usage.outputTokens || 0) + (apiKey.usage.cacheReadTokens || 0)
+                  )
                 }}</span>
               </div>
               <div>

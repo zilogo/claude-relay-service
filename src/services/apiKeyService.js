@@ -1630,6 +1630,8 @@ class ApiKeyService {
         totalRequests: 0,
         totalInputTokens: 0,
         totalOutputTokens: 0,
+        totalCacheCreateTokens: 0,
+        totalCacheReadTokens: 0,
         totalCost: 0,
         dailyStats: [],
         modelStats: []
@@ -1643,6 +1645,8 @@ class ApiKeyService {
           stats.totalRequests += keyStats.total.requests || 0
           stats.totalInputTokens += keyStats.total.inputTokens || 0
           stats.totalOutputTokens += keyStats.total.outputTokens || 0
+          stats.totalCacheCreateTokens += keyStats.total.cacheCreateTokens || 0
+          stats.totalCacheReadTokens += keyStats.total.cacheReadTokens || 0
           stats.totalCost += costStats?.total || 0
         }
       }

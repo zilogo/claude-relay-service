@@ -94,7 +94,11 @@
           </div>
           <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">输入令牌</p>
           <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-50">
-            {{ formatNumber(usageStats?.totalInputTokens || 0) }}
+            {{
+              formatNumber(
+                (usageStats?.totalInputTokens || 0) + (usageStats?.totalCacheCreateTokens || 0)
+              )
+            }}
           </p>
         </div>
       </div>
@@ -121,7 +125,11 @@
           </div>
           <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">输出令牌</p>
           <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-50">
-            {{ formatNumber(usageStats?.totalOutputTokens || 0) }}
+            {{
+              formatNumber(
+                (usageStats?.totalOutputTokens || 0) + (usageStats?.totalCacheReadTokens || 0)
+              )
+            }}
           </p>
         </div>
       </div>
@@ -316,10 +324,18 @@
                   {{ formatNumber(apiKey.usage?.requests || 0) }}
                 </td>
                 <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                  {{ formatNumber(apiKey.usage?.inputTokens || 0) }}
+                  {{
+                    formatNumber(
+                      (apiKey.usage?.inputTokens || 0) + (apiKey.usage?.cacheCreateTokens || 0)
+                    )
+                  }}
                 </td>
                 <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                  {{ formatNumber(apiKey.usage?.outputTokens || 0) }}
+                  {{
+                    formatNumber(
+                      (apiKey.usage?.outputTokens || 0) + (apiKey.usage?.cacheReadTokens || 0)
+                    )
+                  }}
                 </td>
                 <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                   ${{ (apiKey.usage?.totalCost || 0).toFixed(4) }}

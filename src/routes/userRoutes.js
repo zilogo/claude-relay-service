@@ -774,6 +774,8 @@ router.get('/api-keys', authenticateUser, async (req, res) => {
         requests: 0,
         inputTokens: 0,
         outputTokens: 0,
+        cacheCreateTokens: 0,
+        cacheReadTokens: 0,
         totalCost: 0
       }
 
@@ -782,6 +784,8 @@ router.get('/api-keys', authenticateUser, async (req, res) => {
           requests: key.usage.total.requests || 0,
           inputTokens: key.usage.total.inputTokens || 0,
           outputTokens: key.usage.total.outputTokens || 0,
+          cacheCreateTokens: key.usage.total.cacheCreateTokens || 0,
+          cacheReadTokens: key.usage.total.cacheReadTokens || 0,
           totalCost: key.totalCost || 0
         }
       }
@@ -1062,7 +1066,7 @@ router.get('/usage-trend', authenticateUser, async (req, res) => {
         requests: dayRequests,
         cacheCreateTokens: dayCacheCreateTokens,
         cacheReadTokens: dayCacheReadTokens,
-        tokens: dayInputTokens + dayOutputTokens,
+        tokens: dayInputTokens + dayOutputTokens + dayCacheCreateTokens + dayCacheReadTokens,
         cost: dayCost
       })
     }

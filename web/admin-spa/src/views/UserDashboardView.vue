@@ -243,40 +243,6 @@
             </div>
           </div>
 
-          <!-- 输入令牌卡片 -->
-          <div
-            class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#F4F1EA] to-[#E6E2DA] p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-gray-800/50 dark:to-gray-700/50"
-          >
-            <div
-              class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-[#D97757]/10 blur-3xl transition-all group-hover:bg-[#D97757]/20"
-            ></div>
-            <div class="relative">
-              <div
-                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#D97757] shadow-lg shadow-[#D97757]/30"
-              >
-                <svg
-                  class="h-7 w-7 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                  />
-                </svg>
-              </div>
-              <div>
-                <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">输入令牌</p>
-                <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-50">
-                  {{ formatNumber(userProfile?.totalUsage?.inputTokens || 0) }}
-                </p>
-              </div>
-            </div>
-          </div>
-
           <!-- 总成本卡片 -->
           <div
             class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 to-yellow-50 p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-amber-900/30 dark:to-yellow-900/30"
