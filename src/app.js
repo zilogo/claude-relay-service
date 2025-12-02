@@ -286,7 +286,19 @@ class Application {
           })
         )
 
-        logger.info('✅ Frontpage static files mounted at /assets, /img, /mp4')
+        const frontpageConfigPath = path.join(frontpagePath, 'config')
+        if (fs.existsSync(frontpageConfigPath)) {
+          this.app.use(
+            '/config',
+            express.static(frontpageConfigPath, {
+              setHeaders: (res) => {
+                res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+              }
+            })
+          )
+        }
+
+        logger.info('✅ Frontpage static files mounted at /assets, /img, /mp4, /config')
       } else if (!frontpageEnabled) {
         logger.info('ℹ️ Frontpage disabled via FRONTPAGE_ENABLED=false')
       } else {
