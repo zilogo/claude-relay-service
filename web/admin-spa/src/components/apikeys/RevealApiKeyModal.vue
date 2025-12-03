@@ -215,6 +215,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { apiClient } from '@/config/api'
 import { showToast } from '@/utils/toast'
+import { copyTextToClipboard } from '@/utils/clipboard'
 
 const props = defineProps({
   show: {
@@ -352,16 +353,10 @@ const submitReveal = async () => {
 const copyKey = async () => {
   if (!revealResult.value?.apiKey) return
   try {
-    if (
-      navigator.clipboard &&
-      typeof navigator.clipboard.writeText === 'function'
-    ) {
-      await navigator.clipboard.writeText(revealResult.value.apiKey)
-      showToast('API Key 已复制', 'success')
-    } else {
-      throw new Error('clipboard unavailable')
-    }
+    await copyTextToClipboard(revealResult.value.apiKey)
+    showToast('API Key 已复制', 'success')
   } catch (error) {
+    console.error('Failed to copy API key', error)
     showToast('复制失败，请手动复制', 'error')
   }
 }
