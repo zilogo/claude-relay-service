@@ -262,6 +262,18 @@ class Application {
       const frontpageExists =
         fs.existsSync(frontpagePath) && fs.existsSync(path.join(frontpagePath, 'index.html'))
 
+      const runtimeConfigEnv = process.env.FRONTPAGE_RUNTIME_CONFIG
+      let parsedRuntimeConfig = null
+      let runtimeConfigError = null
+      if (runtimeConfigEnv) {
+        try {
+          parsedRuntimeConfig = JSON.parse(runtimeConfigEnv)
+        } catch (error) {
+          runtimeConfigError = error
+          logger.warn(`⚠️ Failed to parse FRONTPAGE_RUNTIME_CONFIG: ${error.message}`)
+        }
+      }
+
       if (frontpageEnabled && frontpageExists) {
         // 版本化静态资源（长期缓存）
         this.app.use(
@@ -287,6 +299,19 @@ class Application {
         )
 
         const frontpageConfigPath = path.join(frontpagePath, 'config')
+        if (runtimeConfigEnv) {
+          this.app.get('/config/runtime-config.json', (req, res) => {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+            if (runtimeConfigError || !parsedRuntimeConfig) {
+              return res.status(500).json({
+                error: 'InvalidRuntimeConfig',
+                message: runtimeConfigError?.message || 'FRONTPAGE_RUNTIME_CONFIG is not valid JSON'
+              })
+            }
+            res.json(parsedRuntimeConfig)
+          })
+        }
+
         if (fs.existsSync(frontpageConfigPath)) {
           this.app.use(
             '/config',

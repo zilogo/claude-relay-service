@@ -11,7 +11,6 @@ services:
     volumes:
       - crs_logs:/app/logs
       - crs_data:/app/data
-      - ./frontpage-config.json:/app/web/frontpage/config/runtime-config.json:ro
     environment:
       # 🔐 安全配置（必填）
       - JWT_SECRET=mvFfeZVqKN6oAk7941BEsrtk54ivpQcA # 必填：至少32字符的随机字符串
