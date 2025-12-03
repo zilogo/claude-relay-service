@@ -137,7 +137,7 @@ const config = {
     apiKeyReveal: {
       enabled: process.env.ADMIN_ENABLE_API_KEY_REVEAL === 'true',
       requirePassword: process.env.ADMIN_REVEAL_REQUIRE_PASSWORD !== 'false',
-      requireReason: process.env.ADMIN_REVEAL_REQUIRE_REASON !== 'false',
+      requireReason: process.env.ADMIN_REVEAL_REQUIRE_REASON === 'true',
       rateLimit: getIntEnv(5, 'ADMIN_REVEAL_RATE_LIMIT'),
       rateLimitWindowSeconds: getIntEnv(300, 'ADMIN_REVEAL_RATE_WINDOW_SECONDS'),
       auditRetentionDays: getIntEnv(30, 'ADMIN_REVEAL_AUDIT_TTL'),

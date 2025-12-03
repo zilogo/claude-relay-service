@@ -202,6 +202,7 @@
 <script setup>
 import { ref } from 'vue'
 import { showToast } from '@/utils/toast'
+import { copyTextToClipboard } from '@/utils/clipboard'
 
 defineProps({
   show: {
@@ -240,7 +241,7 @@ const formatDate = (dateString) => {
 
 const copyToClipboard = async (text) => {
   try {
-    await navigator.clipboard.writeText(text)
+    await copyTextToClipboard(text)
     showToast('Copied to clipboard!', 'success')
   } catch (err) {
     console.error('Failed to copy:', err)

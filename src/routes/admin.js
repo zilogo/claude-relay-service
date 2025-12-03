@@ -1066,6 +1066,8 @@ router.post('/api-keys/:keyId/reveal', authenticateAdmin, async (req, res) => {
   const { keyId } = req.params
   const { adminPassword = '', reason = '' } = req.body || {}
   const trimmedReason = typeof reason === 'string' ? reason.trim() : ''
+  const reasonRequired = revealConfig.requireReason === true
+  const auditReason = trimmedReason || 'N/A'
 
   if (revealConfig.requirePassword !== false && (!adminPassword || adminPassword.length === 0)) {
     return res.status(400).json({
@@ -1074,7 +1076,7 @@ router.post('/api-keys/:keyId/reveal', authenticateAdmin, async (req, res) => {
     })
   }
 
-  if (revealConfig.requireReason !== false && trimmedReason.length === 0) {
+  if (reasonRequired && trimmedReason.length === 0) {
     return res.status(400).json({
       error: 'Reason required',
       message: 'Please provide a reason for auditing purposes'
@@ -1093,7 +1095,7 @@ router.post('/api-keys/:keyId/reveal', authenticateAdmin, async (req, res) => {
     adminUsername: req.admin.username,
     adminId: req.admin.id,
     keyId,
-    reason: trimmedReason,
+    reason: auditReason,
     ip: ipAddress,
     userAgent
   }

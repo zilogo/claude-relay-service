@@ -910,7 +910,7 @@ proxy_request_buffering off;
 ### 管理员二次查看 API Key（可选）
 
 - 🚫 **默认关闭**：只有在设置 `ADMIN_ENABLE_API_KEY_REVEAL=true` 时才会开放后台“查看明文”按钮。建议仅在确有排障需要时短暂开启。
-- 🔐 **安全校验**：管理员必须再次输入后台密码，并填写操作理由。所有尝试都会写入 Redis 审计列表以及 `logs/admin-reveal.log`，便于复盘。
+- 🔐 **安全校验**：管理员必须再次输入后台密码；操作理由默认可选，如需强制可以设置 `ADMIN_REVEAL_REQUIRE_REASON=true`。所有尝试都会写入 Redis 审计列表以及 `logs/admin-reveal.log`，便于复盘。
 - ⏱️ **频率限制**：通过 `ADMIN_REVEAL_RATE_LIMIT`（默认 5 次）与 `ADMIN_REVEAL_RATE_WINDOW_SECONDS`（默认 300 秒）控制短时间的查询次数，超限会直接拒绝。
 - 📁 **审计保留**：`ADMIN_REVEAL_AUDIT_TTL`（单位：天，默认 30）用于设置 Redis 中审计记录的保留时间，日志文件会持续追加。
 - 🧱 **加密要求**：必须确保 `.env` 中的 `ENCRYPTION_KEY` 长度 ≥ 32 字节。系统会为每个 API Key 保存 AES-256-GCM 密文（Redis 字段 `apiKeyCiphertext`），即使功能关闭也不会暴露明文。

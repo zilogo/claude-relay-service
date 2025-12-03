@@ -76,7 +76,7 @@
 
             <div>
               <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                操作理由（审计记录）
+                操作理由（可选，用于审计）
               </label>
               <textarea
                 v-model="form.reason"
