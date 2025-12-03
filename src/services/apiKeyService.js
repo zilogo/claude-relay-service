@@ -4,6 +4,18 @@ const config = require('../../config/config')
 const redis = require('../models/redis')
 const logger = require('../utils/logger')
 
+const apiKeyRevealConfig = config.adminFeatures?.apiKeyReveal || {}
+const API_KEY_ENCRYPTION_ALGORITHM =
+  apiKeyRevealConfig.encryptionAlgorithm ||
+  process.env.ADMIN_REVEAL_ENCRYPTION_ALGO ||
+  process.env.API_KEY_REVEAL_ALGO ||
+  'aes-256-gcm'
+const API_KEY_ENCRYPTION_SALT =
+  apiKeyRevealConfig.encryptionSalt ||
+  process.env.ADMIN_REVEAL_ENCRYPTION_SALT ||
+  process.env.API_KEY_REVEAL_SALT ||
+  'api-key-reveal-v1'
+
 const ACCOUNT_TYPE_CONFIG = {
   claude: { prefix: 'claude:account:' },
   'claude-console': { prefix: 'claude_console_account:' },
@@ -64,6 +76,7 @@ function sanitizeAccountIdForType(accountId, accountType) {
 class ApiKeyService {
   constructor() {
     this.prefix = config.security.apiKeyPrefix
+    this._apiKeyEncryptionKey = null
   }
 
   // 🔑 生成新的API Key
@@ -105,11 +118,22 @@ class ApiKeyService {
     const keyId = uuidv4()
     const hashedKey = this._hashApiKey(apiKey)
 
+    let apiKeyCiphertext = ''
+    try {
+      apiKeyCiphertext = this._encryptApiKeyForRecovery(apiKey)
+    } catch (error) {
+      logger.warn(
+        '⚠️ Failed to encrypt API key for recovery; reveal feature disabled for this key',
+        { error: error.message }
+      )
+    }
+
     const keyData = {
       id: keyId,
       name,
       description,
       apiKey: hashedKey,
+      apiKeyCiphertext: apiKeyCiphertext || '',
       tokenLimit: String(tokenLimit ?? 0),
       concurrencyLimit: String(concurrencyLimit ?? 0),
       rateLimitWindow: String(rateLimitWindow ?? 0),
@@ -185,7 +209,8 @@ class ApiKeyService {
       activatedAt: keyData.activatedAt,
       createdAt: keyData.createdAt,
       expiresAt: keyData.expiresAt,
-      createdBy: keyData.createdBy
+      createdBy: keyData.createdBy,
+      canReveal: Boolean(apiKeyCiphertext)
     }
   }
 
@@ -626,7 +651,11 @@ class ApiKeyService {
           key.lastUsage = null
         }
 
+        key.canReveal = this._canRevealApiKey(key)
         delete key.apiKey // 不返回哈希后的key
+        if (Object.prototype.hasOwnProperty.call(key, 'apiKeyCiphertext')) {
+          delete key.apiKeyCiphertext
+        }
       }
 
       return apiKeys
@@ -1410,6 +1439,63 @@ class ApiKeyService {
       .digest('hex')
   }
 
+  _getApiKeyEncryptionKey() {
+    if (this._apiKeyEncryptionKey) {
+      return this._apiKeyEncryptionKey
+    }
+
+    const secret = config.security.encryptionKey
+    if (!secret || typeof secret !== 'string' || secret.length < 16) {
+      throw new Error('ENCRYPTION_KEY must be configured to enable API key reveal')
+    }
+
+    this._apiKeyEncryptionKey = crypto.scryptSync(secret, API_KEY_ENCRYPTION_SALT, 32)
+    return this._apiKeyEncryptionKey
+  }
+
+  _encryptApiKeyForRecovery(apiKey) {
+    if (!apiKey) {
+      return ''
+    }
+    const key = this._getApiKeyEncryptionKey()
+    const iv = crypto.randomBytes(12)
+    const cipher = crypto.createCipheriv(API_KEY_ENCRYPTION_ALGORITHM, key, iv)
+    const encrypted = Buffer.concat([cipher.update(apiKey, 'utf8'), cipher.final()])
+    const authTag = cipher.getAuthTag()
+    return Buffer.concat([iv, authTag, encrypted]).toString('base64')
+  }
+
+  _decryptApiKeyCiphertext(ciphertext) {
+    if (!ciphertext) {
+      throw new Error('Encrypted API key not found')
+    }
+    const payload = Buffer.from(ciphertext, 'base64')
+    if (payload.length < 28) {
+      throw new Error('Encrypted API key payload is invalid')
+    }
+    const iv = payload.subarray(0, 12)
+    const authTag = payload.subarray(12, 28)
+    const encrypted = payload.subarray(28)
+    const key = this._getApiKeyEncryptionKey()
+    const decipher = crypto.createDecipheriv(API_KEY_ENCRYPTION_ALGORITHM, key, iv)
+    decipher.setAuthTag(authTag)
+    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()])
+    return decrypted.toString('utf8')
+  }
+
+  _canRevealApiKey(keyData) {
+    return Boolean(
+      config.adminFeatures?.apiKeyReveal?.enabled &&
+        keyData &&
+        keyData.apiKeyCiphertext &&
+        keyData.isDeleted !== 'true'
+    )
+  }
+
+  canRevealApiKey(keyData) {
+    return this._canRevealApiKey(keyData)
+  }
+
   // 📈 获取使用统计
   async getUsageStats(keyId, options = {}) {
     const usageStats = await redis.getUsageStats(keyId)
@@ -1537,6 +1623,67 @@ class ApiKeyService {
     }
   }
 
+  async revealApiKey(keyId) {
+    const revealConfig = config.adminFeatures?.apiKeyReveal || {}
+
+    if (!revealConfig.enabled) {
+      const error = new Error('API key reveal feature is disabled')
+      error.code = 'FEATURE_DISABLED'
+      throw error
+    }
+
+    const keyData = await redis.getApiKey(keyId)
+    if (!keyData || Object.keys(keyData).length === 0) {
+      const error = new Error('API key not found')
+      error.code = 'NOT_FOUND'
+      throw error
+    }
+
+    if (keyData.isDeleted === 'true') {
+      const error = new Error('API key has been deleted')
+      error.code = 'KEY_DELETED'
+      throw error
+    }
+
+    if (!keyData.apiKeyCiphertext) {
+      const error = new Error('API key does not support reveal')
+      error.code = 'NOT_SUPPORTED'
+      throw error
+    }
+
+    let plaintext
+    try {
+      plaintext = this._decryptApiKeyCiphertext(keyData.apiKeyCiphertext)
+    } catch (decryptError) {
+      const error = new Error('Failed to decrypt API key')
+      error.code = 'DECRYPT_FAILED'
+      error.originalError = decryptError
+      throw error
+    }
+
+    let tags = []
+    try {
+      tags = keyData.tags ? JSON.parse(keyData.tags) : []
+    } catch (error) {
+      tags = []
+    }
+
+    return {
+      apiKey: plaintext,
+      key: {
+        id: keyData.id || keyId,
+        name: keyData.name,
+        description: keyData.description,
+        userId: keyData.userId,
+        userUsername: keyData.userUsername,
+        createdAt: keyData.createdAt,
+        createdBy: keyData.createdBy,
+        permissions: keyData.permissions || 'all',
+        tags
+      }
+    }
+  }
+
   // 🔄 重新生成API Key
   async regenerateApiKey(keyId) {
     try {
@@ -1548,6 +1695,15 @@ class ApiKeyService {
       // 生成新的key
       const newApiKey = `${this.prefix}${this._generateSecretKey()}`
       const newHashedKey = this._hashApiKey(newApiKey)
+      let newCiphertext = ''
+      try {
+        newCiphertext = this._encryptApiKeyForRecovery(newApiKey)
+      } catch (error) {
+        logger.warn('⚠️ Failed to encrypt regenerated API key for recovery', {
+          keyId,
+          error: error.message
+        })
+      }
 
       // 删除旧的哈希映射
       const oldHashedKey = existingKey.apiKey
@@ -1557,6 +1713,7 @@ class ApiKeyService {
       const updatedKeyData = {
         ...existingKey,
         apiKey: newHashedKey,
+        apiKeyCiphertext: newCiphertext || '',
         updatedAt: new Date().toISOString()
       }
 
@@ -1569,7 +1726,8 @@ class ApiKeyService {
         id: keyId,
         name: existingKey.name,
         key: newApiKey, // 返回完整的新key
-        updatedAt: updatedKeyData.updatedAt
+        updatedAt: updatedKeyData.updatedAt,
+        canReveal: Boolean(newCiphertext)
       }
     } catch (error) {
       logger.error('❌ Failed to regenerate API key:', error)

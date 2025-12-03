@@ -29,8 +29,75 @@ const fs = require('fs')
 const path = require('path')
 const config = require('../../config/config')
 const ProxyHelper = require('../utils/proxyHelper')
+const bcrypt = require('bcryptjs')
+
+const fsPromises = fs.promises
 
 const router = express.Router()
+const ADMIN_REVEAL_RATE_PREFIX = 'admin:reveal:rate:'
+const ADMIN_REVEAL_AUDIT_KEY = 'admin:reveal:audit'
+const ADMIN_REVEAL_AUDIT_LIST_LIMIT = 500
+const ADMIN_REVEAL_LOG_PATH = path.join(config.logging.dirname, 'admin-reveal.log')
+
+const getApiKeyRevealConfig = () => config.adminFeatures?.apiKeyReveal || {}
+
+async function enforceApiKeyRevealRateLimit(adminId, ipAddress) {
+  const revealConfig = getApiKeyRevealConfig()
+  const limit = revealConfig.rateLimit || 0
+  if (!limit || limit <= 0) {
+    return
+  }
+
+  const windowSeconds = Math.max(revealConfig.rateLimitWindowSeconds || 300, 1)
+  const client = redis.getClientSafe()
+  const key = `${ADMIN_REVEAL_RATE_PREFIX}${adminId || 'unknown'}:${ipAddress || 'unknown'}`
+
+  const attempts = await client.incr(key)
+  if (attempts === 1) {
+    await client.expire(key, windowSeconds)
+  }
+
+  if (attempts > limit) {
+    const ttl = await client.ttl(key)
+    const error = new Error('Too many reveal attempts')
+    error.code = 'RATE_LIMIT'
+    error.retryAfter = ttl > 0 ? ttl : windowSeconds
+    throw error
+  }
+}
+
+async function recordApiKeyRevealAudit(entry) {
+  const payload = {
+    ...entry,
+    timestamp: new Date().toISOString()
+  }
+
+  try {
+    const client = redis.getClientSafe()
+    await client.lpush(ADMIN_REVEAL_AUDIT_KEY, JSON.stringify(payload))
+    await client.ltrim(ADMIN_REVEAL_AUDIT_KEY, 0, ADMIN_REVEAL_AUDIT_LIST_LIMIT - 1)
+
+    const retentionDays = getApiKeyRevealConfig().auditRetentionDays || 30
+    if (retentionDays > 0) {
+      await client.expire(ADMIN_REVEAL_AUDIT_KEY, retentionDays * 24 * 60 * 60)
+    }
+  } catch (error) {
+    logger.warn('⚠️ Failed to record API key reveal audit to Redis', { error: error.message })
+  }
+
+  try {
+    await fsPromises.appendFile(ADMIN_REVEAL_LOG_PATH, `${JSON.stringify(payload)}\n`, 'utf8')
+  } catch (error) {
+    logger.warn('⚠️ Failed to append API key reveal log file', { error: error.message })
+  }
+
+  logger.audit('📋 API key reveal event recorded', {
+    adminUsername: payload.adminUsername,
+    adminId: payload.adminId,
+    keyId: payload.keyId,
+    status: payload.status
+  })
+}
 
 // 🛠️ 工具函数：处理可为空的时间字段
 function normalizeNullableDate(value) {
@@ -982,6 +1049,137 @@ router.post('/api-keys', authenticateAdmin, async (req, res) => {
   } catch (error) {
     logger.error('❌ Failed to create API key:', error)
     return res.status(500).json({ error: 'Failed to create API key', message: error.message })
+  }
+})
+
+// 管理员二次查看 API Key 明文
+router.post('/api-keys/:keyId/reveal', authenticateAdmin, async (req, res) => {
+  const revealConfig = getApiKeyRevealConfig()
+
+  if (!revealConfig.enabled) {
+    return res.status(404).json({
+      error: 'Not found',
+      message: 'API key reveal feature is disabled'
+    })
+  }
+
+  const { keyId } = req.params
+  const { adminPassword = '', reason = '' } = req.body || {}
+  const trimmedReason = typeof reason === 'string' ? reason.trim() : ''
+
+  if (revealConfig.requirePassword !== false && (!adminPassword || adminPassword.length === 0)) {
+    return res.status(400).json({
+      error: 'Admin password required',
+      message: 'Admin password is required to reveal API keys'
+    })
+  }
+
+  if (revealConfig.requireReason !== false && trimmedReason.length === 0) {
+    return res.status(400).json({
+      error: 'Reason required',
+      message: 'Please provide a reason for auditing purposes'
+    })
+  }
+
+  const forwardedFor = req.headers['x-forwarded-for']
+  const forwardedIp =
+    typeof forwardedFor === 'string' && forwardedFor.length > 0
+      ? forwardedFor.split(',')[0].trim()
+      : null
+  const ipAddress = forwardedIp || req.ip || req.connection?.remoteAddress || 'unknown'
+  const userAgent = req.get('user-agent') || ''
+
+  const auditBase = {
+    adminUsername: req.admin.username,
+    adminId: req.admin.id,
+    keyId,
+    reason: trimmedReason,
+    ip: ipAddress,
+    userAgent
+  }
+
+  try {
+    await enforceApiKeyRevealRateLimit(req.admin.id, ipAddress)
+
+    if (revealConfig.requirePassword !== false) {
+      const adminCredentials = await redis.getSession('admin_credentials')
+
+      if (!adminCredentials || !adminCredentials.passwordHash) {
+        return res.status(500).json({
+          error: 'Admin credentials unavailable',
+          message: 'Unable to verify admin password at this time'
+        })
+      }
+
+      const passwordValid = await bcrypt.compare(adminPassword, adminCredentials.passwordHash)
+      if (!passwordValid) {
+        await recordApiKeyRevealAudit({
+          ...auditBase,
+          status: 'failure',
+          error: 'INVALID_PASSWORD'
+        })
+        return res.status(401).json({
+          error: 'Invalid admin password',
+          message: 'Admin password verification failed'
+        })
+      }
+    }
+
+    const revealResult = await apiKeyService.revealApiKey(keyId)
+
+    await recordApiKeyRevealAudit({
+      ...auditBase,
+      status: 'success',
+      keyName: revealResult.key.name
+    })
+
+    return res.json({
+      success: true,
+      data: {
+        apiKey: revealResult.apiKey,
+        keyId: revealResult.key.id,
+        keyName: revealResult.key.name,
+        owner: {
+          userId: revealResult.key.userId || '',
+          username: revealResult.key.userUsername || ''
+        },
+        permissions: revealResult.key.permissions,
+        tags: revealResult.key.tags || [],
+        createdAt: revealResult.key.createdAt
+      }
+    })
+  } catch (error) {
+    if (error.code === 'RATE_LIMIT') {
+      await recordApiKeyRevealAudit({
+        ...auditBase,
+        status: 'rate_limited',
+        error: 'RATE_LIMIT'
+      })
+      return res.status(429).json({
+        error: 'Too many requests',
+        message: 'Too many reveal attempts. Please wait before trying again.',
+        retryAfterSeconds: error.retryAfter
+      })
+    }
+
+    const statusMap = {
+      FEATURE_DISABLED: 404,
+      NOT_FOUND: 404,
+      KEY_DELETED: 410,
+      NOT_SUPPORTED: 400,
+      DECRYPT_FAILED: 500
+    }
+
+    await recordApiKeyRevealAudit({
+      ...auditBase,
+      status: 'failure',
+      error: error.code || 'UNKNOWN'
+    })
+
+    return res.status(statusMap[error.code] || 500).json({
+      error: error.code || 'RevealFailed',
+      message: error.message || 'Failed to reveal API key'
+    })
   }
 })
 

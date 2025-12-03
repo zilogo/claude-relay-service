@@ -791,6 +791,15 @@
                             <span class="ml-1 hidden xl:inline">详情</span>
                           </button>
                           <button
+                            v-if="key.canReveal"
+                            class="rounded px-2 py-1 text-xs font-medium text-teal-600 transition-colors hover:bg-teal-50 hover:text-teal-900 dark:hover:bg-teal-900/20"
+                            title="查看明文"
+                            @click="openRevealModal(key)"
+                          >
+                            <i class="fas fa-eye" />
+                            <span class="ml-1 hidden xl:inline">查看</span>
+                          </button>
+                          <button
                             v-if="key && key.id"
                             class="rounded px-2 py-1 text-xs font-medium text-indigo-600 transition-colors hover:bg-indigo-50 hover:text-indigo-900 dark:hover:bg-indigo-900/20"
                             title="模型使用分布"
@@ -1921,6 +1930,12 @@
       :show="showUsageDetailModal"
       @close="showUsageDetailModal = false"
     />
+    <RevealApiKeyModal
+      v-if="showRevealModal && revealTargetKey"
+      :show="showRevealModal"
+      :api-key="revealTargetKey"
+      @close="closeRevealModal"
+    />
   </div>
 </template>
 
@@ -1941,6 +1956,7 @@ import ExpiryEditModal from '@/components/apikeys/ExpiryEditModal.vue'
 import UsageDetailModal from '@/components/apikeys/UsageDetailModal.vue'
 import LimitProgressBar from '@/components/apikeys/LimitProgressBar.vue'
 import CustomDropdown from '@/components/common/CustomDropdown.vue'
+import RevealApiKeyModal from '@/components/apikeys/RevealApiKeyModal.vue'
 
 // 响应式数据
 const clientsStore = useClientsStore()
@@ -2018,6 +2034,8 @@ const editingExpiryKey = ref(null)
 const expiryEditModalRef = ref(null)
 const showUsageDetailModal = ref(false)
 const selectedApiKeyForDetail = ref(null)
+const showRevealModal = ref(false)
+const revealTargetKey = ref(null)
 
 // 标签相关
 const selectedTagFilter = ref('')
@@ -3244,6 +3262,16 @@ const openEditApiKeyModal = async (apiKey) => {
 const openRenewApiKeyModal = (apiKey) => {
   renewingApiKey.value = apiKey
   showRenewApiKeyModal.value = true
+}
+
+const openRevealModal = (apiKey) => {
+  revealTargetKey.value = apiKey
+  showRevealModal.value = true
+}
+
+const closeRevealModal = () => {
+  showRevealModal.value = false
+  revealTargetKey.value = null
 }
 
 // 处理创建成功

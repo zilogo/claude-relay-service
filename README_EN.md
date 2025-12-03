@@ -529,6 +529,16 @@ Both solutions are suitable for production deployment. If you use a Docker envir
 - **Update Keys**: Regularly change JWT and encryption keys
 - **Firewall Settings**: Only open necessary ports (80, 443), hide direct service ports
 
+### Optional: Admin API Key Reveal
+- 🚫 **Disabled by default** – set `ADMIN_ENABLE_API_KEY_REVEAL=true` only when you truly need to inspect a user key. The admin SPA hides the action otherwise.
+- 🔐 **Password + reason required** – admins must re-enter their backend password and submit an audit reason. Every attempt (success/failure/rate-limit) is stored in Redis and `logs/admin-reveal.log`.
+- ⏱️ **Rate limiting** – `ADMIN_REVEAL_RATE_LIMIT` (default 5) together with `ADMIN_REVEAL_RATE_WINDOW_SECONDS` (default 300 s) throttles reveal operations and prevents brute forcing.
+- 🗂 **Audit retention** – control how long Redis retains audit entries via `ADMIN_REVEAL_AUDIT_TTL` (days, default 30). The rotating log file remains for manual review.
+- 🧱 **Encryption prerequisite** – make sure `.env` contains a ≥32-byte `ENCRYPTION_KEY`. Every API key now stores an AES-256-GCM ciphertext so plaintexts are never persisted.
+- ⚙️ **Configurable cipher** – override `ADMIN_REVEAL_ENCRYPTION_ALGO` (default `aes-256-gcm`) and `ADMIN_REVEAL_ENCRYPTION_SALT` (default `api-key-reveal-v1`) if you need a different algorithm/salt. Use identical values on every node; mismatches break decrypting existing ciphertexts.
+- 🎯 **User experience** – enable flag → click “Reveal” in the admin SPA → enter password + reason → plaintext shows once with a copy button. Closing the modal requires re-authentication for the next reveal.
+- 🔁 **Emergency shutdown** – unset `ADMIN_ENABLE_API_KEY_REVEAL` to immediately remove UI access. Optionally delete the `apiKeyCiphertext` fields from Redis if you want to disable the feature permanently.
+
 ---
 
 ## 🆘 What to Do When You Encounter Problems?

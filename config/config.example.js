@@ -132,6 +132,24 @@ const config = {
     })() // 实时指标窗口（分钟，限制在1-60之间）
   },
 
+  // 🛡️ 管理功能开关
+  adminFeatures: {
+    apiKeyReveal: {
+      enabled: process.env.ADMIN_ENABLE_API_KEY_REVEAL === 'true',
+      requirePassword: process.env.ADMIN_REVEAL_REQUIRE_PASSWORD !== 'false',
+      requireReason: process.env.ADMIN_REVEAL_REQUIRE_REASON !== 'false',
+      rateLimit: getIntEnv(5, 'ADMIN_REVEAL_RATE_LIMIT'),
+      rateLimitWindowSeconds: getIntEnv(300, 'ADMIN_REVEAL_RATE_WINDOW_SECONDS'),
+      auditRetentionDays: getIntEnv(30, 'ADMIN_REVEAL_AUDIT_TTL'),
+      encryptionAlgorithm:
+        process.env.ADMIN_REVEAL_ENCRYPTION_ALGO || process.env.API_KEY_REVEAL_ALGO || 'aes-256-gcm',
+      encryptionSalt:
+        process.env.ADMIN_REVEAL_ENCRYPTION_SALT ||
+        process.env.API_KEY_REVEAL_SALT ||
+        'api-key-reveal-v1'
+    }
+  },
+
   // 🎨 Web界面配置
   web: {
     title: process.env.WEB_TITLE || 'Claude Relay Service',

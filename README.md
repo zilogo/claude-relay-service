@@ -907,6 +907,17 @@ proxy_request_buffering off;
 - **更新密钥**: 定期更换JWT和加密密钥
 - **防火墙设置**: 只开放必要的端口（80, 443），隐藏直接服务端口
 
+### 管理员二次查看 API Key（可选）
+
+- 🚫 **默认关闭**：只有在设置 `ADMIN_ENABLE_API_KEY_REVEAL=true` 时才会开放后台“查看明文”按钮。建议仅在确有排障需要时短暂开启。
+- 🔐 **安全校验**：管理员必须再次输入后台密码，并填写操作理由。所有尝试都会写入 Redis 审计列表以及 `logs/admin-reveal.log`，便于复盘。
+- ⏱️ **频率限制**：通过 `ADMIN_REVEAL_RATE_LIMIT`（默认 5 次）与 `ADMIN_REVEAL_RATE_WINDOW_SECONDS`（默认 300 秒）控制短时间的查询次数，超限会直接拒绝。
+- 📁 **审计保留**：`ADMIN_REVEAL_AUDIT_TTL`（单位：天，默认 30）用于设置 Redis 中审计记录的保留时间，日志文件会持续追加。
+- 🧱 **加密要求**：必须确保 `.env` 中的 `ENCRYPTION_KEY` 长度 ≥ 32 字节。系统会为每个 API Key 保存 AES-256-GCM 密文（Redis 字段 `apiKeyCiphertext`），即使功能关闭也不会暴露明文。
+- ⚙️ **算法可配置**：如需自定义，可以设置 `ADMIN_REVEAL_ENCRYPTION_ALGO`（默认 `aes-256-gcm`）与 `ADMIN_REVEAL_ENCRYPTION_SALT`（默认 `api-key-reveal-v1`），确保两端配置一致，否则旧密文无法解密。
+- 🎯 **使用流程**：开启配置 → 管理员在 Admin SPA 中点击“查看” → 输入密码与理由 → 一次性显示明文并可复制。关闭窗口后需要重新认证才能再次查看。
+- 🔁 **回滚方式**：删除或注释 `ADMIN_ENABLE_API_KEY_REVEAL` 即可立即禁用操作入口；如需彻底移除加密内容，可批量清空 Redis 中的 `apiKeyCiphertext` 字段（不会影响功能，但不再支持二次查看）。
+
 ---
 
 ## 🆘 遇到问题怎么办？
