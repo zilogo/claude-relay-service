@@ -311,6 +311,16 @@
                     >
                       {{ user.role }}
                     </span>
+                    <span
+                      :class="[
+                        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+                        (user.availableBalance ?? user.balance ?? 0) > 0
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
+                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                      ]"
+                    >
+                      Available ${{ formatCurrency(user.availableBalance ?? user.balance ?? 0, 4) }}
+                    </span>
                   </div>
                 </div>
                 <div
@@ -733,6 +743,14 @@ const formatNumber = (num) => {
     return (num / 1000).toFixed(1) + 'K'
   }
   return num.toString()
+}
+
+const formatCurrency = (value, digits = 2) => {
+  const amount = Number(value ?? 0)
+  if (!Number.isFinite(amount)) {
+    return (0).toFixed(digits)
+  }
+  return amount.toFixed(digits)
 }
 
 const formatDate = (dateString) => {

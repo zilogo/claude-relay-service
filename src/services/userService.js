@@ -319,6 +319,16 @@ class UserService {
             user.apiKeyCount = user.apiKeyCount || 0
           }
 
+          // Normalize balance-related fields for the user list response
+          const balance = parseFloat(user.balance) || 0
+          const totalRecharge = parseFloat(user.totalRecharge) || 0
+          const totalCost = user.totalUsage?.totalCost || 0
+
+          user.balance = balance
+          user.totalRecharge = totalRecharge
+          user.availableBalance = balance - totalCost
+          user.lastRechargeAt = user.lastRechargeAt || null
+
           users.push(user)
         }
       }
