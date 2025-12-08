@@ -532,6 +532,7 @@ Both solutions are suitable for production deployment. If you use a Docker envir
 ### Optional: Admin API Key Reveal
 - 🚫 **Disabled by default** – set `ADMIN_ENABLE_API_KEY_REVEAL=true` only when you truly need to inspect a user key. The admin SPA hides the action otherwise.
 - 🔐 **Password validation + optional reason** – admins always re-enter their backend password; the reason field is optional unless you set `ADMIN_REVEAL_REQUIRE_REASON=true`. Every attempt (success/failure/rate-limit) is stored in Redis and `logs/admin-reveal.log`.
+- 🆔 **Name-based lookup** – administrators now submit the API key name when triggering a reveal. The backend validates the name exists and is unique; otherwise it rejects the request. The response returns the plaintext along with the full metadata for auditing.
 - ⏱️ **Rate limiting** – `ADMIN_REVEAL_RATE_LIMIT` (default 5) together with `ADMIN_REVEAL_RATE_WINDOW_SECONDS` (default 300 s) throttles reveal operations and prevents brute forcing.
 - 🗂 **Audit retention** – control how long Redis retains audit entries via `ADMIN_REVEAL_AUDIT_TTL` (days, default 30). The rotating log file remains for manual review.
 - 🧱 **Encryption prerequisite** – make sure `.env` contains a ≥32-byte `ENCRYPTION_KEY`. Every API key now stores an AES-256-GCM ciphertext so plaintexts are never persisted.

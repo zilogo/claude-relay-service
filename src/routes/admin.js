@@ -95,6 +95,7 @@ async function recordApiKeyRevealAudit(entry) {
     adminUsername: payload.adminUsername,
     adminId: payload.adminId,
     keyId: payload.keyId,
+    keyName: payload.keyName,
     status: payload.status
   })
 }
@@ -1052,8 +1053,8 @@ router.post('/api-keys', authenticateAdmin, async (req, res) => {
   }
 })
 
-// 管理员二次查看 API Key 明文
-router.post('/api-keys/:keyId/reveal', authenticateAdmin, async (req, res) => {
+// 管理员二次查看 API Key 明文（按 keyName 查找）
+router.post('/api-keys/reveal', authenticateAdmin, async (req, res) => {
   const revealConfig = getApiKeyRevealConfig()
 
   if (!revealConfig.enabled) {
@@ -1063,9 +1064,9 @@ router.post('/api-keys/:keyId/reveal', authenticateAdmin, async (req, res) => {
     })
   }
 
-  const { keyId } = req.params
-  const { adminPassword = '', reason = '' } = req.body || {}
+  const { adminPassword = '', reason = '', keyName = '' } = req.body || {}
   const trimmedReason = typeof reason === 'string' ? reason.trim() : ''
+  const normalizedKeyName = typeof keyName === 'string' ? keyName.trim() : ''
   const reasonRequired = revealConfig.requireReason === true
   const auditReason = trimmedReason || 'N/A'
 
@@ -1083,6 +1084,13 @@ router.post('/api-keys/:keyId/reveal', authenticateAdmin, async (req, res) => {
     })
   }
 
+  if (!normalizedKeyName) {
+    return res.status(400).json({
+      error: 'Key name required',
+      message: 'Please provide the keyName of the API key you want to reveal'
+    })
+  }
+
   const forwardedFor = req.headers['x-forwarded-for']
   const forwardedIp =
     typeof forwardedFor === 'string' && forwardedFor.length > 0
@@ -1094,7 +1102,7 @@ router.post('/api-keys/:keyId/reveal', authenticateAdmin, async (req, res) => {
   const auditBase = {
     adminUsername: req.admin.username,
     adminId: req.admin.id,
-    keyId,
+    keyName: normalizedKeyName,
     reason: auditReason,
     ip: ipAddress,
     userAgent
@@ -1127,11 +1135,12 @@ router.post('/api-keys/:keyId/reveal', authenticateAdmin, async (req, res) => {
       }
     }
 
-    const revealResult = await apiKeyService.revealApiKey(keyId)
+    const revealResult = await apiKeyService.revealApiKeyByName(normalizedKeyName)
 
     await recordApiKeyRevealAudit({
       ...auditBase,
       status: 'success',
+      keyId: revealResult.key.id,
       keyName: revealResult.key.name
     })
 
@@ -1142,12 +1151,20 @@ router.post('/api-keys/:keyId/reveal', authenticateAdmin, async (req, res) => {
         keyId: revealResult.key.id,
         keyName: revealResult.key.name,
         owner: {
-          userId: revealResult.key.userId || '',
-          username: revealResult.key.userUsername || ''
+          userId:
+            revealResult.key.owner?.userId ||
+            revealResult.key.userId ||
+            '',
+          username:
+            revealResult.key.owner?.username ||
+            revealResult.key.userUsername ||
+            ''
         },
         permissions: revealResult.key.permissions,
         tags: revealResult.key.tags || [],
-        createdAt: revealResult.key.createdAt
+        createdAt: revealResult.key.createdAt,
+        key: revealResult.key,
+        keyDetails: revealResult.key
       }
     })
   } catch (error) {
@@ -1169,7 +1186,10 @@ router.post('/api-keys/:keyId/reveal', authenticateAdmin, async (req, res) => {
       NOT_FOUND: 404,
       KEY_DELETED: 410,
       NOT_SUPPORTED: 400,
-      DECRYPT_FAILED: 500
+      DECRYPT_FAILED: 500,
+      KEY_NAME_REQUIRED: 400,
+      KEY_NAME_NOT_FOUND: 404,
+      KEY_NAME_NOT_UNIQUE: 409
     }
 
     await recordApiKeyRevealAudit({

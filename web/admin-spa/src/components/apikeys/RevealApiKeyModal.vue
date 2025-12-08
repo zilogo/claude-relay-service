@@ -304,11 +304,18 @@ const submitReveal = async () => {
     return
   }
 
+  if (!currentKey.value.name) {
+    errorMessage.value = '当前 API Key 缺少名称，无法执行二次查看'
+    return
+  }
+
   loading.value = true
   errorMessage.value = ''
 
   try {
-    const payload = {}
+    const payload = {
+      keyName: currentKey.value.name
+    }
     if (form.password) {
       payload.adminPassword = form.password
     }
@@ -316,7 +323,7 @@ const submitReveal = async () => {
       payload.reason = form.reason.trim()
     }
 
-    const data = await apiClient.post(`/admin/api-keys/${currentKey.value.id}/reveal`, payload)
+    const data = await apiClient.post('/admin/api-keys/reveal', payload)
     if (!data.success) {
       throw new Error(data.message || 'Reveal failed')
     }
@@ -334,7 +341,8 @@ const submitReveal = async () => {
       permissions: data.data?.permissions || data.data?.key?.permissions || currentKey.value.permissions || 'all',
       tags: data.data?.tags || data.data?.key?.tags || currentKey.value.tags || [],
       createdAt:
-        data.data?.createdAt || data.data?.key?.createdAt || currentKey.value.createdAt
+        data.data?.createdAt || data.data?.key?.createdAt || currentKey.value.createdAt,
+      keyDetails: data.data?.keyDetails || data.data?.key || null
     }
 
     showToast('已获取 API Key 明文', 'success')

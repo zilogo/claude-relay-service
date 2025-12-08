@@ -46,6 +46,14 @@ const ACCOUNT_CATEGORY_MAP = {
   droid: 'droid'
 }
 
+const configuredRevealScanBatch = parseInt(
+  config.adminFeatures?.apiKeyReveal?.scanBatchSize ?? 200,
+  10
+)
+const API_KEY_REVEAL_SCAN_BATCH = Number.isNaN(configuredRevealScanBatch)
+  ? 200
+  : Math.max(configuredRevealScanBatch, 50)
+
 function normalizeAccountTypeKey(type) {
   if (!type) {
     return null
@@ -1623,7 +1631,7 @@ class ApiKeyService {
     }
   }
 
-  async revealApiKey(keyId) {
+  async revealApiKey(keyId, keyDataOverride = null) {
     const revealConfig = config.adminFeatures?.apiKeyReveal || {}
 
     if (!revealConfig.enabled) {
@@ -1632,7 +1640,7 @@ class ApiKeyService {
       throw error
     }
 
-    const keyData = await redis.getApiKey(keyId)
+    const keyData = keyDataOverride || (await redis.getApiKey(keyId))
     if (!keyData || Object.keys(keyData).length === 0) {
       const error = new Error('API key not found')
       error.code = 'NOT_FOUND'
@@ -1661,27 +1669,41 @@ class ApiKeyService {
       throw error
     }
 
-    let tags = []
-    try {
-      tags = keyData.tags ? JSON.parse(keyData.tags) : []
-    } catch (error) {
-      tags = []
-    }
+    const keyDetails = this._formatKeyDetailsForReveal(keyData, keyId)
 
     return {
       apiKey: plaintext,
-      key: {
-        id: keyData.id || keyId,
-        name: keyData.name,
-        description: keyData.description,
-        userId: keyData.userId,
-        userUsername: keyData.userUsername,
-        createdAt: keyData.createdAt,
-        createdBy: keyData.createdBy,
-        permissions: keyData.permissions || 'all',
-        tags
-      }
+      key: keyDetails
     }
+  }
+
+  async revealApiKeyByName(keyName) {
+    const normalizedKeyName = this._normalizeKeyNameInput(keyName)
+    if (!normalizedKeyName) {
+      const error = new Error('Key name is required to reveal API keys')
+      error.code = 'KEY_NAME_REQUIRED'
+      throw error
+    }
+
+    const matches = await this._findApiKeysByName(normalizedKeyName.toLowerCase())
+
+    if (matches.length === 0) {
+      const error = new Error('API key not found for the provided name')
+      error.code = 'KEY_NAME_NOT_FOUND'
+      throw error
+    }
+
+    if (matches.length > 1) {
+      const error = new Error(
+        'Multiple API keys share this name. Please rename duplicates and try again.'
+      )
+      error.code = 'KEY_NAME_NOT_UNIQUE'
+      error.conflictingKeyIds = matches.map((match) => match.id)
+      throw error
+    }
+
+    const [match] = matches
+    return this.revealApiKey(match.id, match.data)
   }
 
   // 🔄 重新生成API Key
@@ -1824,6 +1846,148 @@ class ApiKeyService {
         modelStats: []
       }
     }
+  }
+
+  _normalizeKeyNameInput(keyName) {
+    if (typeof keyName !== 'string') {
+      return ''
+    }
+    return keyName.trim()
+  }
+
+  async _findApiKeysByName(normalizedKeyName, options = {}) {
+    const { includeDeleted = false } = options
+    if (!normalizedKeyName) {
+      return []
+    }
+
+    const client = redis.getClientSafe()
+    let cursor = '0'
+    const matches = []
+    const scanArgs = ['MATCH', 'apikey:*', 'COUNT', API_KEY_REVEAL_SCAN_BATCH]
+
+    do {
+      const [nextCursor, keys] = await client.scan(cursor, ...scanArgs)
+      cursor = nextCursor
+
+      for (const redisKey of keys) {
+        if (redisKey === 'apikey:hash_map') {
+          continue
+        }
+
+        const keyData = await client.hgetall(redisKey)
+        if (!keyData || Object.keys(keyData).length === 0) {
+          continue
+        }
+
+        if (!includeDeleted && keyData.isDeleted === 'true') {
+          continue
+        }
+
+        const storedName = (keyData.name || '').trim().toLowerCase()
+        if (!storedName) {
+          continue
+        }
+
+        if (storedName === normalizedKeyName) {
+          matches.push({
+            id: redisKey.replace('apikey:', ''),
+            data: keyData
+          })
+        }
+      }
+    } while (cursor !== '0')
+
+    return matches
+  }
+
+  _formatKeyDetailsForReveal(keyData, fallbackKeyId) {
+    const safeKeyDetails = {
+      id: keyData.id || fallbackKeyId,
+      name: keyData.name || '',
+      description: keyData.description || '',
+      userId: keyData.userId || '',
+      userUsername: keyData.userUsername || '',
+      userEmail: keyData.userEmail || '',
+      createdBy: keyData.createdBy || '',
+      createdAt: keyData.createdAt || null,
+      updatedAt: keyData.updatedAt || null,
+      lastUsedAt: keyData.lastUsedAt || null,
+      expiresAt: keyData.expiresAt || null,
+      activatedAt: keyData.activatedAt || null,
+      activationDays: this._toInt(keyData.activationDays, 0),
+      activationUnit: keyData.activationUnit || 'days',
+      expirationMode: keyData.expirationMode || 'fixed',
+      isActivated: this._toBoolean(keyData.isActivated),
+      isActive: this._toBoolean(keyData.isActive),
+      isDeleted: this._toBoolean(keyData.isDeleted),
+      deletedAt: keyData.deletedAt || null,
+      deletedBy: keyData.deletedBy || '',
+      deletedByType: keyData.deletedByType || '',
+      permissions: keyData.permissions || 'all',
+      tokenLimit: this._toInt(keyData.tokenLimit, 0),
+      concurrencyLimit: this._toInt(keyData.concurrencyLimit, 0),
+      rateLimitWindow: this._toInt(keyData.rateLimitWindow, 0),
+      rateLimitRequests: this._toInt(keyData.rateLimitRequests, 0),
+      rateLimitCost: this._toFloat(keyData.rateLimitCost, 0),
+      dailyCostLimit: this._toFloat(keyData.dailyCostLimit, 0),
+      totalCostLimit: this._toFloat(keyData.totalCostLimit, 0),
+      weeklyOpusCostLimit: this._toFloat(keyData.weeklyOpusCostLimit, 0),
+      enableModelRestriction: this._toBoolean(keyData.enableModelRestriction),
+      enableClientRestriction: this._toBoolean(keyData.enableClientRestriction),
+      restrictedModels: this._parseJsonArrayField(keyData.restrictedModels),
+      allowedClients: this._parseJsonArrayField(keyData.allowedClients),
+      tags: this._parseJsonArrayField(keyData.tags),
+      claudeAccountId: keyData.claudeAccountId || '',
+      claudeConsoleAccountId: keyData.claudeConsoleAccountId || '',
+      geminiAccountId: keyData.geminiAccountId || '',
+      openaiAccountId: keyData.openaiAccountId || '',
+      azureOpenaiAccountId: keyData.azureOpenaiAccountId || '',
+      bedrockAccountId: keyData.bedrockAccountId || '',
+      droidAccountId: keyData.droidAccountId || '',
+      ccrAccountId: keyData.ccrAccountId || '',
+      icon: keyData.icon || ''
+    }
+
+    safeKeyDetails.owner = {
+      userId: safeKeyDetails.userId,
+      username: safeKeyDetails.userUsername
+    }
+
+    return safeKeyDetails
+  }
+
+  _parseJsonArrayField(value) {
+    if (!value) {
+      return []
+    }
+
+    try {
+      const parsed = typeof value === 'string' ? JSON.parse(value) : value
+      return Array.isArray(parsed) ? parsed : []
+    } catch (error) {
+      return []
+    }
+  }
+
+  _toBoolean(value) {
+    if (typeof value === 'boolean') {
+      return value
+    }
+    if (value === undefined || value === null) {
+      return false
+    }
+    return String(value).toLowerCase() === 'true'
+  }
+
+  _toInt(value, fallback = 0) {
+    const parsed = parseInt(value, 10)
+    return Number.isNaN(parsed) ? fallback : parsed
+  }
+
+  _toFloat(value, fallback = 0) {
+    const parsed = parseFloat(value)
+    return Number.isNaN(parsed) ? fallback : parsed
   }
 
   // 🔓 解绑账号从所有API Keys
