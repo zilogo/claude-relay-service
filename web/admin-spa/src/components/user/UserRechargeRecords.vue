@@ -158,6 +158,9 @@
             <p v-if="customAmount" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
               ≈ ${{ (customAmount / paymentStore.currency.exchangeRate).toFixed(2) }}
             </p>
+            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              充值100元人民币，得100美元使用额度！
+            </p>
           </div>
 
           <!-- 支付方式选择 -->
