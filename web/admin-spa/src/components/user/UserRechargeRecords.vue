@@ -157,8 +157,8 @@
             <p v-if="convertedAmountHint" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
               {{ convertedAmountHint }}
             </p>
-            <p v-if="exchangeRateHint" class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              {{ exchangeRateHint }}
+            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              充值100元人民币，得100美元使用额度！
             </p>
           </div>
 
@@ -169,7 +169,7 @@
             </label>
             <div class="flex flex-wrap gap-3">
               <button
-                v-for="method in paymentStore.paymentMethods"
+                v-for="method in availablePaymentMethods"
                 :key="`${method.provider}-${method.method}`"
                 class="flex w-full max-w-xs items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all hover:border-[#D97757]"
                 :class="
@@ -219,20 +219,9 @@
                 </span>
                 <div>
                   <div class="font-medium text-gray-900 dark:text-white">{{ method.name }}</div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400">
-                    {{ getMethodInfo(method) }}
-                  </div>
                 </div>
               </button>
             </div>
-          </div>
-
-          <div
-            v-if="isStripeSelected"
-            class="mb-6 rounded-xl border border-blue-200 bg-blue-50/80 p-4 text-sm text-blue-700 dark:border-blue-800/70 dark:bg-blue-900/30 dark:text-blue-100"
-          >
-            Stripe 支付使用美元结算，支持 Visa / Mastercard / JCB 等国际信用卡。创建订单后将跳转至
-            Stripe Checkout 页面完成付款。
           </div>
 
           <!-- 充值按钮 -->
@@ -790,10 +779,11 @@ const convertedAmountHint = computed(() => {
   return `约等于 ¥${(amount * exchangeRate.value).toFixed(2)}`
 })
 
-const exchangeRateHint = computed(() => {
-  if (!exchangeRate.value) return ''
-  return `当前系统折算：1 USD ≈ ¥${exchangeRate.value.toFixed(2)}`
-})
+const availablePaymentMethods = computed(() =>
+  (paymentStore.paymentMethods || []).filter(
+    (method) => !(method.provider === 'zpay' && method.method === 'wxpay')
+  )
+)
 
 const totalPages = computed(() => Math.ceil(totalRecords.value / pageSize.value))
 
@@ -858,21 +848,6 @@ const isMethodSelected = (method) => {
   )
 }
 
-const getMethodInfo = (method) => {
-  const currency = (method.currency || paymentStore.currency?.default || 'CNY').toUpperCase()
-  if (method.provider === 'stripe') {
-    return `Stripe 微信支付 · 结算货币：${currency}`
-  }
-  if (method.provider === 'zpay' && method.method === 'alipay') {
-    return `支付宝 · 结算货币：${currency}`
-  }
-  if (method.provider === 'zpay' && method.method === 'wxpay') {
-    return `微信支付 · 结算货币：${currency}`
-  }
-  return `结算货币：${currency}`
-}
-
-const isStripeSelected = computed(() => selectedMethod.value?.provider === 'stripe')
 const isWechatQrDialog = computed(() => paymentDialogData.value?.wechatType === 'qr')
 const isWechatRedirectDialog = computed(() => paymentDialogData.value?.wechatType === 'redirect')
 
@@ -1080,10 +1055,12 @@ const loadPaymentConfig = async () => {
   try {
     await paymentStore.loadConfig()
     customCurrency.value = (paymentStore.currency?.default || 'CNY').toUpperCase()
-    // 默认选择第一个支付方式
-    if (paymentStore.paymentMethods.length > 0) {
-      selectedMethod.value = paymentStore.paymentMethods[0]
+    const methods = availablePaymentMethods.value
+    if (methods.length > 0) {
+      selectedMethod.value = methods[0]
       updateCurrencyByMethod(selectedMethod.value)
+    } else {
+      selectedMethod.value = null
     }
   } catch (error) {
     console.error('Failed to load payment config:', error)
@@ -1097,6 +1074,27 @@ watch(
       updateCurrencyByMethod(method)
     }
   }
+)
+
+watch(
+  availablePaymentMethods,
+  (methods) => {
+    if (!methods || methods.length === 0) {
+      selectedMethod.value = null
+      return
+    }
+    const currentExists = methods.some(
+      (method) =>
+        selectedMethod.value &&
+        method.provider === selectedMethod.value.provider &&
+        method.method === selectedMethod.value.method
+    )
+    if (!currentExists) {
+      selectedMethod.value = methods[0]
+      updateCurrencyByMethod(selectedMethod.value)
+    }
+  },
+  { immediate: false }
 )
 
 const formatDate = (dateString) => {
