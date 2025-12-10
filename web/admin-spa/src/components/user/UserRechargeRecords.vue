@@ -762,6 +762,18 @@ const maxAmount = computed(() => {
   return maxUsd
 })
 
+const stripeConfig = computed(() => paymentStore.stripeConfig || {})
+
+const stripeMinimumCny = computed(() => {
+  const cfg = stripeConfig.value
+  if (!cfg || !cfg.minConvertedAmount) {
+    return 0
+  }
+  const rate = cfg.exchangeRateToCny || 1
+  const value = cfg.minConvertedAmount * rate
+  return Number.isFinite(value) ? parseFloat(value.toFixed(2)) : 0
+})
+
 const convertedAmountHint = computed(() => {
   if (!customAmount.value) return ''
   const amount = parseFloat(customAmount.value)
@@ -1106,14 +1118,13 @@ const createPaymentOrder = async () => {
       packageId = null
     }
 
-    const minAllowed =
-      currentCurrency.value === 'CNY' ? minAmount.value : paymentStore.limits?.min || 0
-    if (minAllowed && amount < minAllowed) {
-      const hint =
-        currentCurrency.value === 'CNY'
-          ? `至少需要充值 ¥${minAllowed.toFixed(2)}`
-          : `至少需要充值 ${currencySymbol.value}${minAllowed}`
-      showToast(hint, 'error')
+    if (
+      selectedMethod.value.provider === 'stripe' &&
+      stripeMinimumCny.value > 0 &&
+      ((currency === 'CNY' && amount < stripeMinimumCny.value) ||
+        (currency !== 'CNY' && amount * exchangeRate.value < stripeMinimumCny.value))
+    ) {
+      showToast(`微信支付最少需要充值 ¥${stripeMinimumCny.value.toFixed(2)}`, 'error')
       return
     }
 
