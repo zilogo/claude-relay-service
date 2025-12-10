@@ -44,10 +44,6 @@ export const usePaymentStore = defineStore('payment', {
     // 金额限制
     limits: (state) => state.config?.limits || { min: 1, max: 1000, allowCustom: true },
 
-    // Stripe 配置
-    stripeConfig: (state) =>
-      state.config?.stripe || { currency: 'CNY', exchangeRateToCny: 1, minConvertedAmount: 0.5 },
-
     // 是否允许自定义金额
     allowCustomAmount: (state) => state.config?.limits?.allowCustom !== false
   },
