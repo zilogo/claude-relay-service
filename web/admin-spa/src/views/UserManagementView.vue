@@ -538,18 +538,18 @@
     <!-- Recharge Modal -->
     <div
       v-if="showRechargeModal"
-      class="fixed inset-0 z-50 overflow-y-auto"
       aria-labelledby="modal-title"
-      role="dialog"
       aria-modal="true"
+      class="fixed inset-0 z-50 overflow-y-auto"
+      role="dialog"
     >
       <div
         class="flex min-h-screen items-end justify-center px-4 pb-20 pt-4 text-center sm:block sm:p-0"
       >
         <!-- Background overlay -->
         <div
-          class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity dark:bg-gray-900 dark:bg-opacity-75"
           aria-hidden="true"
+          class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity dark:bg-gray-900 dark:bg-opacity-75"
           @click="showRechargeModal = false"
         ></div>
 
@@ -624,8 +624,8 @@
               <!-- Amount Input -->
               <div>
                 <label
-                  for="recharge-amount"
                   class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  for="recharge-amount"
                 >
                   充值金额 (USD)
                 </label>
@@ -636,11 +636,11 @@
                   <input
                     id="recharge-amount"
                     v-model.number="rechargeForm.amount"
-                    type="number"
-                    min="0.01"
-                    step="0.01"
                     class="block w-full rounded-md border-gray-300 pl-7 pr-12 focus:border-emerald-500 focus:ring-emerald-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+                    min="0.01"
                     placeholder="0.00"
+                    step="0.01"
+                    type="number"
                   />
                 </div>
               </div>
@@ -648,17 +648,17 @@
               <!-- Remark Input -->
               <div>
                 <label
-                  for="recharge-remark"
                   class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  for="recharge-remark"
                 >
                   备注（可选）
                 </label>
                 <input
                   id="recharge-remark"
                   v-model="rechargeForm.remark"
-                  type="text"
                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
                   placeholder="例如：首次充值"
+                  type="text"
                 />
               </div>
             </div>
@@ -666,9 +666,9 @@
 
           <div class="bg-gray-50 px-4 py-3 dark:bg-gray-700 sm:flex sm:flex-row-reverse sm:px-6">
             <button
-              type="button"
               class="inline-flex w-full justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:ml-3 sm:w-auto sm:text-sm"
               :disabled="!rechargeForm.amount || rechargeForm.amount <= 0 || rechargeLoading"
+              type="button"
               @click="handleRecharge"
             >
               <svg
@@ -687,15 +687,15 @@
                 ></circle>
                 <path
                   class="opacity-75"
-                  fill="currentColor"
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  fill="currentColor"
                 ></path>
               </svg>
               确认充值
             </button>
             <button
-              type="button"
               class="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 sm:ml-3 sm:mt-0 sm:w-auto sm:text-sm"
+              type="button"
               @click="showRechargeModal = false"
             >
               取消

@@ -1932,8 +1932,8 @@
     />
     <RevealApiKeyModal
       v-if="showRevealModal && revealTargetKey"
-      :show="showRevealModal"
       :api-key="revealTargetKey"
+      :show="showRevealModal"
       @close="closeRevealModal"
     />
   </div>

@@ -27,10 +27,13 @@ const getFloatEnv = (defaultValue, ...names) => {
   return Number.isFinite(value) ? value : defaultValue
 }
 
+const serverPort = parseInt(process.env.PORT, 10) || 3000
+const defaultBaseUrl = process.env.BASE_URL || `http://localhost:${serverPort}`
+
 const config = {
   // 🌐 服务器配置
   server: {
-    port: parseInt(process.env.PORT) || 3000,
+    port: serverPort,
     host: process.env.HOST || '0.0.0.0',
     nodeEnv: process.env.NODE_ENV || 'development',
     trustProxy: process.env.TRUST_PROXY === 'true'
@@ -257,7 +260,7 @@ const config = {
   // 💳 支付系统配置
   payment: {
     enabled: process.env.PAYMENT_ENABLED === 'true',
-    baseUrl: process.env.BASE_URL || `http://localhost:${parseInt(process.env.PORT) || 3000}`,
+    baseUrl: defaultBaseUrl,
 
     // 充值金额限制
     minAmount: getFloatEnv(1, 'PAYMENT_MIN_AMOUNT', 'RECHARGE_MIN_AMOUNT'),
@@ -301,6 +304,28 @@ const config = {
         : [],
       requireHttps:
         process.env.ZPAY_REQUIRE_HTTPS !== 'false' && process.env.NODE_ENV === 'production'
+    },
+
+    // Stripe 配置
+    stripe: {
+      enabled: process.env.STRIPE_ENABLED === 'true',
+      apiKey: pickEnv('STRIPE_SECRET_KEY', 'STRIPE_API_KEY') || '',
+      apiVersion: process.env.STRIPE_API_VERSION || '2024-06-20',
+      webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
+      paymentMethods: process.env.STRIPE_PAYMENT_METHODS
+        ? process.env.STRIPE_PAYMENT_METHODS.split(',').map((m) => m.trim()).filter(Boolean)
+        : ['wechat_pay'],
+      currency: (process.env.STRIPE_CURRENCY || 'CNY').toLowerCase(),
+      successUrl:
+        process.env.STRIPE_SUCCESS_URL ||
+        `${defaultBaseUrl}/payment/return/stripe?order={ORDER_ID}&status=success`,
+      cancelUrl:
+        process.env.STRIPE_CANCEL_URL ||
+        `${defaultBaseUrl}/payment/return/stripe?order={ORDER_ID}&status=cancel`,
+      wechatPay: {
+        client: process.env.STRIPE_WECHAT_CLIENT || 'wechat_qr',
+        appId: process.env.STRIPE_WECHAT_APP_ID || ''
+      }
     }
   },
 

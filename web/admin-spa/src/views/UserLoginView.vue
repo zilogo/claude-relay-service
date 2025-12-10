@@ -4,10 +4,10 @@
   >
     <!-- 装饰性背景元素 -->
     <div
-      class="absolute left-1/4 top-1/4 h-96 w-96 animate-pulse rounded-full bg-[#D97757]/8 blur-3xl dark:bg-[#D97757]/5"
+      class="bg-[#D97757]/8 absolute left-1/4 top-1/4 h-96 w-96 animate-pulse rounded-full blur-3xl dark:bg-[#D97757]/5"
     ></div>
     <div
-      class="absolute bottom-1/4 right-1/4 h-96 w-96 animate-pulse rounded-full bg-[#E6A87C]/8 blur-3xl dark:bg-[#E6A87C]/5"
+      class="bg-[#E6A87C]/8 absolute bottom-1/4 right-1/4 h-96 w-96 animate-pulse rounded-full blur-3xl dark:bg-[#E6A87C]/5"
       style="animation-delay: 1s"
     ></div>
 
@@ -31,9 +31,7 @@
             />
           </svg>
         </div>
-        <h1 class="mb-2 font-serif text-3xl font-bold text-gray-900 dark:text-white">
-          用户登录
-        </h1>
+        <h1 class="mb-2 font-serif text-3xl font-bold text-gray-900 dark:text-white">用户登录</h1>
         <p class="text-sm text-[#5f5f5f] dark:text-gray-400">登录您的账户以管理 API Keys</p>
       </div>
 
@@ -99,10 +97,10 @@
                   viewBox="0 0 24 24"
                 >
                   <path
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     stroke-width="2"
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                   />
                 </svg>
               </div>
@@ -137,10 +135,10 @@
                   viewBox="0 0 24 24"
                 >
                   <path
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     stroke-width="2"
-                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                   />
                 </svg>
               </div>

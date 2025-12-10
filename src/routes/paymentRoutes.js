@@ -61,10 +61,13 @@ router.post('/orders', authenticateUser, async (req, res) => {
       data: {
         orderId: order.id,
         payUrl: order.payUrl,
+        paymentData: order.paymentData || null,
         amount: order.amount,
         currency: order.currency,
         amountUsd: order.amountUsd,
-        expiredAt: order.expiredAt
+        expiredAt: order.expiredAt,
+        provider: order.provider,
+        paymentMethod: order.paymentMethod
       }
     })
   } catch (error) {
@@ -172,6 +175,39 @@ router.post('/webhook/zpay', handleZpayWebhook)
 router.get('/webhook/zpay', handleZpayWebhook)
 
 /**
+ * Stripe 支付回调
+ * 仅支持 POST /payment/webhook/stripe
+ */
+router.post('/webhook/stripe', async (req, res) => {
+  try {
+    logger.info('[PaymentRoutes] Stripe webhook received', {
+      headers: req.headers,
+      bodyKeys: req.body ? Object.keys(req.body) : []
+    })
+
+    const signature = req.headers['stripe-signature']
+
+    const result = await paymentService.handleCallback('stripe', {
+      rawBody: req.rawBody,
+      signature,
+      body: req.body,
+      headers: req.headers
+    })
+
+    res.json({
+      success: true,
+      data: result
+    })
+  } catch (error) {
+    logger.error('[PaymentRoutes] Stripe webhook error:', error)
+    res.status(400).json({
+      success: false,
+      error: error.message
+    })
+  }
+})
+
+/**
  * ZPAY 支付同步回调（用户支付后跳转）
  * GET /payment/return/zpay
  * 处理用户支付后的页面跳转
@@ -188,6 +224,23 @@ router.get('/return/zpay', async (req, res) => {
   } catch (error) {
     logger.error('[PaymentRoutes] ZPAY return error:', error)
     res.redirect('/admin-next/#/user-dashboard?tab=recharge&error=callback_failed')
+  }
+})
+
+/**
+ * Stripe 支付同步回调（成功/取消后跳转）
+ */
+router.get('/return/stripe', async (req, res) => {
+  try {
+    logger.info('[PaymentRoutes] Stripe return callback', { query: req.query })
+    const { order: orderId, status = 'success' } = req.query
+    const redirectUrl = `/admin-next/#/user-dashboard?tab=recharge&provider=stripe&order=${encodeURIComponent(
+      orderId || ''
+    )}&status=${encodeURIComponent(status)}`
+    res.redirect(redirectUrl)
+  } catch (error) {
+    logger.error('[PaymentRoutes] Stripe return error:', error)
+    res.redirect('/admin-next/#/user-dashboard?tab=recharge&provider=stripe&error=callback_failed')
   }
 })
 

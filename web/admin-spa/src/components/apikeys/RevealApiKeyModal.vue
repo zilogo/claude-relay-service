@@ -11,9 +11,7 @@
           class="flex items-start justify-between border-b border-gray-100 px-6 py-5 dark:border-gray-800"
         >
           <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500">
-              安全操作
-            </p>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500">安全操作</p>
             <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-gray-100">
               二次查看 API Key
             </h3>
@@ -53,20 +51,22 @@
           <div v-if="!revealResult" class="mt-6 space-y-5">
             <div>
               <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  管理员密码
+                管理员密码
               </label>
-              <div class="relative mt-2 rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+              <div
+                class="relative mt-2 rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
+              >
                 <input
-                  :type="showPassword ? 'text' : 'password'"
                   v-model="form.password"
+                  autocomplete="off"
                   class="block w-full rounded-xl border-none bg-transparent px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:text-gray-100"
                   placeholder="请输入当前管理员密码"
-                  autocomplete="off"
                   spellcheck="false"
+                  :type="showPassword ? 'text' : 'password'"
                 />
                 <button
-                  type="button"
                   class="absolute inset-y-0 right-0 flex items-center px-4 text-gray-400 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white"
+                  type="button"
                   @click="showPassword = !showPassword"
                 >
                   <i :class="['fas', showPassword ? 'fa-eye-slash' : 'fa-eye']" />
@@ -80,9 +80,9 @@
               </label>
               <textarea
                 v-model="form.reason"
-                rows="3"
                 class="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                 placeholder="例如：工单 #1832，确认客户 API Key 泄露风险"
+                rows="3"
               ></textarea>
             </div>
 
@@ -98,7 +98,7 @@
                 <i class="fas fa-info-circle"></i>
                 本操作将计入安全审计，频繁请求会触发速率限制
               </span>
-                <span>安全审计 ID: {{ auditPreview }}</span>
+              <span>安全审计 ID: {{ auditPreview }}</span>
             </div>
 
             <div class="mt-4 flex items-center justify-end gap-3">
@@ -109,8 +109,8 @@
                 取消
               </button>
               <button
-                :disabled="!currentKey.id || loading"
                 class="inline-flex items-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/30 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="!currentKey.id || loading"
                 @click="submitReveal"
               >
                 <i :class="['fas mr-2', loading ? 'fa-spinner fa-spin' : 'fa-key']" />
@@ -121,7 +121,9 @@
 
           <div v-else class="mt-6 space-y-6">
             <div class="rounded-2xl bg-gray-900 px-5 py-4 text-white shadow-inner dark:bg-gray-950">
-              <div class="flex items-center justify-between text-xs uppercase tracking-widest text-gray-400">
+              <div
+                class="flex items-center justify-between text-xs uppercase tracking-widest text-gray-400"
+              >
                 <span>一次性显示</span>
                 <button
                   class="inline-flex items-center gap-2 rounded-full border border-white/20 px-3 py-1 text-xs font-semibold text-white transition hover:bg-white/10"
@@ -136,16 +138,24 @@
             </div>
 
             <div class="grid gap-4 sm:grid-cols-2">
-              <div class="rounded-xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <div
+                class="rounded-xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+              >
+                <p
+                  class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+                >
                   Key ID
                 </p>
                 <p class="mt-1 font-mono text-sm text-gray-900 dark:text-gray-100">
                   {{ revealResult.keyId }}
                 </p>
               </div>
-              <div class="rounded-xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <div
+                class="rounded-xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+              >
+                <p
+                  class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+                >
                   所属用户
                 </p>
                 <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">
@@ -158,16 +168,24 @@
                   ID: {{ revealResult.owner.userId }}
                 </p>
               </div>
-              <div class="rounded-xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <div
+                class="rounded-xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+              >
+                <p
+                  class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+                >
                   权限
                 </p>
                 <p class="mt-1 font-semibold text-blue-600 dark:text-blue-300">
                   {{ permissionLabel }}
                 </p>
               </div>
-              <div class="rounded-xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <div
+                class="rounded-xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+              >
+                <p
+                  class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+                >
                   创建时间
                 </p>
                 <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">
@@ -176,8 +194,13 @@
               </div>
             </div>
 
-            <div v-if="revealResult.tags?.length" class="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-              <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            <div
+              v-if="revealResult.tags?.length"
+              class="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+            >
+              <p
+                class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+              >
                 标签
               </p>
               <div class="mt-2 flex flex-wrap gap-2">
@@ -338,10 +361,13 @@ const submitReveal = async () => {
       keyId: data.data?.keyId || currentKey.value.id,
       keyName: data.data?.keyName || currentKey.value.name,
       owner: ownerInfo,
-      permissions: data.data?.permissions || data.data?.key?.permissions || currentKey.value.permissions || 'all',
+      permissions:
+        data.data?.permissions ||
+        data.data?.key?.permissions ||
+        currentKey.value.permissions ||
+        'all',
       tags: data.data?.tags || data.data?.key?.tags || currentKey.value.tags || [],
-      createdAt:
-        data.data?.createdAt || data.data?.key?.createdAt || currentKey.value.createdAt,
+      createdAt: data.data?.createdAt || data.data?.key?.createdAt || currentKey.value.createdAt,
       keyDetails: data.data?.keyDetails || data.data?.key || null
     }
 

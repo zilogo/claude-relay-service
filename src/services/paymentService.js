@@ -8,6 +8,7 @@ const config = require('../../config/config')
 const redis = require('../models/redis')
 const logger = require('../utils/logger')
 const zpayService = require('./zpayService')
+const stripeService = require('./stripeService')
 const userService = require('./userService')
 
 // Redis Key 前缀
@@ -29,10 +30,10 @@ class PaymentService {
       logger.info('[PaymentService] ZPAY provider initialized')
     }
 
-    // 未来可扩展其他支付渠道
-    // if (config.payment.stripe?.enabled) {
-    //   this.providers.stripe = stripeService
-    // }
+    if (config.payment.stripe?.enabled) {
+      this.providers.stripe = stripeService
+      logger.info('[PaymentService] Stripe provider configured')
+    }
 
     // 启动过期订单清理任务
     this.startOrderCleanupTask()
@@ -195,6 +196,7 @@ class PaymentService {
       tradeNo: null,
       status: 'pending',
       payUrl: null,
+      paymentData: null,
       createdAt: new Date().toISOString(),
       paidAt: null,
       expiredAt: new Date(Date.now() + expireMinutes * 60 * 1000).toISOString()
@@ -202,10 +204,22 @@ class PaymentService {
 
     // 调用支付渠道创建支付
     const paymentResult = await providerService.createOrder(orderId, parsedAmount, paymentMethod, {
-      name: packageInfo ? `充值套餐-${packageInfo.name}` : 'AI Token充值'
+      name: packageInfo ? `充值套餐-${packageInfo.name}` : 'AI Token充值',
+      currency,
+      amountUsd: order.amountUsd,
+      userId,
+      username: user.username,
+      packageId: packageInfo?.id || null,
+      exchangeRate
     })
 
-    order.payUrl = paymentResult.payUrl
+    order.payUrl = paymentResult.payUrl || null
+    if (paymentResult.tradeNo) {
+      order.tradeNo = paymentResult.tradeNo
+    }
+    if (paymentResult.paymentData) {
+      order.paymentData = paymentResult.paymentData
+    }
 
     // 保存订单
     await this.saveOrder(order)
@@ -316,6 +330,19 @@ class PaymentService {
     // 验证并解析回调
     const callbackResult = await providerService.handleCallback(data)
 
+    if (!callbackResult) {
+      logger.warn('[PaymentService] Callback returned no result', { provider })
+      return { success: true, message: 'No action taken' }
+    }
+
+    if (callbackResult.ignored) {
+      logger.info('[PaymentService] Callback ignored', {
+        provider,
+        reason: callbackResult.reason || 'No reason provided'
+      })
+      return { success: true, message: callbackResult.reason || 'Ignored' }
+    }
+
     // 获取订单
     const order = await this.getOrder(callbackResult.orderId)
     if (!order) {
@@ -328,14 +355,38 @@ class PaymentService {
       return { success: true, message: 'Already processed', order }
     }
 
+    if (callbackResult.failed) {
+      order.status = 'failed'
+      order.failReason = callbackResult.reason || 'Payment failed'
+      order.failedAt = new Date().toISOString()
+      await this.saveOrder(order)
+      logger.warn('[PaymentService] Order marked as failed from callback', {
+        orderId: order.id,
+        provider,
+        reason: order.failReason
+      })
+      return { success: false, failed: true, order }
+    }
+
     // 验证订单状态
     if (order.status !== 'pending') {
       throw new Error(`Invalid order status: ${order.status}`)
     }
 
     // 验证金额（允许小数误差）
-    if (Math.abs(order.amount - callbackResult.amount) > 0.01) {
-      throw new Error(`Amount mismatch: expected ${order.amount}, got ${callbackResult.amount}`)
+    const callbackAmount =
+      typeof callbackResult.amountUsd === 'number'
+        ? callbackResult.amountUsd
+        : callbackResult.amount
+    const expectedAmount =
+      typeof callbackResult.amountUsd === 'number' ? order.amountUsd : order.amount
+
+    if (typeof callbackAmount !== 'number' || Number.isNaN(callbackAmount)) {
+      throw new Error('Invalid callback amount')
+    }
+
+    if (Math.abs(expectedAmount - callbackAmount) > 0.01) {
+      throw new Error(`Amount mismatch: expected ${expectedAmount}, got ${callbackAmount}`)
     }
 
     // 更新订单状态

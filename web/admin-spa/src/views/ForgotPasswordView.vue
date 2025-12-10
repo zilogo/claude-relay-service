@@ -4,10 +4,10 @@
   >
     <!-- 装饰性背景元素 -->
     <div
-      class="absolute left-1/4 top-1/4 h-96 w-96 animate-pulse rounded-full bg-[#D97757]/8 blur-3xl dark:bg-[#D97757]/5"
+      class="bg-[#D97757]/8 absolute left-1/4 top-1/4 h-96 w-96 animate-pulse rounded-full blur-3xl dark:bg-[#D97757]/5"
     ></div>
     <div
-      class="absolute bottom-1/4 right-1/4 h-96 w-96 animate-pulse rounded-full bg-[#E6A87C]/8 blur-3xl dark:bg-[#E6A87C]/5"
+      class="bg-[#E6A87C]/8 absolute bottom-1/4 right-1/4 h-96 w-96 animate-pulse rounded-full blur-3xl dark:bg-[#E6A87C]/5"
       style="animation-delay: 1s"
     ></div>
 
@@ -59,10 +59,10 @@
                   viewBox="0 0 24 24"
                 >
                   <path
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     stroke-width="2"
-                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                   />
                 </svg>
               </div>

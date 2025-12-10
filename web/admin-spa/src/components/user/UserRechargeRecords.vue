@@ -23,16 +23,16 @@
           ></circle>
           <path
             class="opacity-75"
-            fill="currentColor"
             d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            fill="currentColor"
           ></path>
         </svg>
         <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
+            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
             stroke-linecap="round"
             stroke-linejoin="round"
             stroke-width="2"
-            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
           />
         </svg>
         {{ exporting ? '导出中...' : '导出 CSV' }}
@@ -48,10 +48,10 @@
         <h3 class="flex items-center text-lg font-semibold text-white">
           <svg class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
+              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               stroke-linecap="round"
               stroke-linejoin="round"
               stroke-width="2"
-              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
           在线充值
@@ -72,8 +72,8 @@
               ></circle>
               <path
                 class="opacity-75"
-                fill="currentColor"
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                fill="currentColor"
               ></path>
             </svg>
             <span>加载支付配置...</span>
@@ -124,22 +124,22 @@
           <!-- 自定义金额 -->
           <div v-if="paymentStore.allowCustomAmount" class="mb-6">
             <label class="mb-3 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              输入充值金额（人民币）
+              输入充值金额（{{ currencyDisplayName }}）
             </label>
             <div class="flex gap-3">
               <div class="relative flex-1">
                 <span
                   class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500"
                 >
-                  ¥
+                  {{ currencySymbol }}
                 </span>
                 <input
                   v-model="customAmount"
-                  type="number"
-                  :min="paymentStore.limits.min"
-                  :max="paymentStore.limits.max * paymentStore.currency.exchangeRate"
-                  placeholder="输入金额"
                   class="block w-full rounded-xl border border-gray-300 bg-white py-2.5 pl-8 pr-3 text-gray-900 transition-colors focus:border-[#D97757] focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  :max="maxAmount"
+                  :min="minAmount"
+                  placeholder="输入金额"
+                  type="number"
                   @input="onCustomAmountChange"
                 />
               </div>
@@ -154,12 +154,11 @@
               </select>
               -->
             </div>
-            <!-- 显示对应美元金额 -->
-            <p v-if="customAmount" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              ≈ ${{ (customAmount / paymentStore.currency.exchangeRate).toFixed(2) }}
+            <p v-if="convertedAmountHint" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              {{ convertedAmountHint }}
             </p>
-            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              充值100元人民币，得100美元使用额度！
+            <p v-if="exchangeRateHint" class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              {{ exchangeRateHint }}
             </p>
           </div>
 
@@ -171,21 +170,18 @@
             <div class="flex flex-wrap gap-3">
               <button
                 v-for="method in paymentStore.paymentMethods"
-                :key="method.method"
-                class="flex items-center gap-2 rounded-xl border-2 px-4 py-2.5 transition-all hover:border-[#D97757]"
+                :key="`${method.provider}-${method.method}`"
+                class="flex w-full max-w-xs items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all hover:border-[#D97757]"
                 :class="
-                  selectedMethod?.method === method.method
+                  isMethodSelected(method)
                     ? 'border-[#D97757] bg-[#D97757]/5 dark:bg-[#D97757]/10'
                     : 'border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-700'
                 "
                 @click="selectMethod(method)"
               >
                 <!-- 支付图标 -->
-                <span
-                  v-if="method.method === 'alipay'"
-                  class="text-lg font-bold text-blue-500"
-                >
-                  <svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+                <span v-if="method.method === 'alipay'" class="text-lg font-bold text-blue-500">
+                  <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
                     <path
                       d="M21.422 15.358c-.937-.239-1.968-.494-3.093-.772a36.796 36.796 0 001.81-4.366H16.32V8.628h5.15V7.68h-5.15V5.07h-2.316c-.274 0-.496.222-.496.496V7.68H8.32v.948h5.188v1.592H9.266v.948h7.813c-.451 1.208-.986 2.377-1.601 3.493-3.183-.692-5.806-.87-7.248.175-2.122 1.538-2.294 4.468.357 5.935 1.927 1.066 4.608.337 6.416-1.64.793.472 1.663.992 2.609 1.562.936.566 1.846 1.072 2.728 1.52a.992.992 0 001.345-.403l.008-.015c.212-.391.194-.805-.054-1.1-.249-.295-.495-.577-.738-.846zm-11.6 3.88c-1.303.932-3.056 1.232-4.001.564-1.157-.82-.894-2.748.589-3.622 1.14-.67 2.882-.505 4.918.01a8.606 8.606 0 01-1.506 3.048z"
                     />
@@ -195,25 +191,48 @@
                   v-else-if="method.method === 'wxpay'"
                   class="text-lg font-bold text-green-500"
                 >
-                  <svg class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+                  <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
                     <path
                       d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 01.213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295.095 0 .182-.05.248-.126l1.89-1.11c.164-.096.359-.144.554-.126.559.08 1.127.126 1.701.126.36 0 .714-.017 1.063-.05A6.601 6.601 0 018.1 14.12c0-3.81 3.693-6.897 8.25-6.897.275 0 .547.012.816.035C16.166 4.228 12.713 2.188 8.691 2.188zM5.336 6.83c.673 0 1.218.544 1.218 1.215s-.545 1.215-1.218 1.215c-.674 0-1.22-.544-1.22-1.215s.546-1.215 1.22-1.215zm6.618 0c.673 0 1.218.544 1.218 1.215s-.545 1.215-1.218 1.215c-.673 0-1.218-.544-1.218-1.215s.545-1.215 1.218-1.215zM16.35 8.508c-3.937 0-7.129 2.71-7.129 6.05s3.192 6.05 7.13 6.05c.71 0 1.397-.087 2.05-.249a.513.513 0 01.38.065l1.416.832c.048.05.109.09.18.09.112 0 .203-.094.203-.21 0-.052-.02-.102-.034-.15l-.288-1.11a.453.453 0 01.157-.478c1.37-1.02 2.25-2.572 2.25-4.302 0-3.34-3.191-6.05-7.128-6.05zm-2.742 3.378c.5 0 .906.404.906.903s-.405.902-.906.902-.907-.403-.907-.902.406-.903.907-.903zm5.465 0c.5 0 .907.404.907.903s-.406.902-.907.902c-.5 0-.906-.403-.906-.902s.406-.903.906-.903z"
+                    />
+                  </svg>
+                </span>
+                <span
+                  v-else-if="method.provider === 'stripe'"
+                  class="text-lg font-bold text-purple-500"
+                >
+                  <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path
+                      d="M4 7a3 3 0 013-3h10a3 3 0 013 3v10a3 3 0 01-3 3H7a3 3 0 01-3-3V7zm3-1a1 1 0 00-1 1v2h12V7a1 1 0 00-1-1H7zm11 5H6v6a1 1 0 001 1h10a1 1 0 001-1v-6z"
                     />
                   </svg>
                 </span>
                 <span v-else class="text-gray-400">
                   <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
+                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
                       stroke-linecap="round"
                       stroke-linejoin="round"
                       stroke-width="2"
-                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
                     />
                   </svg>
                 </span>
-                <span class="font-medium text-gray-900 dark:text-white">{{ method.name }}</span>
+                <div>
+                  <div class="font-medium text-gray-900 dark:text-white">{{ method.name }}</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400">
+                    {{ getMethodInfo(method) }}
+                  </div>
+                </div>
               </button>
             </div>
+          </div>
+
+          <div
+            v-if="isStripeSelected"
+            class="mb-6 rounded-xl border border-blue-200 bg-blue-50/80 p-4 text-sm text-blue-700 dark:border-blue-800/70 dark:bg-blue-900/30 dark:text-blue-100"
+          >
+            Stripe 支付使用美元结算，支持 Visa / Mastercard / JCB 等国际信用卡。创建订单后将跳转至
+            Stripe Checkout 页面完成付款。
           </div>
 
           <!-- 充值按钮 -->
@@ -246,8 +265,8 @@
                 ></circle>
                 <path
                   class="opacity-75"
-                  fill="currentColor"
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  fill="currentColor"
                 ></path>
               </svg>
               {{ paymentStore.orderLoading ? '创建订单中...' : '立即充值' }}
@@ -269,10 +288,10 @@
           >
             <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
+                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="2"
-                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
           </div>
@@ -295,10 +314,10 @@
           >
             <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
+                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="2"
-                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
               />
             </svg>
           </div>
@@ -321,10 +340,10 @@
           >
             <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
+                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="2"
-                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
               />
             </svg>
           </div>
@@ -363,8 +382,8 @@
             ></circle>
             <path
               class="opacity-75"
-              fill="currentColor"
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              fill="currentColor"
             ></path>
           </svg>
           <span>加载中...</span>
@@ -376,13 +395,17 @@
         v-else-if="records.length === 0"
         class="flex flex-col items-center justify-center py-16 text-gray-500 dark:text-gray-400"
       >
-        <svg class="mb-4 h-16 w-16 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24">
+        <svg
+          class="mb-4 h-16 w-16 text-gray-300 dark:text-gray-600"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
           <path
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
             stroke="currentColor"
             stroke-linecap="round"
             stroke-linejoin="round"
             stroke-width="1.5"
-            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
           />
         </svg>
         <p class="text-lg font-medium">暂无充值记录</p>
@@ -507,11 +530,192 @@
         </div>
       </div>
     </div>
+
+    <transition name="fade">
+      <div
+        v-if="showPaymentDialog"
+        class="fixed inset-0 z-50 flex items-center justify-center px-4 py-8"
+      >
+        <div class="absolute inset-0 bg-black/60" @click="closePaymentDialog"></div>
+        <div
+          class="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-gray-800"
+        >
+          <div
+            class="flex items-start justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700"
+          >
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">微信扫码支付</h3>
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                订单号：{{ paymentDialogData?.orderId || '-' }}
+              </p>
+            </div>
+            <button
+              aria-label="关闭"
+              class="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700"
+              @click="closePaymentDialog"
+            >
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  d="M6 18L18 6M6 6l12 12"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <div class="space-y-4 px-6 py-5">
+            <div
+              class="rounded-xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-900/40 dark:text-gray-300"
+            >
+              <p>
+                状态：
+                <span
+                  class="font-medium"
+                  :class="{
+                    'text-emerald-600 dark:text-emerald-400': paymentStatus === 'success',
+                    'text-red-600 dark:text-red-400': paymentStatus === 'failed',
+                    'text-blue-600 dark:text-blue-400': paymentStatus === 'pending'
+                  }"
+                >
+                  {{
+                    paymentStatus === 'success'
+                      ? '支付成功'
+                      : paymentStatus === 'failed'
+                        ? '支付失败'
+                        : '待支付'
+                  }}
+                </span>
+              </p>
+              <p v-if="paymentCountdown" class="mt-1">二维码有效期：{{ paymentCountdown }}</p>
+              <p v-else class="mt-1 text-xs text-gray-400">二维码有效期：计算中...</p>
+            </div>
+
+            <div v-if="isWechatQrDialog" class="flex flex-col items-center gap-4">
+              <div
+                class="rounded-2xl border border-dashed border-gray-200 bg-white p-4 shadow-inner dark:border-gray-700 dark:bg-gray-900"
+              >
+                <img
+                  v-if="paymentDialogData?.qrImageUrl"
+                  alt="微信支付二维码"
+                  class="h-48 w-48 object-contain"
+                  :src="paymentDialogData.qrImageUrl"
+                />
+                <div
+                  v-else-if="paymentDialogData?.qrSvgUrl"
+                  class="h-48 w-48"
+                  v-html="paymentDialogData.qrSvgUrl"
+                ></div>
+                <p class="mt-2 text-center text-sm text-gray-500">请使用微信扫描二维码完成支付</p>
+              </div>
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                若二维码失效，可点击下方“重新生成二维码”
+              </p>
+            </div>
+
+            <div
+              v-else-if="isWechatRedirectDialog"
+              class="space-y-3 text-sm text-gray-600 dark:text-gray-300"
+            >
+              <p>请在微信客户端中打开以下链接完成支付：</p>
+              <a
+                class="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-white transition hover:bg-emerald-700"
+                :href="paymentDialogData?.redirectUrl"
+                rel="noreferrer"
+                target="_blank"
+              >
+                打开微信支付
+              </a>
+            </div>
+
+            <div
+              v-if="paymentStatus === 'success'"
+              class="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200"
+            >
+              支付成功，余额即将更新。您可以关闭此窗口继续使用服务。
+            </div>
+            <div
+              v-else-if="paymentStatus === 'failed'"
+              class="rounded-xl bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-200"
+            >
+              支付失败，请重新创建订单或稍后再试。
+            </div>
+          </div>
+
+          <div
+            class="flex flex-col gap-2 border-t border-gray-200 px-6 py-4 dark:border-gray-700 sm:flex-row"
+          >
+            <button
+              class="inline-flex flex-1 items-center justify-center rounded-xl bg-[#D97757] px-4 py-2 text-sm font-semibold text-white shadow hover:bg-[#c86747] disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="manualCheckLoading"
+              @click="checkOrderStatus"
+            >
+              <svg
+                v-if="manualCheckLoading"
+                class="mr-2 h-4 w-4 animate-spin"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  fill="currentColor"
+                ></path>
+              </svg>
+              {{ paymentStatus === 'success' ? '已完成支付' : '我已完成支付' }}
+            </button>
+            <button
+              v-if="paymentStatus !== 'success'"
+              class="inline-flex flex-1 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:border-[#D97757] hover:text-[#D97757] dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:text-white"
+              :disabled="refreshPaymentLoading"
+              @click="regenerateWechatPayment"
+            >
+              <svg
+                v-if="refreshPaymentLoading"
+                class="mr-2 h-4 w-4 animate-spin"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  fill="currentColor"
+                ></path>
+              </svg>
+              重新生成二维码
+            </button>
+            <button
+              class="inline-flex flex-1 items-center justify-center rounded-xl border border-transparent px-4 py-2 text-sm font-semibold text-gray-600 transition hover:text-gray-800 dark:text-gray-300"
+              @click="closePaymentDialog"
+            >
+              关闭
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { usePaymentStore } from '@/stores/payment'
 import { showToast } from '@/utils/toast'
@@ -532,6 +736,64 @@ const selectedPackage = ref(null)
 const selectedMethod = ref(null)
 const customAmount = ref('')
 const customCurrency = ref('CNY')
+const showPaymentDialog = ref(false)
+const paymentDialogData = ref(null)
+const paymentStatus = ref('pending')
+const paymentCountdown = ref('')
+const paymentPollingTimer = ref(null)
+const paymentCountdownTimer = ref(null)
+const manualCheckLoading = ref(false)
+const refreshPaymentLoading = ref(false)
+
+const currencyMap = {
+  CNY: { symbol: '¥', label: '人民币' },
+  USD: { symbol: '$', label: '美元' }
+}
+
+const exchangeRate = computed(() => paymentStore.currency?.exchangeRate || 7.2)
+
+const currentCurrency = computed(() =>
+  (customCurrency.value || paymentStore.currency?.default || 'CNY').toUpperCase()
+)
+
+const currencySymbol = computed(
+  () => currencyMap[currentCurrency.value]?.symbol || currencyMap.USD.symbol
+)
+
+const currencyDisplayName = computed(
+  () => currencyMap[currentCurrency.value]?.label || currentCurrency.value
+)
+
+const minAmount = computed(() => {
+  const minUsd = paymentStore.limits?.min || 1
+  if (currentCurrency.value === 'CNY') {
+    return parseFloat((minUsd * exchangeRate.value).toFixed(2))
+  }
+  return minUsd
+})
+
+const maxAmount = computed(() => {
+  const maxUsd = paymentStore.limits?.max || 1000
+  if (currentCurrency.value === 'CNY') {
+    return parseFloat((maxUsd * exchangeRate.value).toFixed(2))
+  }
+  return maxUsd
+})
+
+const convertedAmountHint = computed(() => {
+  if (!customAmount.value) return ''
+  const amount = parseFloat(customAmount.value)
+  if (!Number.isFinite(amount) || amount <= 0) return ''
+  if (currentCurrency.value === 'CNY') {
+    return `约等于 $${(amount / exchangeRate.value).toFixed(2)}`
+  }
+  return `约等于 ¥${(amount * exchangeRate.value).toFixed(2)}`
+})
+
+const exchangeRateHint = computed(() => {
+  if (!exchangeRate.value) return ''
+  return `当前系统折算：1 USD ≈ ¥${exchangeRate.value.toFixed(2)}`
+})
 
 const totalPages = computed(() => Math.ceil(totalRecords.value / pageSize.value))
 
@@ -554,23 +816,212 @@ const displayAmount = computed(() => {
   }
   if (customAmount.value) {
     const amount = parseFloat(customAmount.value)
-    if (customCurrency.value === 'CNY') {
-      return `¥${amount.toFixed(2)} (≈$${(amount / paymentStore.currency.exchangeRate).toFixed(2)})`
+    if (!Number.isFinite(amount) || amount <= 0) return ''
+    if (currentCurrency.value === 'CNY') {
+      return `¥${amount.toFixed(2)} (≈$${(amount / exchangeRate.value).toFixed(2)})`
     }
-    return `$${amount.toFixed(2)} (≈¥${(amount * paymentStore.currency.exchangeRate).toFixed(2)})`
+    return `$${amount.toFixed(2)} (≈¥${(amount * exchangeRate.value).toFixed(2)})`
   }
   return ''
 })
 
 // 选择套餐
+// 预留套餐功能（前端暂未开放入口）
+// eslint-disable-next-line no-unused-vars
 const selectPackage = (pkg) => {
   selectedPackage.value = pkg
   customAmount.value = '' // 清空自定义金额
 }
 
 // 选择支付方式
+const updateCurrencyByMethod = (method) => {
+  const fallbackCurrency = (paymentStore.currency?.default || 'CNY').toUpperCase()
+  if (!method) {
+    customCurrency.value = fallbackCurrency
+    return
+  }
+  const methodCurrency = method.currency ? method.currency.toUpperCase() : fallbackCurrency
+  customCurrency.value = methodCurrency
+}
+
 const selectMethod = (method) => {
+  if (!method) return
   selectedMethod.value = method
+  updateCurrencyByMethod(method)
+}
+
+const isMethodSelected = (method) => {
+  if (!selectedMethod.value) return false
+  return (
+    selectedMethod.value.provider === method.provider &&
+    selectedMethod.value.method === method.method
+  )
+}
+
+const getMethodInfo = (method) => {
+  const currency = (method.currency || paymentStore.currency?.default || 'CNY').toUpperCase()
+  if (method.provider === 'stripe') {
+    return `Stripe 微信支付 · 结算货币：${currency}`
+  }
+  if (method.provider === 'zpay' && method.method === 'alipay') {
+    return `支付宝 · 结算货币：${currency}`
+  }
+  if (method.provider === 'zpay' && method.method === 'wxpay') {
+    return `微信支付 · 结算货币：${currency}`
+  }
+  return `结算货币：${currency}`
+}
+
+const isStripeSelected = computed(() => selectedMethod.value?.provider === 'stripe')
+const isWechatQrDialog = computed(() => paymentDialogData.value?.wechatType === 'qr')
+const isWechatRedirectDialog = computed(() => paymentDialogData.value?.wechatType === 'redirect')
+
+const stopOrderPolling = () => {
+  if (paymentPollingTimer.value) {
+    clearInterval(paymentPollingTimer.value)
+    paymentPollingTimer.value = null
+  }
+}
+
+const stopCountdown = () => {
+  if (paymentCountdownTimer.value) {
+    clearInterval(paymentCountdownTimer.value)
+    paymentCountdownTimer.value = null
+  }
+  paymentCountdown.value = ''
+}
+
+const formatCountdown = (expiresAt) => {
+  if (!expiresAt) return ''
+  const endsAt = expiresAt > 1000000000000 ? expiresAt : expiresAt * 1000
+  const diff = Math.max(0, endsAt - Date.now())
+  if (diff <= 0) {
+    return '已过期'
+  }
+  const minutes = Math.floor(diff / 60000)
+  const seconds = Math.floor((diff % 60000) / 1000)
+  return `${minutes}分${seconds.toString().padStart(2, '0')}秒`
+}
+
+const startCountdown = (expiresAt) => {
+  stopCountdown()
+  if (!expiresAt) return
+
+  const updateCountdown = () => {
+    paymentCountdown.value = formatCountdown(expiresAt)
+    if (paymentCountdown.value === '已过期') {
+      stopCountdown()
+    }
+  }
+
+  updateCountdown()
+  paymentCountdownTimer.value = setInterval(updateCountdown, 1000)
+}
+
+const handleOrderStatusUpdate = (order) => {
+  if (!order) return
+  if (order.status === 'paid') {
+    paymentStatus.value = 'success'
+    stopOrderPolling()
+    stopCountdown()
+    showToast('支付成功，余额已到账', 'success')
+    loadBalanceInfo()
+    loadRecords()
+  } else if (order.status === 'failed') {
+    paymentStatus.value = 'failed'
+    stopOrderPolling()
+    stopCountdown()
+    if (order.failReason) {
+      showToast(order.failReason, 'error')
+    }
+  }
+}
+
+const startOrderPolling = (orderId) => {
+  if (!orderId) return
+  stopOrderPolling()
+
+  const poll = async () => {
+    try {
+      const latest = await paymentStore.getOrder(orderId)
+      handleOrderStatusUpdate(latest)
+    } catch (error) {
+      console.error('Failed to poll payment order:', error)
+    }
+  }
+
+  poll()
+  paymentPollingTimer.value = setInterval(poll, 5000)
+}
+
+const closePaymentDialog = () => {
+  showPaymentDialog.value = false
+  paymentDialogData.value = null
+  paymentStatus.value = 'pending'
+  manualCheckLoading.value = false
+  refreshPaymentLoading.value = false
+  stopOrderPolling()
+  stopCountdown()
+}
+
+const openWechatPaymentDialog = (orderResponse) => {
+  const paymentData = orderResponse.paymentData || orderResponse.payment || {}
+  const wechat = paymentData.wechat || {}
+  const orderId = orderResponse.orderId || orderResponse.id
+
+  if (!orderId || !wechat) {
+    showToast('无法获取微信支付信息，请稍后重试', 'error')
+    return
+  }
+
+  stopOrderPolling()
+  stopCountdown()
+
+  paymentDialogData.value = {
+    orderId,
+    qrImageUrl: wechat.imageUrlPng || '',
+    qrSvgUrl: wechat.imageUrlSvg || '',
+    redirectUrl: wechat.url || '',
+    expiresAt: paymentData.expiresAt || wechat.expiresAt || null,
+    paymentIntentId: paymentData.paymentIntentId || '',
+    wechatType: wechat.type || paymentData.nextActionType || 'qr'
+  }
+  paymentStatus.value = 'pending'
+  showPaymentDialog.value = true
+
+  if (paymentDialogData.value.expiresAt) {
+    startCountdown(paymentDialogData.value.expiresAt)
+  }
+  startOrderPolling(orderId)
+}
+
+const checkOrderStatus = async () => {
+  if (!paymentDialogData.value?.orderId) return
+  manualCheckLoading.value = true
+  try {
+    const latest = await paymentStore.getOrder(paymentDialogData.value.orderId)
+    handleOrderStatusUpdate(latest)
+    if (latest.status === 'pending') {
+      showToast('订单仍在等待支付，请完成微信支付后重试', 'info')
+    }
+  } catch (error) {
+    console.error('Failed to check payment status:', error)
+    showToast('查询订单状态失败，请稍后重试', 'error')
+  } finally {
+    manualCheckLoading.value = false
+  }
+}
+
+const regenerateWechatPayment = async () => {
+  if (!canSubmit.value) return
+  refreshPaymentLoading.value = true
+  try {
+    // 关闭当前弹窗并重新创建订单
+    closePaymentDialog()
+    await createPaymentOrder()
+  } finally {
+    refreshPaymentLoading.value = false
+  }
 }
 
 // 自定义金额变化时清空套餐选择
@@ -605,12 +1056,19 @@ const createPaymentOrder = async () => {
       packageId
     })
 
-    showToast('订单创建成功，正在跳转支付页面...', 'success')
-
-    // 跳转到支付页面
-    if (order.payUrl) {
-      window.location.href = order.payUrl
+    if (order.paymentData?.type === 'wechat_pay' && order.paymentData.wechat) {
+      showToast('订单创建成功，请使用微信完成支付', 'success')
+      openWechatPaymentDialog(order)
+      return
     }
+
+    if (order.payUrl) {
+      showToast('即将跳转到支付页面...', 'success')
+      window.location.href = order.payUrl
+      return
+    }
+
+    showToast('未获取到支付信息，请稍后重试', 'error')
   } catch (error) {
     console.error('Failed to create payment order:', error)
     showToast(error.response?.data?.error || error.message || '创建订单失败', 'error')
@@ -621,14 +1079,25 @@ const createPaymentOrder = async () => {
 const loadPaymentConfig = async () => {
   try {
     await paymentStore.loadConfig()
+    customCurrency.value = (paymentStore.currency?.default || 'CNY').toUpperCase()
     // 默认选择第一个支付方式
     if (paymentStore.paymentMethods.length > 0) {
       selectedMethod.value = paymentStore.paymentMethods[0]
+      updateCurrencyByMethod(selectedMethod.value)
     }
   } catch (error) {
     console.error('Failed to load payment config:', error)
   }
 }
+
+watch(
+  () => selectedMethod.value,
+  (method) => {
+    if (method) {
+      updateCurrencyByMethod(method)
+    }
+  }
+)
 
 const formatDate = (dateString) => {
   if (!dateString) return '-'
@@ -740,5 +1209,10 @@ onMounted(() => {
   loadBalanceInfo()
   loadRecords()
   loadPaymentConfig()
+})
+
+onBeforeUnmount(() => {
+  stopOrderPolling()
+  stopCountdown()
 })
 </script>

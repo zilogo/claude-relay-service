@@ -163,9 +163,14 @@ class Application {
         express.json({
           limit: '10mb',
           verify: (req, res, buf, encoding) => {
-            // 验证JSON格式
-            if (buf && buf.length && !buf.toString(encoding || 'utf8').trim()) {
-              throw new Error('Invalid JSON: empty body')
+            if (buf && buf.length) {
+              req.rawBody = Buffer.from(buf)
+              const bodyString = buf.toString(encoding || 'utf8')
+              if (!bodyString.trim()) {
+                throw new Error('Invalid JSON: empty body')
+              }
+            } else {
+              req.rawBody = Buffer.alloc(0)
             }
           }
         })
