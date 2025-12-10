@@ -1091,33 +1091,32 @@ router.get('/usage-trend', authenticateUser, async (req, res) => {
 
 // 📋 获取用户列表（管理员）
 router.get('/', authenticateUserOrAdmin, requireAdmin, async (req, res) => {
+  let paginationParams
   try {
-    const { page = 1, limit = 20, role, isActive, search } = req.query
+    paginationParams = inputValidator.validatePagination(req.query.page, req.query.limit)
+  } catch (validationError) {
+    return res.status(400).json({
+      error: 'Invalid pagination',
+      message: validationError.message
+    })
+  }
+
+  try {
+    const { role, isActive, search } = req.query
+    const searchQuery = typeof search === 'string' ? search.trim() : ''
 
     const options = {
-      page: parseInt(page),
-      limit: parseInt(limit),
+      ...paginationParams,
       role,
+      search: searchQuery,
       isActive: isActive === 'true' ? true : isActive === 'false' ? false : undefined
     }
 
     const result = await userService.getAllUsers(options)
 
-    // 如果有搜索条件，进行过滤
-    let filteredUsers = result.users
-    if (search) {
-      const searchLower = search.toLowerCase()
-      filteredUsers = result.users.filter(
-        (user) =>
-          user.username.toLowerCase().includes(searchLower) ||
-          user.displayName.toLowerCase().includes(searchLower) ||
-          user.email.toLowerCase().includes(searchLower)
-      )
-    }
-
     res.json({
       success: true,
-      users: filteredUsers,
+      users: result.users,
       pagination: {
         total: result.total,
         page: result.page,

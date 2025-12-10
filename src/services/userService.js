@@ -284,7 +284,14 @@ class UserService {
   async getAllUsers(options = {}) {
     try {
       const client = redis.getClientSafe()
-      const { page = 1, limit = 20, role, isActive } = options
+      const { page = 1, limit = 20, role, isActive, search } = options
+      const pageNumber = Number.isInteger(page)
+        ? Math.max(page, 1)
+        : Math.max(parseInt(page, 10) || 1, 1)
+      const limitNumber = Number.isInteger(limit)
+        ? Math.max(limit, 1)
+        : Math.max(parseInt(limit, 10) || 20, 1)
+      const searchQuery = typeof search === 'string' ? search.trim().toLowerCase() : ''
       const pattern = `${this.userPrefix}*`
       const keys = await client.keys(pattern)
 
@@ -333,18 +340,35 @@ class UserService {
         }
       }
 
+      let filteredUsers = users
+      if (searchQuery) {
+        filteredUsers = users.filter((user) => {
+          const username = (user.username || '').toLowerCase()
+          const displayName = (user.displayName || '').toLowerCase()
+          const email = (user.email || '').toLowerCase()
+
+          return (
+            username.includes(searchQuery) ||
+            displayName.includes(searchQuery) ||
+            email.includes(searchQuery)
+          )
+        })
+      }
+
       // 排序和分页
-      users.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      const startIndex = (page - 1) * limit
-      const endIndex = startIndex + limit
-      const paginatedUsers = users.slice(startIndex, endIndex)
+      filteredUsers.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      const startIndex = (pageNumber - 1) * limitNumber
+      const endIndex = startIndex + limitNumber
+      const paginatedUsers = filteredUsers.slice(startIndex, endIndex)
+      const total = filteredUsers.length
+      const totalPages = total === 0 ? 0 : Math.ceil(total / limitNumber)
 
       return {
         users: paginatedUsers,
-        total: users.length,
-        page,
-        limit,
-        totalPages: Math.ceil(users.length / limit)
+        total,
+        page: pageNumber,
+        limit: limitNumber,
+        totalPages
       }
     } catch (error) {
       logger.error('❌ Error getting all users:', error)

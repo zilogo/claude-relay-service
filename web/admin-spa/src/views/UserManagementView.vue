@@ -196,7 +196,7 @@
               <select
                 v-model="selectedRole"
                 class="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#D97757] focus:ring-[#D97757] dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                @change="loadUsers"
+                @change="handleFilterChange"
               >
                 <option value="">All Roles</option>
                 <option value="user">User</option>
@@ -209,7 +209,7 @@
               <select
                 v-model="selectedStatus"
                 class="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#D97757] focus:ring-[#D97757] dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                @change="loadUsers"
+                @change="handleFilterChange"
               >
                 <option value="">All Status</option>
                 <option value="true">Active</option>
@@ -226,9 +226,9 @@
       <div class="border-b border-gray-200 px-4 py-5 dark:border-gray-700 sm:px-6">
         <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-white">
           Users
-          <span v-if="!loading" class="text-sm text-gray-500 dark:text-gray-400"
-            >({{ filteredUsers.length }} of {{ users.length }})</span
-          >
+          <span v-if="!loading" class="text-sm text-gray-500 dark:text-gray-400">
+            {{ paginationSummary }}
+          </span>
         </h3>
       </div>
 
@@ -258,12 +258,8 @@
       </div>
 
       <!-- Users List -->
-      <ul
-        v-else-if="filteredUsers.length > 0"
-        class="divide-y divide-gray-200 dark:divide-gray-700"
-        role="list"
-      >
-        <li v-for="user in filteredUsers" :key="user.id" class="px-6 py-4">
+      <ul v-else-if="users.length > 0" class="divide-y divide-gray-200 dark:divide-gray-700" role="list">
+        <li v-for="user in users" :key="user.id" class="px-6 py-4">
           <div class="flex items-center justify-between">
             <div class="flex min-w-0 flex-1 items-center">
               <div class="flex-shrink-0">
@@ -469,6 +465,47 @@
             searchQuery ? 'No users match your search criteria.' : 'No users have been created yet.'
           }}
         </p>
+      </div>
+      <div
+        v-if="!loading && pagination.total > 0"
+        class="flex flex-col border-t border-gray-200 px-6 py-4 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div>
+          Showing {{ paginationRange.start }}-{{ paginationRange.end }} of {{ pagination.total }} users
+        </div>
+        <div
+          class="mt-4 flex flex-col space-y-4 sm:mt-0 sm:flex-row sm:items-center sm:space-x-6 sm:space-y-0"
+        >
+          <div class="flex items-center space-x-2">
+            <span>Rows per page</span>
+            <select
+              v-model.number="pagination.limit"
+              class="rounded-md border-gray-300 text-sm shadow-sm focus:border-[#D97757] focus:ring-[#D97757] dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+              @change="handlePageSizeChange"
+            >
+              <option v-for="size in pageSizeOptions" :key="size" :value="size">
+                {{ size }}
+              </option>
+            </select>
+          </div>
+          <div class="flex items-center space-x-3">
+            <button
+              class="inline-flex items-center rounded-md border border-gray-300 px-3 py-1 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#D97757] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+              :disabled="pagination.page <= 1"
+              @click="goToPreviousPage"
+            >
+              Previous
+            </button>
+            <span>Page {{ pagination.page }} / {{ pagination.totalPages || 1 }}</span>
+            <button
+              class="inline-flex items-center rounded-md border border-gray-300 px-3 py-1 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#D97757] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+              :disabled="pagination.totalPages === 0 || pagination.page >= pagination.totalPages"
+              @click="goToNextPage"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -685,6 +722,13 @@ const userStats = ref(null)
 const searchQuery = ref('')
 const selectedRole = ref('')
 const selectedStatus = ref('')
+const pagination = ref({
+  page: 1,
+  limit: 20,
+  total: 0,
+  totalPages: 0
+})
+const pageSizeOptions = [10, 20, 50, 100]
 
 const showStatsModal = ref(false)
 const showConfirmModal = ref(false)
@@ -708,32 +752,21 @@ const confirmAction = ref({
   action: null
 })
 
-const filteredUsers = computed(() => {
-  let filtered = users.value
-
-  // Apply search filter
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(
-      (user) =>
-        user.username.toLowerCase().includes(query) ||
-        user.displayName?.toLowerCase().includes(query) ||
-        user.email?.toLowerCase().includes(query)
-    )
+const paginationRange = computed(() => {
+  if (!users.value.length || pagination.value.total === 0) {
+    return { start: 0, end: 0 }
   }
 
-  // Apply role filter
-  if (selectedRole.value) {
-    filtered = filtered.filter((user) => user.role === selectedRole.value)
-  }
+  const start = (pagination.value.page - 1) * pagination.value.limit + 1
+  const end = start + users.value.length - 1
+  return { start, end }
+})
 
-  // Apply status filter
-  if (selectedStatus.value !== '') {
-    const isActive = selectedStatus.value === 'true'
-    filtered = filtered.filter((user) => user.isActive === isActive)
+const paginationSummary = computed(() => {
+  if (pagination.value.total === 0) {
+    return 'No users found'
   }
-
-  return filtered
+  return `Showing ${paginationRange.value.start}-${paginationRange.value.end} of ${pagination.value.total}`
 })
 
 const formatNumber = (num) => {
@@ -764,16 +797,33 @@ const formatDate = (dateString) => {
   })
 }
 
-const loadUsers = async () => {
+const loadUsers = async (options = {}) => {
+  if (options.resetPage) {
+    pagination.value.page = 1
+  }
+  if (typeof options.page === 'number' && !Number.isNaN(options.page)) {
+    pagination.value.page = options.page
+  }
+  if (typeof options.limit === 'number' && !Number.isNaN(options.limit)) {
+    pagination.value.limit = options.limit
+  }
+
   loading.value = true
   try {
     // Build params object, only including parameters with actual values
-    const params = {}
+    const params = {
+      page: pagination.value.page,
+      limit: pagination.value.limit
+    }
     if (selectedRole.value && selectedRole.value.trim() !== '') {
       params.role = selectedRole.value
     }
     if (selectedStatus.value !== '') {
       params.isActive = selectedStatus.value
+    }
+    const trimmedSearch = searchQuery.value.trim()
+    if (trimmedSearch) {
+      params.search = trimmedSearch
     }
 
     const [usersResponse, statsResponse] = await Promise.all([
@@ -783,6 +833,11 @@ const loadUsers = async () => {
 
     if (usersResponse.success) {
       users.value = usersResponse.users
+      const serverPagination = usersResponse.pagination || {}
+      pagination.value.total = serverPagination.total ?? usersResponse.users.length
+      pagination.value.totalPages = serverPagination.totalPages ?? 0
+      pagination.value.page = serverPagination.page ?? pagination.value.page
+      pagination.value.limit = serverPagination.limit ?? pagination.value.limit
     }
 
     if (statsResponse.success) {
@@ -797,8 +852,33 @@ const loadUsers = async () => {
 }
 
 const debouncedSearch = debounce(() => {
-  // Search is handled by computed property
+  loadUsers({ resetPage: true })
 }, 300)
+
+const handleFilterChange = () => {
+  loadUsers({ resetPage: true })
+}
+
+const handlePageSizeChange = () => {
+  loadUsers({ resetPage: true, limit: pagination.value.limit })
+}
+
+const goToPreviousPage = () => {
+  if (pagination.value.page <= 1) {
+    return
+  }
+  loadUsers({ page: pagination.value.page - 1 })
+}
+
+const goToNextPage = () => {
+  if (
+    pagination.value.totalPages === 0 ||
+    pagination.value.page >= pagination.value.totalPages
+  ) {
+    return
+  }
+  loadUsers({ page: pagination.value.page + 1 })
+}
 
 const viewUserStats = (user) => {
   selectedUser.value = user
