@@ -372,7 +372,7 @@ STRIPE_PAYMENT_METHODS=wechat_pay
 STRIPE_CURRENCY=CNY
 STRIPE_SUCCESS_URL=https://your-domain/payment/return/stripe?order={ORDER_ID}&status=success
 STRIPE_CANCEL_URL=https://your-domain/payment/return/stripe?order={ORDER_ID}&status=cancel
-STRIPE_WECHAT_CLIENT=wechat_qr
+STRIPE_WECHAT_CLIENT=web
 STRIPE_WECHAT_APP_ID=
 ZPAY_NOTIFY_URL=https://example.com/payment/zpay/notify
 ZPAY_RETURN_URL=https://example.com/payment/zpay/return

@@ -32,13 +32,13 @@ STRIPE_SUCCESS_URL=https://domain/payment/return/stripe?order={ORDER_ID}&status=
 STRIPE_CANCEL_URL=https://domain/payment/return/stripe?order={ORDER_ID}&status=cancel
 
 # Stripe WeChat Pay 额外配置
-STRIPE_WECHAT_CLIENT=wechat_qr        # wechat_qr / wechat_h5 / wechat_jsapi / wechat_app
-STRIPE_WECHAT_APP_ID=wx1234567890abcd # 仅在 wechat_app 模式下需要
+STRIPE_WECHAT_CLIENT=web             # web / ios / android（旧值 wechat_qr 等会自动归一）
+STRIPE_WECHAT_APP_ID=wx1234567890abcd # 仅在 ios/android 模式下需要
 ```
 
 - `{ORDER_ID}` 会在服务端被替换为真实订单号，便于前端在跳转/展示时回填。
 - Stripe 微信支付仅支持人民币金额，因此前端在选择该方式时会自动切换为 `CNY` 输入，后端再根据 `exchangeRate` 计算美元余额。
-- 若需启用 App/H5/JSAPI 模式，应在 Stripe Dashboard 为对应账户开通相应能力，并配置 `STRIPE_WECHAT_CLIENT`。
+- 若需启用 App / 移动端支付，应在 Stripe Dashboard 开通对应能力并将 `STRIPE_WECHAT_CLIENT` 设为 `ios` 或 `android`（若留空或填旧值，系统会自动按 `web` 处理）。
 
 ## 3. 请求与支付流程
 

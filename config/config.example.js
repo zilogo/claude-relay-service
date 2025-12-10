@@ -323,7 +323,7 @@ const config = {
         process.env.STRIPE_CANCEL_URL ||
         `${defaultBaseUrl}/payment/return/stripe?order={ORDER_ID}&status=cancel`,
       wechatPay: {
-        client: process.env.STRIPE_WECHAT_CLIENT || 'wechat_qr',
+        client: process.env.STRIPE_WECHAT_CLIENT || 'web',
         appId: process.env.STRIPE_WECHAT_APP_ID || ''
       }
     }

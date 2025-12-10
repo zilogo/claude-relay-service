@@ -7,7 +7,28 @@ const Stripe = require('stripe')
 const config = require('../../config/config')
 const logger = require('../utils/logger')
 
-const SUPPORTED_WECHAT_CLIENTS = new Set(['wechat_qr', 'wechat_app', 'wechat_h5', 'wechat_jsapi'])
+const LEGACY_CLIENT_MAP = {
+  wechat_qr: 'web',
+  wechat_h5: 'web',
+  wechat_jsapi: 'web',
+  wechat_app: 'web'
+}
+
+const normalizeWechatClient = (value) => {
+  if (!value) {
+    return 'web'
+  }
+
+  if (value === 'web' || value === 'ios' || value === 'android') {
+    return value
+  }
+
+  if (LEGACY_CLIENT_MAP[value]) {
+    return LEGACY_CLIENT_MAP[value]
+  }
+
+  return 'web'
+}
 
 class StripeService {
   constructor() {
@@ -24,9 +45,7 @@ class StripeService {
     this.successUrl = this.settings.successUrl
     this.cancelUrl = this.settings.cancelUrl
     this.wechatConfig = this.settings.wechatPay || {}
-    this.wechatClient = SUPPORTED_WECHAT_CLIENTS.has(this.wechatConfig.client)
-      ? this.wechatConfig.client
-      : 'wechat_qr'
+    this.wechatClient = normalizeWechatClient(this.wechatConfig.client)
     this.wechatAppId = this.wechatConfig.appId || ''
 
     if (this.apiKey) {
@@ -153,11 +172,11 @@ class StripeService {
       }
     }
 
-    if (this.wechatClient === 'wechat_app' && this.wechatAppId) {
+    if ((this.wechatClient === 'ios' || this.wechatClient === 'android') && this.wechatAppId) {
       params.payment_method_options.wechat_pay.app_id = this.wechatAppId
     }
 
-    if (this.successUrl && ['wechat_h5', 'wechat_jsapi'].includes(this.wechatClient)) {
+    if (this.successUrl && this.wechatClient === 'web') {
       params.return_url = this.successUrl.replace('{ORDER_ID}', encodeURIComponent(orderId))
     }
 
