@@ -300,6 +300,10 @@ if (validation.keyData.userId) {
 | 3.1.6 | 更新环境变量示例 | `.env.example` | ✅ |
 | 3.2.1 | 创建支付 Store | `web/admin-spa/src/stores/payment.js` | ✅ |
 | 3.2.2 | 更新充值记录组件 | `web/admin-spa/src/components/user/UserRechargeRecords.vue` | ✅ |
+| 3.3.1 | 引入 Stripe SDK 并新增配置 | `package.json` / `config/config.js` | ✅ |
+| 3.3.2 | 实现 Stripe 支付服务 | `src/services/stripeService.js` | ✅ |
+| 3.3.3 | Stripe Webhook & Return 路由 | `src/routes/paymentRoutes.js` | ✅ |
+| 3.3.4 | 回调验签、金额换算增强 | `src/services/paymentService.js` | ✅ |
 
 #### 3.4.2 实现详情
 
@@ -328,11 +332,12 @@ if (validation.keyData.userId) {
 │     - getOrderStatus(orderId)                               │
 └─────────────────────────────────────────────────────────────┘
                               │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  zpayService.js                              │
-│                  (支付宝/微信聚合支付)                        │
-└─────────────────────────────────────────────────────────────┘
+            ┌─────────────────┴─────────────────┐
+            ▼                                   ▼
+┌──────────────────────────────┐    ┌──────────────────────────────┐
+│      zpayService.js          │    │      stripeService.js        │
+│ (支付宝/微信聚合支付)          │    │ (信用卡/国际支付 Checkout)   │
+└──────────────────────────────┘    └──────────────────────────────┘
 ```
 
 ##### 环境变量配置
@@ -358,6 +363,17 @@ ZPAY_SUBMIT_URL=https://zpayz.cn/submit.php
 ZPAY_QUERY_URL=https://zpayz.cn/api.php
 ZPAY_PAYMENT_METHODS=alipay,wxpay
 ZPAY_ORDER_PREFIX=ORD_
+
+# Stripe 配置
+STRIPE_ENABLED=true
+STRIPE_SECRET_KEY=sk_live_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+STRIPE_PAYMENT_METHODS=wechat_pay
+STRIPE_CURRENCY=CNY
+STRIPE_SUCCESS_URL=https://your-domain/payment/return/stripe?order={ORDER_ID}&status=success
+STRIPE_CANCEL_URL=https://your-domain/payment/return/stripe?order={ORDER_ID}&status=cancel
+STRIPE_WECHAT_CLIENT=wechat_qr
+STRIPE_WECHAT_APP_ID=
 ZPAY_NOTIFY_URL=https://example.com/payment/zpay/notify
 ZPAY_RETURN_URL=https://example.com/payment/zpay/return
 ZPAY_NOTIFY_USER=false
@@ -382,7 +398,15 @@ ZPAY_REQUIRE_HTTPS=true
   paymentMethod: 'alipay',        // 支付方式
   tradeNo: 'xxx',                 // 第三方交易号
   status: 'pending',              // pending/paid/failed/expired
-  payUrl: 'https://...',          // 支付链接
+  payUrl: 'https://...',          // 支付链接（仅部分渠道）
+  paymentData: {                  // Stripe WeChat Pay 返回的二维码/跳转信息
+    type: 'wechat_pay',
+    wechat: {
+      type: 'qr',
+      imageUrlPng: 'https://...',
+      expiresAt: 1710000000
+    }
+  },
   createdAt: '...',
   paidAt: null,
   expiredAt: '...'
@@ -394,9 +418,9 @@ ZPAY_REQUIRE_HTTPS=true
 用户充值界面功能：
 - 套餐选择：显示预设套餐（如 ¥70/$10、¥350/$50、¥700/$100）
 - 自定义金额：支持人民币/美元输入，自动换算
-- 支付方式：支付宝、微信支付图标选择
+- 支付方式：支付宝、微信支付、Stripe 微信支付（三者共享 UI，自动切换货币与限额）
 - 实时显示：支付金额预览
-- 一键充值：创建订单后自动跳转支付页面
+- Stripe 微信支付：创建订单后弹出二维码弹窗（含倒计时、轮询状态、重新生成二维码按钮）；ZPay 仍保持跳转收银台流程
 
 ##### 安全机制
 
