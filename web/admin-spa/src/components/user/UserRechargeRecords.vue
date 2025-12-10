@@ -188,22 +188,15 @@
                   </svg>
                 </span>
                 <span
-                  v-else-if="method.method === 'wxpay'"
+                  v-else-if="
+                    method.method === 'wxpay' ||
+                    (method.provider === 'stripe' && method.method === 'wechat_pay')
+                  "
                   class="text-lg font-bold text-green-500"
                 >
                   <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
                     <path
                       d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 01.213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295.095 0 .182-.05.248-.126l1.89-1.11c.164-.096.359-.144.554-.126.559.08 1.127.126 1.701.126.36 0 .714-.017 1.063-.05A6.601 6.601 0 018.1 14.12c0-3.81 3.693-6.897 8.25-6.897.275 0 .547.012.816.035C16.166 4.228 12.713 2.188 8.691 2.188zM5.336 6.83c.673 0 1.218.544 1.218 1.215s-.545 1.215-1.218 1.215c-.674 0-1.22-.544-1.22-1.215s.546-1.215 1.22-1.215zm6.618 0c.673 0 1.218.544 1.218 1.215s-.545 1.215-1.218 1.215c-.673 0-1.218-.544-1.218-1.215s.545-1.215 1.218-1.215zM16.35 8.508c-3.937 0-7.129 2.71-7.129 6.05s3.192 6.05 7.13 6.05c.71 0 1.397-.087 2.05-.249a.513.513 0 01.38.065l1.416.832c.048.05.109.09.18.09.112 0 .203-.094.203-.21 0-.052-.02-.102-.034-.15l-.288-1.11a.453.453 0 01.157-.478c1.37-1.02 2.25-2.572 2.25-4.302 0-3.34-3.191-6.05-7.128-6.05zm-2.742 3.378c.5 0 .906.404.906.903s-.405.902-.906.902-.907-.403-.907-.902.406-.903.907-.903zm5.465 0c.5 0 .907.404.907.903s-.406.902-.907.902c-.5 0-.906-.403-.906-.902s.406-.903.906-.903z"
-                    />
-                  </svg>
-                </span>
-                <span
-                  v-else-if="method.provider === 'stripe'"
-                  class="text-lg font-bold text-purple-500"
-                >
-                  <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                    <path
-                      d="M4 7a3 3 0 013-3h10a3 3 0 013 3v10a3 3 0 01-3 3H7a3 3 0 01-3-3V7zm3-1a1 1 0 00-1 1v2h12V7a1 1 0 00-1-1H7zm11 5H6v6a1 1 0 001 1h10a1 1 0 001-1v-6z"
                     />
                   </svg>
                 </span>
@@ -769,6 +762,18 @@ const maxAmount = computed(() => {
   return maxUsd
 })
 
+const stripeConfig = computed(() => paymentStore.stripeConfig || {})
+
+const stripeMinimumCny = computed(() => {
+  const cfg = stripeConfig.value
+  if (!cfg || !cfg.minConvertedAmount) {
+    return 0
+  }
+  const rate = cfg.exchangeRateToCny || 1
+  const value = cfg.minConvertedAmount * rate
+  return Number.isFinite(value) ? parseFloat(value.toFixed(2)) : 0
+})
+
 const convertedAmountHint = computed(() => {
   if (!customAmount.value) return ''
   const amount = parseFloat(customAmount.value)
@@ -780,9 +785,17 @@ const convertedAmountHint = computed(() => {
 })
 
 const availablePaymentMethods = computed(() =>
-  (paymentStore.paymentMethods || []).filter(
-    (method) => !(method.provider === 'zpay' && method.method === 'wxpay')
-  )
+  (paymentStore.paymentMethods || [])
+    .filter((method) => !(method.provider === 'zpay' && method.method === 'wxpay'))
+    .map((method) => {
+      if (method.provider === 'stripe' && method.method === 'wechat_pay') {
+        return {
+          ...method,
+          name: '微信'
+        }
+      }
+      return method
+    })
 )
 
 const totalPages = computed(() => Math.ceil(totalRecords.value / pageSize.value))
@@ -939,6 +952,88 @@ const closePaymentDialog = () => {
   stopCountdown()
 }
 
+const openWechatPaymentWindow = (orderResponse) => {
+  const paymentData = orderResponse.paymentData || orderResponse.payment || {}
+  const wechat = paymentData.wechat || {}
+  if (!wechat) {
+    return false
+  }
+
+  if (wechat.type === 'redirect' && wechat.url) {
+    window.location.href = wechat.url
+    return true
+  }
+
+  const popup = window.open('', '_blank')
+  if (!popup) {
+    return false
+  }
+
+  const qrImageUrl = wechat.imageUrlPng || ''
+  const qrSvg = wechat.imageUrlSvg || ''
+  const orderId = orderResponse.orderId || orderResponse.id || ''
+
+  let qrHtml = ''
+  if (qrImageUrl) {
+    qrHtml = `<img src="${qrImageUrl}" alt="微信支付二维码" style="width:280px;height:280px;object-fit:contain;margin-bottom:16px;" />`
+  } else if (qrSvg) {
+    qrHtml = `<div style="width:280px;height:280px;margin-bottom:16px;">${qrSvg}</div>`
+  } else {
+    qrHtml = '<p style="margin-top:16px;">暂无法显示二维码，请返回上一页重试。</p>'
+  }
+
+  const expiresText = paymentData.expiresAt
+    ? `<p style="margin:4px 0;color:#4a5568;">二维码有效期：${new Date(paymentData.expiresAt).toLocaleString()}</p>`
+    : ''
+
+  const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>微信支付 - ${orderId}</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+          sans-serif;
+        background: #f7fafc;
+        color: #1a202c;
+        text-align: center;
+      }
+      .card {
+        max-width: 420px;
+        margin: 40px auto;
+        background: #fff;
+        border-radius: 16px;
+        padding: 32px 24px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        font-size: 20px;
+        margin-bottom: 8px;
+      }
+      p {
+        margin: 4px 0;
+        color: #4a5568;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>请使用微信扫码支付</h1>
+      <p>订单号：${orderId || '-'}</p>
+      ${qrHtml}
+      ${expiresText}
+      <p style="margin-top:8px;">若二维码失效，请返回上一页重新创建订单。</p>
+    </div>
+  </body>
+</html>`
+  popup.document.write(html)
+  popup.document.close()
+  return true
+}
+
 const openWechatPaymentDialog = (orderResponse) => {
   const paymentData = orderResponse.paymentData || orderResponse.payment || {}
   const wechat = paymentData.wechat || {}
@@ -1023,6 +1118,16 @@ const createPaymentOrder = async () => {
       packageId = null
     }
 
+    if (
+      selectedMethod.value.provider === 'stripe' &&
+      stripeMinimumCny.value > 0 &&
+      ((currency === 'CNY' && amount < stripeMinimumCny.value) ||
+        (currency !== 'CNY' && amount * exchangeRate.value < stripeMinimumCny.value))
+    ) {
+      showToast(`微信支付最少需要充值 ¥${stripeMinimumCny.value.toFixed(2)}`, 'error')
+      return
+    }
+
     const order = await paymentStore.createOrder({
       amount,
       currency,
@@ -1031,8 +1136,17 @@ const createPaymentOrder = async () => {
       packageId
     })
 
-    if (order.paymentData?.type === 'wechat_pay' && order.paymentData.wechat) {
-      showToast('订单创建成功，请使用微信完成支付', 'success')
+    if (
+      selectedMethod.value.provider === 'stripe' &&
+      order.paymentData?.type === 'wechat_pay' &&
+      order.paymentData.wechat
+    ) {
+      const opened = openWechatPaymentWindow(order)
+      if (opened) {
+        showToast('已打开微信支付页面，请完成付款', 'success')
+        return
+      }
+      showToast('浏览器阻止打开新页面，请允许弹窗或手动扫码', 'warning')
       openWechatPaymentDialog(order)
       return
     }

@@ -62,6 +62,14 @@ class PaymentService {
         min: config.payment.minAmount || 1,
         max: config.payment.maxAmount || 1000,
         allowCustom: config.payment.allowCustomAmount !== false
+      },
+      stripe: {
+        currency: (config.payment.stripe?.currency || 'CNY').toUpperCase(),
+        exchangeRateToCny:
+          (config.payment.stripe?.currency || 'CNY').toUpperCase() === 'USD'
+            ? config.payment.exchangeRate || 7.2
+            : 1,
+        minConvertedAmount: 0.5 // Stripe 要求至少 0.5 单位
       }
     }
   }

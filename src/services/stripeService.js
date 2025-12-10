@@ -80,7 +80,7 @@ class StripeService {
       {
         provider: 'stripe',
         method: 'wechat_pay',
-        name: 'Stripe 微信支付',
+        name: '微信',
         icon: 'wechat',
         currency: 'CNY'
       }
