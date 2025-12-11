@@ -512,7 +512,7 @@
 
       <!-- Recharge Records Tab -->
       <div v-else-if="activeTab === 'recharge'">
-        <UserRechargeRecords />
+        <UserRechargeRecords ref="rechargeRecordsRef" />
       </div>
 
       <!-- 使用手册 Tab -->
@@ -524,8 +524,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
@@ -536,6 +536,7 @@ import UserUsageStats from '@/components/user/UserUsageStats.vue'
 import UserRechargeRecords from '@/components/user/UserRechargeRecords.vue'
 import UserManualView from '@/components/user/UserManualView.vue'
 
+const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const authStore = useAuthStore()
@@ -545,6 +546,7 @@ const themeStore = useThemeStore()
 const siteName = computed(() => authStore.oemSettings?.siteName || 'Claude Relay')
 
 const activeTab = ref('overview')
+const rechargeRecordsRef = ref(null)
 
 // Tab 指示器位置计算（5 个 Tab）
 const tabIndicatorPosition = computed(() => {
@@ -610,6 +612,63 @@ const handleLogout = async () => {
   }
 }
 
+const clearPaymentReturnQuery = () => {
+  const nextQuery = { ...route.query }
+  const keys = ['tab', 'provider', 'status', 'order']
+  let shouldReplace = false
+
+  keys.forEach((key) => {
+    if (key in nextQuery) {
+      delete nextQuery[key]
+      shouldReplace = true
+    }
+  })
+
+  if (!shouldReplace) {
+    return
+  }
+
+  router.replace({
+    path: route.path,
+    query: nextQuery
+  })
+}
+
+const handlePaymentReturnParams = async () => {
+  const { tab, provider, status } = route.query
+  const isRechargeTab = tab === 'recharge'
+  const isStripeReturn = provider === 'stripe'
+
+  if (!isRechargeTab && !isStripeReturn) {
+    return
+  }
+
+  if (isRechargeTab && activeTab.value !== 'recharge') {
+    handleTabChange('recharge')
+  }
+
+  if (isStripeReturn) {
+    const statusMap = {
+      success: { type: 'success', message: '微信支付成功，余额已刷新' },
+      failed: { type: 'error', message: 'Stripe 微信支付失败，请稍后重试' },
+      cancel: { type: 'info', message: '您已取消 Stripe 微信支付' }
+    }
+    const toastConfig =
+      statusMap[status] || {
+        type: 'info',
+        message: 'Stripe 支付状态已返回，如余额未变化请稍后刷新'
+      }
+
+    showToast(toastConfig.message, toastConfig.type)
+
+    if (rechargeRecordsRef.value?.reloadAfterReturn) {
+      await rechargeRecordsRef.value.reloadAfterReturn()
+    }
+  }
+
+  clearPaymentReturnQuery()
+}
+
 const loadUserProfile = async () => {
   try {
     userProfile.value = await userStore.getUserProfile()
@@ -649,6 +708,14 @@ const loadBalanceInfo = async () => {
     balanceInfo.value = null
   }
 }
+
+watch(
+  () => route.query,
+  () => {
+    handlePaymentReturnParams()
+  },
+  { immediate: true }
+)
 
 onMounted(async () => {
   // 初始化主题

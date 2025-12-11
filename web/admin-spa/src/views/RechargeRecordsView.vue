@@ -296,7 +296,7 @@
               <th
                 class="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
               >
-                余额变化
+                充值额度变化
               </th>
               <th
                 class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"

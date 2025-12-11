@@ -417,7 +417,7 @@
               <th
                 class="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
               >
-                余额变化
+                充值额度变化
               </th>
               <th
                 class="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
@@ -701,6 +701,7 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { usePaymentStore } from '@/stores/payment'
 import { showToast } from '@/utils/toast'
+import { APP_CONFIG } from '@/config/app'
 
 const userStore = useUserStore()
 const paymentStore = usePaymentStore()
@@ -726,6 +727,188 @@ const paymentPollingTimer = ref(null)
 const paymentCountdownTimer = ref(null)
 const manualCheckLoading = ref(false)
 const refreshPaymentLoading = ref(false)
+
+const getRechargeDashboardUrl = () => {
+  if (typeof window === 'undefined') {
+    return '#/user-dashboard?tab=recharge'
+  }
+  const { origin = '' } = window.location
+  let basePath = APP_CONFIG?.basePath || '/'
+  if (!basePath.startsWith('/')) {
+    basePath = `/${basePath}`
+  }
+  if (!basePath.endsWith('/')) {
+    basePath = `${basePath}/`
+  }
+  return `${origin}${basePath}#/user-dashboard?tab=recharge`
+}
+
+const formatWechatExpiresLabel = (expiresAt) => {
+  if (!expiresAt) return ''
+
+  let timestamp = Number(expiresAt)
+  if (Number.isNaN(timestamp)) {
+    const parsed = Date.parse(expiresAt)
+    timestamp = Number.isNaN(parsed) ? NaN : parsed
+  } else if (timestamp < 1000000000000) {
+    timestamp *= 1000
+  }
+
+  if (!Number.isFinite(timestamp)) {
+    return ''
+  }
+
+  const date = new Date(timestamp)
+  return `二维码有效期：${date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })}`
+}
+
+const buildWechatQrPopupHtml = ({ qrHtml, expiresLabel }) => {
+  const dashboardUrl = getRechargeDashboardUrl()
+  const qrContent =
+    qrHtml ||
+    '<div class="qr-placeholder">二维码加载失败，请返回上一页重新发起支付。</div>'
+  const expiresMarkup = expiresLabel
+    ? `<p class="expires" style="margin-top:8px;">${expiresLabel}</p>`
+    : ''
+
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>微信支付</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+          'Hiragino Sans GB', 'Microsoft Yahei', sans-serif;
+        background: #f5f5f5;
+        color: #111827;
+      }
+      .page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .card {
+        width: 100%;
+        max-width: 420px;
+        background: #ffffff;
+        border-radius: 24px;
+        padding: 32px 28px;
+        box-shadow: 0 25px 40px -20px rgba(15, 23, 42, 0.4);
+        text-align: center;
+      }
+      .badge {
+        display: inline-flex;
+        padding: 4px 12px;
+        border-radius: 9999px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #059669;
+        background: #ecfdf5;
+        margin-bottom: 12px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 700;
+        color: #0f172a;
+      }
+      .subtitle {
+        margin-top: 8px;
+        margin-bottom: 24px;
+        font-size: 14px;
+        color: #6b7280;
+      }
+      .qr-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f9fafb;
+        border-radius: 20px;
+        padding: 20px;
+        border: 1px dashed #e5e7eb;
+        min-height: 320px;
+      }
+      .qr-wrapper img,
+      .qr-wrapper svg {
+        width: 280px;
+        height: 280px;
+        object-fit: contain;
+      }
+      .qr-placeholder {
+        width: 100%;
+        font-size: 14px;
+        color: #6b7280;
+      }
+      .action-btn {
+        width: 100%;
+        margin-top: 24px;
+        background: #059669;
+        color: white;
+        border: none;
+        border-radius: 16px;
+        padding: 14px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+      .action-btn:hover {
+        background: #047857;
+      }
+      .expires {
+        font-size: 13px;
+        color: #6b7280;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="card">
+        <div class="badge">Stripe 微信支付</div>
+        <h1>请使用微信扫码支付</h1>
+        <p class="subtitle">在移动设备中打开微信扫一扫完成付款</p>
+        <div class="qr-wrapper">
+          ${qrContent}
+        </div>
+        ${expiresMarkup}
+        <button class="action-btn" onclick="returnToDashboard()">返回充值页</button>
+      </div>
+    </div>
+    <script>
+      function returnToDashboard() {
+        try {
+          if (window.opener && !window.opener.closed) {
+            window.opener.focus();
+          }
+        } catch (e) {
+          console.warn(e);
+        }
+        window.close();
+        setTimeout(function () {
+          if (!window.closed) {
+            window.location.href = '${dashboardUrl}';
+          }
+        }, 200);
+      }
+    </script>
+  </body>
+</html>`
+}
 
 const currencyMap = {
   CNY: { symbol: '¥', label: '人民币' },
@@ -971,64 +1154,20 @@ const openWechatPaymentWindow = (orderResponse) => {
 
   const qrImageUrl = wechat.imageUrlPng || ''
   const qrSvg = wechat.imageUrlSvg || ''
-  const orderId = orderResponse.orderId || orderResponse.id || ''
 
   let qrHtml = ''
   if (qrImageUrl) {
-    qrHtml = `<img src="${qrImageUrl}" alt="微信支付二维码" style="width:280px;height:280px;object-fit:contain;margin-bottom:16px;" />`
+    qrHtml =
+      `<img src="${qrImageUrl}" alt="微信支付二维码" ` +
+      'style="width:280px;height:280px;object-fit:contain;" />'
   } else if (qrSvg) {
-    qrHtml = `<div style="width:280px;height:280px;margin-bottom:16px;">${qrSvg}</div>`
-  } else {
-    qrHtml = '<p style="margin-top:16px;">暂无法显示二维码，请返回上一页重试。</p>'
+    qrHtml = `<div style="width:280px;height:280px;">${qrSvg}</div>`
   }
 
-  const expiresText = paymentData.expiresAt
-    ? `<p style="margin:4px 0;color:#4a5568;">二维码有效期：${new Date(paymentData.expiresAt).toLocaleString()}</p>`
-    : ''
+  const expiresLabel = formatWechatExpiresLabel(paymentData.expiresAt || wechat.expiresAt || null)
+  const html = buildWechatQrPopupHtml({ qrHtml, expiresLabel })
 
-  const html = `<!DOCTYPE html>
-<html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <title>微信支付 - ${orderId}</title>
-    <style>
-      body {
-        margin: 0;
-        padding: 24px;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-          sans-serif;
-        background: #f7fafc;
-        color: #1a202c;
-        text-align: center;
-      }
-      .card {
-        max-width: 420px;
-        margin: 40px auto;
-        background: #fff;
-        border-radius: 16px;
-        padding: 32px 24px;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-      }
-      h1 {
-        font-size: 20px;
-        margin-bottom: 8px;
-      }
-      p {
-        margin: 4px 0;
-        color: #4a5568;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="card">
-      <h1>请使用微信扫码支付</h1>
-      <p>订单号：${orderId || '-'}</p>
-      ${qrHtml}
-      ${expiresText}
-      <p style="margin-top:8px;">若二维码失效，请返回上一页重新创建订单。</p>
-    </div>
-  </body>
-</html>`
+  popup.document.open()
   popup.document.write(html)
   popup.document.close()
   return true
@@ -1272,6 +1411,15 @@ const goToPage = (page) => {
   currentPage.value = page
   loadRecords()
 }
+
+const reloadAfterReturn = async () => {
+  await Promise.all([loadBalanceInfo(), loadRecords()])
+  closePaymentDialog()
+}
+
+defineExpose({
+  reloadAfterReturn
+})
 
 const exportRecords = async () => {
   if (records.value.length === 0) {
