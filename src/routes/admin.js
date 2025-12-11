@@ -303,7 +303,11 @@ router.post('/users/:userId/recharge', authenticateAdmin, async (req, res) => {
       userId,
       parseFloat(amount),
       { id: req.admin.id, name: req.admin.username },
-      remark || ''
+      remark || '',
+      {
+        recordType: 'manual',
+        source: 'admin-panel'
+      }
     )
 
     logger.info(

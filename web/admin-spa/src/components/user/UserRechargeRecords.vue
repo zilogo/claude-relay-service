@@ -374,6 +374,27 @@
     <div
       class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
     >
+      <div
+        class="flex flex-col gap-3 border-b border-gray-100 bg-gray-50/60 px-6 py-4 dark:border-gray-700 dark:bg-gray-900/40 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div class="w-full sm:w-52">
+          <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+            >类型筛选</label
+          >
+          <select
+            v-model="typeFilter"
+            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+            @change="handleTypeFilterChange"
+          >
+            <option v-for="option in typeFilterOptions" :key="option.value || 'all'" :value="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+          “在线充值” 表示二维码/支付网关订单，“手动充值” 为管理员在后台手动调整，邀请奖励会标记为 “邀请奖励”。
+        </p>
+      </div>
       <!-- 加载状态 -->
       <div v-if="loading" class="flex items-center justify-center py-12">
         <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
@@ -741,6 +762,15 @@ const balanceInfo = ref(null)
 const totalRecords = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(20)
+const typeFilter = ref('')
+const typeFilterOptions = [
+  { value: '', label: '全部类型' },
+  { value: 'payment', label: '在线充值' },
+  { value: 'manual', label: '手动充值' },
+  { value: 'reward', label: '邀请奖励' },
+  { value: 'refund', label: '退款' },
+  { value: 'adjustment', label: '调整' }
+]
 
 // 支付相关状态
 const selectedPackage = ref(null)
@@ -1587,7 +1617,8 @@ const formatDate = (dateString) => {
 const getTypeName = (type) => {
   const typeMap = {
     manual: '手动充值',
-    payment: '在线支付',
+    payment: '在线充值',
+    reward: '邀请奖励',
     refund: '退款',
     adjustment: '调整'
   }
@@ -1598,6 +1629,7 @@ const getTypeClass = (type) => {
   const classMap = {
     manual: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
     payment: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300',
+    reward: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200',
     refund: 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300',
     adjustment: 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300'
   }
@@ -1607,10 +1639,15 @@ const getTypeClass = (type) => {
 const loadRecords = async () => {
   loading.value = true
   try {
-    const result = await userStore.getRechargeRecords({
+    const params = {
       page: currentPage.value,
       pageSize: pageSize.value
-    })
+    }
+    if (typeFilter.value) {
+      params.type = typeFilter.value
+    }
+
+    const result = await userStore.getRechargeRecords(params)
     records.value = result.records || []
     totalRecords.value = result.total || 0
   } catch (error) {
@@ -1638,6 +1675,11 @@ const goToPage = (page) => {
 const reloadAfterReturn = async () => {
   await Promise.all([loadBalanceInfo(), loadRecords()])
   closePaymentDialog()
+}
+
+const handleTypeFilterChange = () => {
+  currentPage.value = 1
+  loadRecords()
 }
 
 defineExpose({

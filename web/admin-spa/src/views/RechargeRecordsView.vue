@@ -171,7 +171,8 @@
         >
           <option value="">全部类型</option>
           <option value="manual">手动充值</option>
-          <option value="payment">在线支付</option>
+          <option value="payment">在线充值</option>
+          <option value="reward">邀请奖励</option>
           <option value="refund">退款</option>
           <option value="adjustment">调整</option>
         </select>
@@ -447,7 +448,8 @@ const formatDate = (dateString) => {
 const getTypeName = (type) => {
   const typeMap = {
     manual: '手动充值',
-    payment: '在线支付',
+    payment: '在线充值',
+    reward: '邀请奖励',
     refund: '退款',
     adjustment: '调整'
   }
@@ -458,6 +460,7 @@ const getTypeClass = (type) => {
   const classMap = {
     manual: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
     payment: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300',
+    reward: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200',
     refund: 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300',
     adjustment: 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300'
   }

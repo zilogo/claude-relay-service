@@ -1450,7 +1450,7 @@ class UserService {
    */
   async getRechargeRecords(userId, options = {}) {
     try {
-      const { page = 1, limit = 20 } = options
+      const { page = 1, limit = 20, type } = options
       const client = redis.getClientSafe()
 
       // 获取用户充值记录ID列表
@@ -1475,11 +1475,17 @@ class UserService {
         }
       }
 
+      const typeFilter =
+        typeof type === 'string' && type.trim().length > 0 ? type.trim().toLowerCase() : ''
+      const filteredRecords = typeFilter
+        ? records.filter((record) => (record.type || '').toLowerCase() === typeFilter)
+        : records
+
       // 分页
-      const total = records.length
+      const total = filteredRecords.length
       const startIndex = (page - 1) * limit
       const endIndex = startIndex + limit
-      const paginatedRecords = records.slice(startIndex, endIndex)
+      const paginatedRecords = filteredRecords.slice(startIndex, endIndex)
 
       return {
         records: paginatedRecords,

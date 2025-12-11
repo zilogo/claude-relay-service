@@ -458,7 +458,7 @@
                     >
                       {{ getReferralStatusMeta(invite.status).label }}
                     </span>
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    <p v-if="invite.status !== 'rewarded'" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                       累计充值：${{ (invite.totalRechargeUsd || 0).toFixed(2) }}
                     </p>
                   </div>

@@ -796,11 +796,16 @@ router.get('/balance', authenticateUser, async (req, res) => {
 // 💰 获取当前用户充值记录
 router.get('/recharge-records', authenticateUser, async (req, res) => {
   try {
-    const { page = 1, limit = 20 } = req.query
+    const { page = 1, limit, pageSize, type } = req.query
+
+    const parsedPage = parseInt(page, 10)
+    const perPageRaw = pageSize ?? limit ?? 20
+    const parsedLimit = parseInt(perPageRaw, 10)
 
     const result = await userService.getRechargeRecords(req.user.id, {
-      page: parseInt(page),
-      limit: parseInt(limit)
+      page: Number.isNaN(parsedPage) ? 1 : parsedPage,
+      limit: Number.isNaN(parsedLimit) || parsedLimit <= 0 ? 20 : parsedLimit,
+      type: typeof type === 'string' ? type : undefined
     })
 
     res.json({
