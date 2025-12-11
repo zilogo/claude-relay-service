@@ -995,7 +995,6 @@ const buildWechatQrPopupHtml = ({ qrHtml, expiresLabel, orderId }) => {
         </div>
         ${expiresMarkup}
         ${statusMarkup}
-        <button class="action-btn" onclick="returnToDashboard()">返回充值页</button>
       </div>
     </div>
     <script>
@@ -1031,11 +1030,6 @@ const buildWechatQrPopupHtml = ({ qrHtml, expiresLabel, orderId }) => {
               window.location.href = DASHBOARD_URL;
             }
           }, 400);
-        };
-
-        window.returnToDashboard = function () {
-          showStatus('info', '正在返回充值页...');
-          closeAndReturn();
         };
 
         window.addEventListener('message', function (event) {

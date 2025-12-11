@@ -651,7 +651,7 @@ const normalizeStatusKey = (value) => (value || '').toString().trim().toLowerCas
 
 const clearPaymentReturnQuery = () => {
   const nextQuery = { ...route.query }
-  const keys = ['tab', 'provider', 'status', 'order']
+  const keys = ['tab', 'provider', 'status', 'trade_status', 'order']
   let shouldReplace = false
 
   keys.forEach((key) => {
@@ -675,7 +675,6 @@ const handlePaymentReturnFeedback = async (providerKey, rawStatus) => {
   if (!providerKey) {
     return false
   }
-
   const config = PAYMENT_RETURN_CONFIG[providerKey]
   if (!config) {
     return false
@@ -692,10 +691,19 @@ const handlePaymentReturnFeedback = async (providerKey, rawStatus) => {
   return true
 }
 
-const handlePaymentReturnParams = async () => {
-  const { tab, provider, status } = route.query
-  const normalizedProvider = normalizeReturnProvider(tab, provider)
+const resolvePaymentReturnStatus = (query) => {
+  const candidateKeys = ['status', 'trade_status', 'tradeStatus', 'payment_status', 'result']
+  for (const key of candidateKeys) {
+    if (query[key]) {
+      return query[key]
+    }
+  }
+  return ''
+}
 
+const handlePaymentReturnParams = async () => {
+  const { tab, provider } = route.query
+  const normalizedProvider = normalizeReturnProvider(tab, provider)
   if (!normalizedProvider) {
     return
   }
@@ -704,7 +712,8 @@ const handlePaymentReturnParams = async () => {
     handleTabChange('recharge')
   }
 
-  await handlePaymentReturnFeedback(normalizedProvider, status)
+  const resolvedStatus = resolvePaymentReturnStatus(route.query)
+  await handlePaymentReturnFeedback(normalizedProvider, resolvedStatus)
   clearPaymentReturnQuery()
 }
 
