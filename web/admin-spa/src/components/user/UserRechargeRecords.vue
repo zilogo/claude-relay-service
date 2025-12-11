@@ -639,13 +639,13 @@
               v-if="paymentStatus === 'success'"
               class="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200"
             >
-              支付成功，余额即将更新。您可以关闭此窗口继续使用服务。
+              {{ paymentSuccessMessage }}。您可以关闭此窗口继续使用服务。
             </div>
             <div
               v-else-if="paymentStatus === 'failed'"
               class="rounded-xl bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-200"
             >
-              支付失败，请重新创建订单或稍后再试。
+              {{ paymentIncompleteMessage }}。
             </div>
           </div>
 
@@ -726,6 +726,10 @@ import { useUserStore } from '@/stores/user'
 import { usePaymentStore } from '@/stores/payment'
 import { showToast } from '@/utils/toast'
 import { APP_CONFIG } from '@/config/app'
+import {
+  PAYMENT_SUCCESS_MESSAGE,
+  PAYMENT_INCOMPLETE_MESSAGE
+} from '@/constants/paymentMessages'
 
 const userStore = useUserStore()
 const paymentStore = usePaymentStore()
@@ -754,7 +758,66 @@ const refreshPaymentLoading = ref(false)
 const selectedPresetId = ref('')
 const presetAmounts = Object.freeze([100, 200, 500, 1000])
 const OTHER_PRESET_ID = 'preset-other'
-const WECHAT_MIN_CNY = 100
+const parsedEnvWechatMin = Number(import.meta.env?.VITE_WECHAT_MIN_CNY ?? '')
+const WECHAT_MIN_CNY =
+  Number.isFinite(parsedEnvWechatMin) && parsedEnvWechatMin > 0 ? parsedEnvWechatMin : 100
+
+let wechatPaymentPopup = null
+const paymentSuccessMessage = PAYMENT_SUCCESS_MESSAGE
+const paymentIncompleteMessage = PAYMENT_INCOMPLETE_MESSAGE
+
+const resolveOrderId = (order) => order?.orderId || order?.id || ''
+
+const closeWechatPopupWindow = () => {
+  if (wechatPaymentPopup && !wechatPaymentPopup.closed) {
+    try {
+      wechatPaymentPopup.close()
+    } catch (error) {
+      console.warn('[UserRechargeRecords] Failed to close WeChat popup:', error)
+    }
+  }
+  wechatPaymentPopup = null
+}
+
+const notifyWechatPopup = (status, order, extra = {}) => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  if (!wechatPaymentPopup || wechatPaymentPopup.closed) {
+    wechatPaymentPopup = null
+    return
+  }
+
+  const popup = wechatPaymentPopup
+  const payload = {
+    type: 'wechat_order_status',
+    orderId: resolveOrderId(order),
+    status,
+    ...extra
+  }
+
+  try {
+    popup.postMessage(payload, window.location?.origin || '*')
+
+    if (status === 'success') {
+      setTimeout(() => {
+        if (popup && !popup.closed) {
+          try {
+            popup.close()
+          } catch (error) {
+            console.warn('[UserRechargeRecords] Failed to close WeChat popup after success:', error)
+          }
+        }
+        if (wechatPaymentPopup === popup) {
+          wechatPaymentPopup = null
+        }
+      }, 1500)
+    }
+  } catch (error) {
+    console.warn('[UserRechargeRecords] Failed to notify WeChat popup:', error)
+  }
+}
 
 const getRechargeDashboardUrl = () => {
   if (typeof window === 'undefined') {
@@ -797,7 +860,7 @@ const formatWechatExpiresLabel = (expiresAt) => {
   })}`
 }
 
-const buildWechatQrPopupHtml = ({ qrHtml, expiresLabel }) => {
+const buildWechatQrPopupHtml = ({ qrHtml, expiresLabel, orderId }) => {
   const dashboardUrl = getRechargeDashboardUrl()
   const qrContent =
     qrHtml ||
@@ -805,6 +868,8 @@ const buildWechatQrPopupHtml = ({ qrHtml, expiresLabel }) => {
   const expiresMarkup = expiresLabel
     ? `<p class="expires" style="margin-top:8px;">${expiresLabel}</p>`
     : ''
+  const statusMarkup =
+    '<p id="wechat-status-message" class="status-message" style="display:none;"></p>'
 
   return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -902,6 +967,21 @@ const buildWechatQrPopupHtml = ({ qrHtml, expiresLabel }) => {
         font-size: 13px;
         color: #6b7280;
       }
+      .status-message {
+        font-size: 13px;
+        margin-top: 8px;
+        font-weight: 600;
+        display: none;
+      }
+      .status-message.success {
+        color: #059669;
+      }
+      .status-message.failed {
+        color: #dc2626;
+      }
+      .status-message.info {
+        color: #4b5563;
+      }
     </style>
   </head>
   <body>
@@ -914,25 +994,71 @@ const buildWechatQrPopupHtml = ({ qrHtml, expiresLabel }) => {
           ${qrContent}
         </div>
         ${expiresMarkup}
+        ${statusMarkup}
         <button class="action-btn" onclick="returnToDashboard()">返回充值页</button>
       </div>
     </div>
     <script>
-      function returnToDashboard() {
-        try {
-          if (window.opener && !window.opener.closed) {
-            window.opener.focus();
+      (function () {
+        const DASHBOARD_URL = ${JSON.stringify(dashboardUrl)};
+        const ORDER_ID = ${JSON.stringify(orderId || '')};
+        const statusElement = document.getElementById('wechat-status-message');
+
+        const showStatus = function (variant, text) {
+          if (!statusElement || !text) {
+            return;
           }
-        } catch (e) {
-          console.warn(e);
-        }
-        window.close();
-        setTimeout(function () {
-          if (!window.closed) {
-            window.location.href = '${dashboardUrl}';
+          statusElement.textContent = text;
+          statusElement.style.display = 'block';
+          statusElement.className = 'status-message ' + variant;
+        };
+
+        const focusParentWindow = function () {
+          try {
+            if (window.opener && !window.opener.closed) {
+              window.opener.focus();
+            }
+          } catch (error) {
+            console.warn(error);
           }
-        }, 200);
-      }
+        };
+
+        const closeAndReturn = function () {
+          focusParentWindow();
+          window.close();
+          setTimeout(function () {
+            if (!window.closed) {
+              window.location.href = DASHBOARD_URL;
+            }
+          }, 400);
+        };
+
+        window.returnToDashboard = function () {
+          showStatus('info', '正在返回充值页...');
+          closeAndReturn();
+        };
+
+        window.addEventListener('message', function (event) {
+          if (!event || event.source !== window.opener) {
+            return;
+          }
+          const data = event.data || {};
+          if (data.type !== 'wechat_order_status') {
+            return;
+          }
+          if (ORDER_ID && data.orderId && data.orderId !== ORDER_ID) {
+            return;
+          }
+          if (data.status === 'success') {
+            showStatus('success', '支付成功，余额已到账，窗口即将关闭...');
+            closeAndReturn();
+          } else if (data.status === 'failed') {
+            showStatus('failed', data.message || '支付未完成，请返回充值页重试');
+          } else if (data.status === 'info' && data.message) {
+            showStatus('info', data.message);
+          }
+        });
+      })();
     <\/script>
   </body>
 </html>`
@@ -1177,19 +1303,20 @@ const startCountdown = (expiresAt) => {
 const handleOrderStatusUpdate = (order) => {
   if (!order) return
   if (order.status === 'paid') {
+    notifyWechatPopup('success', order)
     paymentStatus.value = 'success'
     stopOrderPolling()
     stopCountdown()
-    showToast('支付成功，余额已到账', 'success')
+    showToast(paymentSuccessMessage, 'success')
     loadBalanceInfo()
     loadRecords()
   } else if (order.status === 'failed') {
+    const failMessage = order.failReason || paymentIncompleteMessage
+    notifyWechatPopup('failed', order, { message: failMessage })
     paymentStatus.value = 'failed'
     stopOrderPolling()
     stopCountdown()
-    if (order.failReason) {
-      showToast(order.failReason, 'error')
-    }
+    showToast(failMessage, 'error')
   }
 }
 
@@ -1218,11 +1345,13 @@ const closePaymentDialog = () => {
   refreshPaymentLoading.value = false
   stopOrderPolling()
   stopCountdown()
+  closeWechatPopupWindow()
 }
 
 const openWechatPaymentWindow = (orderResponse) => {
   const paymentData = orderResponse.paymentData || orderResponse.payment || {}
   const wechat = paymentData.wechat || {}
+  const orderId = resolveOrderId(orderResponse)
   if (!wechat) {
     return false
   }
@@ -1232,10 +1361,13 @@ const openWechatPaymentWindow = (orderResponse) => {
     return true
   }
 
+  closeWechatPopupWindow()
+
   const popup = window.open('', '_blank')
   if (!popup) {
     return false
   }
+  wechatPaymentPopup = popup
 
   const qrImageUrl = wechat.imageUrlPng || ''
   const qrSvg = wechat.imageUrlSvg || ''
@@ -1250,7 +1382,7 @@ const openWechatPaymentWindow = (orderResponse) => {
   }
 
   const expiresLabel = formatWechatExpiresLabel(paymentData.expiresAt || wechat.expiresAt || null)
-  const html = buildWechatQrPopupHtml({ qrHtml, expiresLabel })
+  const html = buildWechatQrPopupHtml({ qrHtml, expiresLabel, orderId })
 
   popup.document.open()
   popup.document.write(html)
@@ -1261,13 +1393,14 @@ const openWechatPaymentWindow = (orderResponse) => {
 const openWechatPaymentDialog = (orderResponse) => {
   const paymentData = orderResponse.paymentData || orderResponse.payment || {}
   const wechat = paymentData.wechat || {}
-  const orderId = orderResponse.orderId || orderResponse.id
+  const orderId = resolveOrderId(orderResponse)
 
   if (!orderId || !wechat) {
     showToast('无法获取微信支付信息，请稍后重试', 'error')
     return
   }
 
+  closeWechatPopupWindow()
   stopOrderPolling()
   stopCountdown()
 
@@ -1365,6 +1498,13 @@ const createPaymentOrder = async () => {
       order.paymentData?.type === 'wechat_pay' &&
       order.paymentData.wechat
     ) {
+      const orderId = resolveOrderId(order)
+      if (!orderId) {
+        showToast('未能获取订单编号，请稍后重试', 'error')
+        return
+      }
+
+      startOrderPolling(orderId)
       const opened = openWechatPaymentWindow(order)
       if (opened) {
         showToast('已打开微信支付页面，请完成付款', 'success')
@@ -1563,5 +1703,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   stopOrderPolling()
   stopCountdown()
+  closeWechatPopupWindow()
 })
 </script>

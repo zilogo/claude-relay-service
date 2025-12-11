@@ -535,6 +535,7 @@ import UserApiKeysManager from '@/components/user/UserApiKeysManager.vue'
 import UserUsageStats from '@/components/user/UserUsageStats.vue'
 import UserRechargeRecords from '@/components/user/UserRechargeRecords.vue'
 import UserManualView from '@/components/user/UserManualView.vue'
+import { createPaymentStatusConfig } from '@/constants/paymentMessages'
 
 const route = useRoute()
 const router = useRouter()
@@ -612,6 +613,42 @@ const handleLogout = async () => {
   }
 }
 
+const PAYMENT_RETURN_CONFIG = Object.freeze({
+  stripe: {
+    statuses: {
+      success: createPaymentStatusConfig('success'),
+      failed: createPaymentStatusConfig('incomplete'),
+      fail: createPaymentStatusConfig('incomplete'),
+      cancel: createPaymentStatusConfig('incomplete', { type: 'info' })
+    },
+    default: createPaymentStatusConfig('incomplete', { type: 'info' })
+  },
+  zpay: {
+    statuses: {
+      success: createPaymentStatusConfig('success'),
+      trade_success: createPaymentStatusConfig('success'),
+      trade_finished: createPaymentStatusConfig('success'),
+      trade_closed: createPaymentStatusConfig('incomplete'),
+      closed: createPaymentStatusConfig('incomplete'),
+      fail: createPaymentStatusConfig('incomplete'),
+      failed: createPaymentStatusConfig('incomplete')
+    },
+    default: createPaymentStatusConfig('incomplete', { type: 'info' })
+  }
+})
+
+const normalizeReturnProvider = (tab, provider) => {
+  if (provider) {
+    return provider.toString().toLowerCase()
+  }
+  if (tab === 'recharge') {
+    return 'zpay'
+  }
+  return ''
+}
+
+const normalizeStatusKey = (value) => (value || '').toString().trim().toLowerCase()
+
 const clearPaymentReturnQuery = () => {
   const nextQuery = { ...route.query }
   const keys = ['tab', 'provider', 'status', 'order']
@@ -634,38 +671,40 @@ const clearPaymentReturnQuery = () => {
   })
 }
 
+const handlePaymentReturnFeedback = async (providerKey, rawStatus) => {
+  if (!providerKey) {
+    return false
+  }
+
+  const config = PAYMENT_RETURN_CONFIG[providerKey]
+  if (!config) {
+    return false
+  }
+
+  const normalizedStatus = normalizeStatusKey(rawStatus)
+  const toastConfig = config.statuses[normalizedStatus] || config.default
+  showToast(toastConfig.message, toastConfig.type)
+
+  if (toastConfig.shouldRefresh && rechargeRecordsRef.value?.reloadAfterReturn) {
+    await rechargeRecordsRef.value.reloadAfterReturn()
+  }
+
+  return true
+}
+
 const handlePaymentReturnParams = async () => {
   const { tab, provider, status } = route.query
-  const isRechargeTab = tab === 'recharge'
-  const isStripeReturn = provider === 'stripe'
+  const normalizedProvider = normalizeReturnProvider(tab, provider)
 
-  if (!isRechargeTab && !isStripeReturn) {
+  if (!normalizedProvider) {
     return
   }
 
-  if (isRechargeTab && activeTab.value !== 'recharge') {
+  if (activeTab.value !== 'recharge') {
     handleTabChange('recharge')
   }
 
-  if (isStripeReturn) {
-    const statusMap = {
-      success: { type: 'success', message: '微信支付成功，余额已刷新' },
-      failed: { type: 'error', message: 'Stripe 微信支付失败，请稍后重试' },
-      cancel: { type: 'info', message: '您已取消 Stripe 微信支付' }
-    }
-    const toastConfig =
-      statusMap[status] || {
-        type: 'info',
-        message: 'Stripe 支付状态已返回，如余额未变化请稍后刷新'
-      }
-
-    showToast(toastConfig.message, toastConfig.type)
-
-    if (rechargeRecordsRef.value?.reloadAfterReturn) {
-      await rechargeRecordsRef.value.reloadAfterReturn()
-    }
-  }
-
+  await handlePaymentReturnFeedback(normalizedProvider, status)
   clearPaymentReturnQuery()
 }
 

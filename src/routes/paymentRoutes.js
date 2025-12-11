@@ -219,7 +219,9 @@ router.get('/return/zpay', async (req, res) => {
     const { out_trade_no: orderId, trade_status: tradeStatus } = req.query
 
     // 重定向到用户仪表板的充值页面
-    const redirectUrl = `/admin-next/#/user-dashboard?tab=recharge&order=${orderId}&status=${tradeStatus}`
+    const redirectUrl = `/admin-next/#/user-dashboard?tab=recharge&provider=zpay&order=${encodeURIComponent(
+      orderId || ''
+    )}&status=${encodeURIComponent(tradeStatus || '')}`
     res.redirect(redirectUrl)
   } catch (error) {
     logger.error('[PaymentRoutes] ZPAY return error:', error)

@@ -421,6 +421,9 @@ ZPAY_REQUIRE_HTTPS=true
 - 支付方式：支付宝、微信支付、Stripe 微信支付（三者共享 UI，自动切换货币与限额）
 - 实时显示：支付金额预览
 - Stripe 微信支付：创建订单后弹出二维码弹窗（含倒计时、轮询状态、重新生成二维码按钮）；ZPay 仍保持跳转收银台流程
+- 成功提示：所有渠道支付成功后在 toast、弹窗、弹出页中统一展示“支付成功，余额已到账”，并立即刷新余额/充值记录。
+- 失败/取消提示：所有渠道失败、取消、关闭订单时统一提示“支付未完成，请重新发起或稍后重试”，便于客服与运营排查。
+- 提示文案常量：`web/admin-spa/src/constants/paymentMessages.js` 维护统一的提示模板，供 `UserDashboardView.vue`、`UserRechargeRecords.vue` 等组件复用。
 
 ##### 安全机制
 
