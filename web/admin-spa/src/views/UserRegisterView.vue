@@ -230,6 +230,48 @@
             </div>
           </div>
 
+          <!-- 邀请码输入 -->
+          <div>
+            <label
+              class="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-300"
+              for="referralCode"
+            >
+              邀请码 <span class="text-xs text-gray-400">(可选)</span>
+            </label>
+            <div class="relative">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                <svg
+                  class="h-5 w-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M5 12h14m-7-7v14"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+              </div>
+              <input
+                id="referralCode"
+                v-model="form.referralCode"
+                class="block w-full rounded-xl border-2 border-dashed border-[#d8d5ce] bg-[#F5F2EB] py-3 pl-11 pr-4 text-gray-900 placeholder-gray-400 transition-all focus:border-[#D97757] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900/50 dark:text-white dark:placeholder-gray-500 dark:focus:border-[#D97757] dark:focus:bg-gray-900 dark:focus:ring-[#D97757]/20"
+                :disabled="loading"
+                name="referralCode"
+                placeholder="如果有邀请链接，请输入邀请码"
+                type="text"
+              />
+            </div>
+            <p
+              v-if="form.referralCode"
+              class="mt-1 text-xs text-amber-600 dark:text-amber-300"
+            >
+              已自动填入邀请信息，注册后将绑定邀请关系。
+            </p>
+          </div>
+
           <!-- 错误提示 -->
           <div
             v-if="error"
@@ -322,7 +364,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { useThemeStore } from '@/stores/theme'
 import { showToast } from '@/utils/toast'
@@ -331,6 +373,7 @@ import PasswordStrengthMeter from '@/components/user/PasswordStrengthMeter.vue'
 import { API_PREFIX } from '@/config/api'
 
 const router = useRouter()
+const route = useRoute()
 const themeStore = useThemeStore()
 
 const loading = ref(false)
@@ -342,7 +385,8 @@ const form = reactive({
   email: '',
   password: '',
   confirmPassword: '',
-  displayName: ''
+  displayName: '',
+  referralCode: ''
 })
 
 const isFormValid = computed(() => {
@@ -379,7 +423,8 @@ const handleRegister = async () => {
       username: form.username,
       email: form.email,
       password: form.password,
-      displayName: form.displayName || form.username
+      displayName: form.displayName || form.username,
+      referralCode: form.referralCode ? form.referralCode.trim() : undefined
     })
 
     if (response.data.success) {
@@ -402,6 +447,13 @@ const handleRegister = async () => {
 onMounted(() => {
   // 初始化主题
   themeStore.initTheme()
+
+  const referralParam =
+    route.query?.inviter || route.query?.referral || route.query?.ref || route.query?.code
+
+  if (typeof referralParam === 'string' && referralParam.trim()) {
+    form.referralCode = referralParam.trim()
+  }
 })
 </script>
 

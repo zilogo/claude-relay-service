@@ -225,6 +225,21 @@ const config = {
     requirePasswordChange: process.env.REQUIRE_PASSWORD_CHANGE === 'true' // 首次登录是否强制修改密码
   },
 
+  // 🎁 邀请返利配置
+  referralProgram: {
+    enabled: process.env.REFERRAL_PROGRAM_ENABLED === 'true',
+    linkBaseUrl: process.env.REFERRAL_LINK_BASE_URL || `${defaultBaseUrl}/user-register`,
+    rewardUsd: getFloatEnv(10, 'REFERRAL_REWARD_USD'),
+    qualifiedRechargeCny: getFloatEnv(20, 'REFERRAL_QUALIFIED_RECHARGE_CNY'),
+    qualifiedRechargeUsd: getFloatEnv(undefined, 'REFERRAL_QUALIFIED_RECHARGE_USD'),
+    maxRewardsPerInvitee: getIntEnv(1, 'REFERRAL_MAX_REWARDS_PER_INVITEE'),
+    maxInviteesPerUser: getIntEnv(0, 'REFERRAL_MAX_INVITEES_PER_USER'),
+    codeLength: getIntEnv(8, 'REFERRAL_CODE_LENGTH'),
+    rulesDescription:
+      process.env.REFERRAL_RULES_DESCRIPTION ||
+      '所有注册的用户都具备资格，当推荐的客户通过您的链接完成账号的注册，并充值20元以上时，我们赠送您10美金的使用额度，该额度将直接存入您的账户中；该赠送额度没有使用期限；'
+  },
+
   // 📧 邮件服务配置
   email: {
     enabled: process.env.EMAIL_ENABLED === 'true',

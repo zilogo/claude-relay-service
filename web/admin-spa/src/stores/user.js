@@ -11,7 +11,8 @@ export const useUserStore = defineStore('user', {
     isAuthenticated: false,
     sessionToken: null,
     loading: false,
-    config: null
+    config: null,
+    referralInfo: null
   }),
 
   getters: {
@@ -211,12 +212,45 @@ export const useUserStore = defineStore('user', {
       }
     },
 
+    // 🎁 获取邀请返利信息
+    async getReferralInfo() {
+      try {
+        const response = await axios.get(`${API_BASE}/referral`)
+        if (response.data.success) {
+          this.referralInfo = response.data.data
+          return response.data.data
+        }
+        return null
+      } catch (error) {
+        if (error.response?.status === 404) {
+          return null
+        }
+        console.error('Failed to fetch referral info:', error)
+        throw error
+      }
+    },
+
+    // 🎁 获取邀请详情列表
+    async getReferralInvitees(params = {}) {
+      try {
+        const response = await axios.get(`${API_BASE}/referral/invitees`, { params })
+        return response.data.success ? response.data.data : { records: [], total: 0 }
+      } catch (error) {
+        if (error.response?.status === 404) {
+          return { records: [], total: 0, page: 1, limit: 20, totalPages: 0 }
+        }
+        console.error('Failed to fetch referral invitees:', error)
+        throw error
+      }
+    },
+
     // 🧹 清除认证信息
     clearAuth() {
       this.user = null
       this.sessionToken = null
       this.isAuthenticated = false
       this.config = null
+      this.referralInfo = null
 
       localStorage.removeItem('userToken')
       localStorage.removeItem('userData')

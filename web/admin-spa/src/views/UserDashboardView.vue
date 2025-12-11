@@ -322,6 +322,165 @@
           </div>
         </div>
 
+        <!-- Referral Program Card -->
+        <div
+          v-if="referralInfo"
+          class="overflow-hidden rounded-3xl border border-amber-200/60 bg-gradient-to-br from-amber-50/80 to-white/80 shadow-xl shadow-amber-100/60 backdrop-blur-xl dark:border-amber-500/30 dark:from-slate-800/70 dark:to-slate-900/60"
+        >
+          <div class="px-6 py-6">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p class="text-sm font-semibold text-amber-600 dark:text-amber-300">邀请返利</p>
+                <h3 class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">分享获取额度</h3>
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                  {{ referralInfo.rules }}
+                  <span class="ml-1 text-amber-700 dark:text-amber-200">
+                    达标金额：¥{{ (referralInfo.qualifiedRechargeCny || 0).toFixed(2) }}
+                    （≈${{ (referralInfo.qualifiedRechargeUsd || 0).toFixed(2) }}）
+                  </span>
+                </p>
+              </div>
+              <div class="flex flex-wrap gap-3">
+                <button
+                  class="inline-flex items-center rounded-full border border-amber-300 bg-white/80 px-4 py-2 text-sm font-semibold text-amber-700 shadow-sm transition hover:border-amber-400 hover:bg-white dark:border-amber-500/50 dark:bg-amber-500/10 dark:text-amber-200"
+                  type="button"
+                  @click="copyReferralCode"
+                >
+                  <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      d="M8 7V5a2 2 0 012-2h7a2 2 0 012 2v11a2 2 0 01-2 2h-1"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                    />
+                    <path
+                      d="M16 7H7a2 2 0 00-2 2v10a2 2 0 002 2h9a2 2 0 002-2V7z"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                    />
+                  </svg>
+                  复制邀请码
+                </button>
+                <button
+                  class="inline-flex items-center rounded-full border border-amber-300 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-700 shadow-sm transition hover:border-amber-400 hover:bg-amber-500/20 dark:border-amber-500/30 dark:text-amber-100"
+                  type="button"
+                  @click="copyReferralLink"
+                >
+                  <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      d="M13.828 10.172a4 4 0 010 5.656l-2 2a4 4 0 01-5.656-5.656l1.172-1.172"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                    />
+                    <path
+                      d="M10.172 13.828a4 4 0 010-5.656l2-2a4 4 0 115.656 5.656L16.656 13"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                    />
+                  </svg>
+                  复制邀请链接
+                </button>
+              </div>
+            </div>
+
+            <div class="mt-6 grid gap-4 md:grid-cols-2">
+              <div class="rounded-2xl border border-gray-200/60 bg-white/90 p-4 dark:border-gray-600/60 dark:bg-slate-800/80">
+                <label class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+                  >邀请链接</label
+                >
+                <div class="mt-2 flex items-center rounded-xl border border-gray-200/70 bg-gray-50/70 px-3 py-2 text-sm font-medium text-gray-900 dark:border-gray-600/60 dark:bg-slate-800/80 dark:text-gray-100">
+                  <span class="truncate">{{ referralInfo.link }}</span>
+                </div>
+              </div>
+              <div class="rounded-2xl border border-gray-200/60 bg-white/90 p-4 dark:border-gray-600/60 dark:bg-slate-800/80">
+                <label class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+                  >邀请码</label
+                >
+                <div class="mt-2 flex items-center justify-between rounded-xl border border-gray-200/70 bg-gray-50/70 px-3 py-2 text-lg font-bold text-gray-900 dark:border-gray-600/60 dark:bg-slate-800/80 dark:text-gray-100">
+                  <span>{{ referralInfo.code }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-6 grid gap-4 sm:grid-cols-3">
+              <div
+                class="rounded-2xl border border-amber-100 bg-white/80 p-4 text-center dark:border-amber-500/30 dark:bg-slate-800/70"
+              >
+                <p class="text-sm font-semibold text-gray-500 dark:text-gray-300">累计邀请</p>
+                <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
+                  {{ referralInfo.stats?.totalInvites || 0 }}
+                </p>
+              </div>
+              <div
+                class="rounded-2xl border border-blue-100 bg-white/80 p-4 text-center dark:border-blue-500/30 dark:bg-slate-800/70"
+              >
+                <p class="text-sm font-semibold text-gray-500 dark:text-gray-300">达标人数</p>
+                <p class="mt-2 text-3xl font-bold text-blue-600 dark:text-blue-200">
+                  {{ referralInfo.stats?.qualifiedInvites || 0 }}
+                </p>
+              </div>
+              <div
+                class="rounded-2xl border border-emerald-100 bg-white/80 p-4 text-center dark:border-emerald-500/30 dark:bg-slate-800/70"
+              >
+                <p class="text-sm font-semibold text-gray-500 dark:text-gray-300">已获赠送额度</p>
+                <p class="mt-2 text-3xl font-bold text-emerald-600 dark:text-emerald-200">
+                  ${{ (referralInfo.stats?.totalRewardUsd || 0).toFixed(2) }}
+                </p>
+              </div>
+            </div>
+
+            <div class="mt-6">
+              <div class="flex items-center justify-between">
+                <h4 class="text-base font-semibold text-gray-900 dark:text-white">最近邀请</h4>
+                <span class="text-xs text-gray-500 dark:text-gray-400"
+                  >已展示最近 {{ referralInfo.recentInvitees?.length || 0 }} 个邀请</span
+                >
+              </div>
+              <div v-if="referralInfo.recentInvitees?.length" class="mt-3 space-y-3">
+                <div
+                  v-for="invite in referralInfo.recentInvitees"
+                  :key="invite.inviteeId"
+                  class="flex items-center justify-between rounded-2xl border border-gray-200/70 bg-white/80 px-4 py-3 dark:border-gray-600/70 dark:bg-slate-800/80"
+                >
+                  <div>
+                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {{ invite.inviteeUsername || '未命名用户' }}
+                    </p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                      注册时间：{{ formatDate(invite.createdAt) || '未知' }}
+                    </p>
+                  </div>
+                  <div class="text-right">
+                    <span
+                      :class="[
+                        'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border',
+                        getReferralStatusMeta(invite.status).classes
+                      ]"
+                    >
+                      {{ getReferralStatusMeta(invite.status).label }}
+                    </span>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      累计充值：${{ (invite.totalRechargeUsd || 0).toFixed(2) }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="mt-4 rounded-2xl border border-dashed border-gray-300/80 p-6 text-center text-sm text-gray-500 dark:border-gray-600/80 dark:text-gray-400">
+                还没有邀请记录，快复制邀请链接分享给好友吧～
+              </div>
+            </div>
+          </div>
+        </div>
+        <div
+          v-else-if="referralLoading"
+          class="rounded-3xl border border-amber-100 bg-white/70 p-6 text-sm text-gray-500 shadow-sm dark:border-amber-500/30 dark:bg-slate-800/70"
+        >
+          正在加载邀请信息...
+        </div>
+
         <!-- User Info -->
         <div
           class="overflow-hidden rounded-3xl border border-gray-200/50 bg-white/80 shadow-xl backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/80"
@@ -530,6 +689,7 @@ import { useUserStore } from '@/stores/user'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import { showToast } from '@/utils/toast'
+import { copyTextToClipboard } from '@/utils/clipboard'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
 import UserApiKeysManager from '@/components/user/UserApiKeysManager.vue'
 import UserUsageStats from '@/components/user/UserUsageStats.vue'
@@ -574,6 +734,8 @@ const tabIndicatorOffset = computed(() => {
 const userProfile = ref(null)
 const apiKeysStats = ref({ active: 0, deleted: 0 })
 const balanceInfo = ref(null)
+const referralInfo = ref(null)
+const referralLoading = ref(false)
 
 const formatNumber = (num) => {
   if (num >= 1000000) {
@@ -757,6 +919,68 @@ const loadBalanceInfo = async () => {
   }
 }
 
+const loadReferralInfo = async () => {
+  referralLoading.value = true
+  try {
+    referralInfo.value = await userStore.getReferralInfo()
+  } catch (error) {
+    if (error.response?.status !== 404) {
+      console.error('Failed to load referral info:', error)
+      showToast('加载邀请信息失败', 'error')
+    }
+    referralInfo.value = null
+  } finally {
+    referralLoading.value = false
+  }
+}
+
+const copyReferralLink = async () => {
+  if (!referralInfo.value?.link) {
+    return
+  }
+  try {
+    await copyTextToClipboard(referralInfo.value.link)
+    showToast('邀请链接已复制', 'success')
+  } catch (error) {
+    console.error('Failed to copy referral link:', error)
+    showToast('复制失败，请手动复制', 'error')
+  }
+}
+
+const copyReferralCode = async () => {
+  if (!referralInfo.value?.code) {
+    return
+  }
+  try {
+    await copyTextToClipboard(referralInfo.value.code)
+    showToast('邀请码已复制', 'success')
+  } catch (error) {
+    console.error('Failed to copy referral code:', error)
+    showToast('复制失败，请手动复制', 'error')
+  }
+}
+
+const getReferralStatusMeta = (status) => {
+  const mapping = {
+    rewarded: {
+      label: '已发放',
+      classes:
+        'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200 border border-emerald-200/60'
+    },
+    qualified: {
+      label: '待发放',
+      classes:
+        'bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-200 border border-sky-200/60'
+    },
+    pending: {
+      label: '未达标',
+      classes:
+        'bg-gray-100 text-gray-600 dark:bg-gray-700/50 dark:text-gray-300 border border-gray-200/60'
+    }
+  }
+  return mapping[status] || mapping.pending
+}
+
 watch(
   () => route.query,
   () => {
@@ -773,6 +997,7 @@ onMounted(async () => {
   loadUserProfile()
   loadApiKeysStats()
   loadBalanceInfo()
+  loadReferralInfo()
 })
 </script>
 

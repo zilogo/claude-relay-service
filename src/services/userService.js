@@ -1286,7 +1286,7 @@ class UserService {
    * @param {string} remark - 备注
    * @returns {object} 充值结果
    */
-  async rechargeBalance(userId, amount, operator = {}, remark = '') {
+  async rechargeBalance(userId, amount, operator = {}, remark = '', options = {}) {
     try {
       // 验证金额
       const rechargeAmount = parseFloat(amount)
@@ -1305,6 +1305,18 @@ class UserService {
       const balanceAfter = balanceBefore + rechargeAmount
       const totalRechargeBefore = parseFloat(user.totalRecharge) || 0
 
+      const recordType = options.recordType || 'manual'
+      const recordSource = options.source || 'admin'
+      const shouldCountTowardsTotalRecharge =
+        options.countTowardTotalRecharge !== undefined
+          ? options.countTowardTotalRecharge
+          : true
+      const shouldUpdateLastRecharge =
+        options.updateLastRecharge !== undefined
+          ? options.updateLastRecharge
+          : shouldCountTowardsTotalRecharge
+      const skipReferralProcessing = options.skipReferralProcessing === true
+
       // 生成充值记录ID
       const recordId = `rec_${crypto.randomBytes(8).toString('hex')}`
       const now = new Date().toISOString()
@@ -1317,8 +1329,8 @@ class UserService {
         amount: rechargeAmount,
         balanceBefore,
         balanceAfter,
-        type: 'manual',
-        source: 'admin',
+        type: recordType,
+        source: recordSource,
         operatorId: operator.id || '',
         operatorName: operator.name || 'system',
         remark: remark || '',
@@ -1327,8 +1339,12 @@ class UserService {
 
       // 更新用户余额
       user.balance = balanceAfter
-      user.totalRecharge = totalRechargeBefore + rechargeAmount
-      user.lastRechargeAt = now
+      if (shouldCountTowardsTotalRecharge) {
+        user.totalRecharge = totalRechargeBefore + rechargeAmount
+      }
+      if (shouldUpdateLastRecharge) {
+        user.lastRechargeAt = now
+      }
       user.updatedAt = now
 
       // 使用 Redis 事务保证原子性
@@ -1350,10 +1366,10 @@ class UserService {
       await multi.exec()
 
       logger.success(
-        `💰 User ${user.username} (${userId}) recharged $${rechargeAmount.toFixed(2)} by ${operator.name || 'system'}, balance: $${balanceBefore.toFixed(2)} -> $${balanceAfter.toFixed(2)}`
+        `💰 User ${user.username} (${userId}) recharged $${rechargeAmount.toFixed(2)} by ${operator.name || 'system'}, balance: $${balanceBefore.toFixed(2)} -> $${balanceAfter.toFixed(2)} [${recordType}]`
       )
 
-      return {
+      const result = {
         recordId,
         userId,
         username: user.username,
@@ -1365,9 +1381,64 @@ class UserService {
         operatorName: operator.name || 'system',
         createdAt: now
       }
+
+      if (!skipReferralProcessing && shouldCountTowardsTotalRecharge) {
+        await this.handleReferralReward(user, rechargeAmount)
+      }
+
+      return result
     } catch (error) {
       logger.error('❌ Error recharging balance:', error)
       throw error
+    }
+  }
+
+  async handleReferralReward(user, rechargeAmount) {
+    try {
+      const referralService = require('./referralService')
+      if (!referralService.isEnabled()) {
+        return
+      }
+
+      const rewardPlan = await referralService.processInviteeRecharge({
+        inviteeId: user.id,
+        totalRechargeUsd: user.totalRecharge || 0,
+        rechargeAmountUsd: rechargeAmount
+      })
+
+      if (!rewardPlan) {
+        return
+      }
+
+      const lockToken = await referralService.acquireRewardLock(user.id)
+      if (!lockToken) {
+        logger.warn('Referral reward lock unavailable, skipping duplicate reward', {
+          inviteeId: user.id
+        })
+        return
+      }
+
+      try {
+        await this.rechargeBalance(
+          rewardPlan.referrerId,
+          rewardPlan.rewardAmountUsd,
+          { id: 'system', name: 'referral-program' },
+          `Invitee ${user.username} qualified for referral reward`,
+          {
+            recordType: 'reward',
+            source: 'referral',
+            countTowardTotalRecharge: false,
+            updateLastRecharge: false,
+            skipReferralProcessing: true
+          }
+        )
+
+        await referralService.markRewardIssued(user.id, rewardPlan.rewardAmountUsd)
+      } finally {
+        await referralService.releaseRewardLock(user.id, lockToken)
+      }
+    } catch (error) {
+      logger.error('❌ Error processing referral reward:', error)
     }
   }
 

@@ -10,6 +10,7 @@ const { RateLimiterRedis } = require('rate-limiter-flexible')
 const redis = require('../models/redis')
 const { authenticateUser, authenticateUserOrAdmin, requireAdmin } = require('../middleware/auth')
 const CostCalculator = require('../utils/costCalculator')
+const referralService = require('../services/referralService')
 
 // 🚦 配置登录速率限制
 // 只基于IP地址限制，避免攻击者恶意锁定特定账户
@@ -245,6 +246,11 @@ router.post('/register', async (req, res) => {
     const { username, email, password, displayName, firstName, lastName } = req.body
     const clientIp = req.ip || req.connection.remoteAddress || 'unknown'
 
+    const referralCodeInput =
+      req.body?.referralCode || req.body?.inviter || req.query?.referralCode || req.query?.inviter
+    const referralCode = typeof referralCodeInput === 'string' ? referralCodeInput.trim() : ''
+    let referrerUser = null
+
     // 初始化速率限制器（如果尚未初始化）
     const limiters = initRateLimiters()
 
@@ -294,6 +300,42 @@ router.post('/register', async (req, res) => {
       })
     }
 
+    if (referralCode) {
+      if (!referralService.isEnabled()) {
+        return res.status(400).json({
+          error: 'Referral disabled',
+          message: 'Referral program is not enabled at the moment'
+        })
+      }
+
+      const referrerId = await referralService.findUserIdByCode(referralCode)
+      if (!referrerId) {
+        return res.status(400).json({
+          error: 'Invalid referral code',
+          message: '邀请链接无效或已失效'
+        })
+      }
+
+      referrerUser = await userService.getUserById(referrerId, false)
+      if (!referrerUser) {
+        return res.status(400).json({
+          error: 'Invalid referral code',
+          message: '邀请人信息不存在'
+        })
+      }
+
+      const maxInvitees = parseInt(config.referralProgram?.maxInviteesPerUser) || 0
+      if (maxInvitees > 0) {
+        const stats = await referralService.getUserStats(referrerUser.id)
+        if (stats.totalInvites >= maxInvitees) {
+          return res.status(400).json({
+            error: 'Referral limit reached',
+            message: '邀请人可用名额已用完，请联系管理员'
+          })
+        }
+      }
+    }
+
     // 注册用户
     const user = await userService.registerLocalUser({
       username,
@@ -303,6 +345,19 @@ router.post('/register', async (req, res) => {
       firstName,
       lastName
     })
+
+    if (referrerUser) {
+      try {
+        await referralService.recordInvitation({
+          inviteeId: user.id,
+          inviteeUsername: user.username,
+          referrerId: referrerUser.id,
+          referrerUsername: referrerUser.username
+        })
+      } catch (referralError) {
+        logger.error('❌ Failed to record referral info:', referralError)
+      }
+    }
 
     logger.info(`📝 New user registered: ${username} from IP: ${clientIp}`)
 
@@ -761,6 +816,59 @@ router.get('/recharge-records', authenticateUser, async (req, res) => {
   }
 })
 
+// 🎁 获取邀请返利信息
+router.get('/referral', authenticateUser, async (req, res) => {
+  try {
+    if (!referralService.isEnabled()) {
+      return res.status(404).json({
+        error: 'Referral disabled',
+        message: 'Referral program is not enabled'
+      })
+    }
+
+    const info = await referralService.getReferralInfo(req.user.id, { recentLimit: 5 })
+    res.json({
+      success: true,
+      data: info
+    })
+  } catch (error) {
+    logger.error('❌ Get referral info error:', error)
+    res.status(500).json({
+      error: 'Referral error',
+      message: 'Failed to retrieve referral information'
+    })
+  }
+})
+
+// 🎁 获取邀请列表
+router.get('/referral/invitees', authenticateUser, async (req, res) => {
+  try {
+    if (!referralService.isEnabled()) {
+      return res.status(404).json({
+        error: 'Referral disabled',
+        message: 'Referral program is not enabled'
+      })
+    }
+
+    const { page = 1, limit = 20 } = req.query
+    const result = await referralService.listInvitees(req.user.id, {
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10)
+    })
+
+    res.json({
+      success: true,
+      data: result
+    })
+  } catch (error) {
+    logger.error('❌ Get referral invitees error:', error)
+    res.status(500).json({
+      error: 'Referral error',
+      message: 'Failed to retrieve referral invitees'
+    })
+  }
+})
+
 // 🔑 获取用户的API Keys
 router.get('/api-keys', authenticateUser, async (req, res) => {
   try {
@@ -1114,6 +1222,15 @@ router.get('/', authenticateUserOrAdmin, requireAdmin, async (req, res) => {
 
     const result = await userService.getAllUsers(options)
 
+    if (referralService.isEnabled()) {
+      await Promise.all(
+        result.users.map(async (user) => {
+          user.referralStats = await referralService.getUserStats(user.id)
+          return user
+        })
+      )
+    }
+
     res.json({
       success: true,
       users: result.users,
@@ -1134,6 +1251,43 @@ router.get('/', authenticateUserOrAdmin, requireAdmin, async (req, res) => {
 })
 
 // 👤 获取特定用户信息（管理员）
+router.get('/:userId/referrals', authenticateUserOrAdmin, requireAdmin, async (req, res) => {
+  if (!referralService.isEnabled()) {
+    return res.status(404).json({
+      error: 'Referral disabled',
+      message: 'Referral program is not enabled'
+    })
+  }
+
+  try {
+    const { userId } = req.params
+    const { page = 1, limit = 20 } = req.query
+    const [stats, invitees, code] = await Promise.all([
+      referralService.getUserStats(userId),
+      referralService.listInvitees(userId, {
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10)
+      }),
+      referralService.getOrCreateReferralCode(userId)
+    ])
+
+    res.json({
+      success: true,
+      data: {
+        code,
+        stats,
+        invitees
+      }
+    })
+  } catch (error) {
+    logger.error('❌ Get user referral details error:', error)
+    res.status(500).json({
+      error: 'Referral error',
+      message: 'Failed to retrieve referral details'
+    })
+  }
+})
+
 router.get('/:userId', authenticateUserOrAdmin, requireAdmin, async (req, res) => {
   try {
     const { userId } = req.params
@@ -1148,6 +1302,11 @@ router.get('/:userId', authenticateUserOrAdmin, requireAdmin, async (req, res) =
 
     // 获取用户的API Keys（包括已删除的以保留统计数据）
     const apiKeys = await apiKeyService.getUserApiKeys(userId, true)
+
+    let referralInfo = null
+    if (referralService.isEnabled()) {
+      referralInfo = await referralService.getReferralInfo(userId, { recentLimit: 5 })
+    }
 
     res.json({
       success: true,
@@ -1184,7 +1343,8 @@ router.get('/:userId', authenticateUserOrAdmin, requireAdmin, async (req, res) =
               : null
           }
         })
-      }
+      },
+      referral: referralInfo
     })
   } catch (error) {
     logger.error('❌ Get user details error:', error)

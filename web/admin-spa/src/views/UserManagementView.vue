@@ -337,6 +337,14 @@
                   <span>{{ formatNumber(user.totalUsage.requests || 0) }} requests</span>
                   <span>${{ (user.totalUsage.totalCost || 0).toFixed(4) }} total cost</span>
                 </div>
+                <div
+                  v-if="user.referralStats"
+                  class="mt-2 flex flex-wrap items-center gap-3 text-xs text-amber-700 dark:text-amber-200"
+                >
+                  <span>邀请 {{ user.referralStats.totalInvites || 0 }} 人</span>
+                  <span>达标 {{ user.referralStats.qualifiedInvites || 0 }} 人</span>
+                  <span>奖励 ${{ formatCurrency(user.referralStats.totalRewardUsd || 0, 2) }}</span>
+                </div>
               </div>
             </div>
             <div class="flex items-center space-x-2">
@@ -349,6 +357,23 @@
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+              </button>
+
+              <!-- View Referral Details -->
+              <button
+                v-if="user.referralStats"
+                class="inline-flex items-center rounded border border-transparent p-1 text-amber-600 hover:text-amber-500 dark:text-amber-200"
+                title="View Referral Details"
+                @click="openReferralModal(user)"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    d="M13 7h6m-6 4h4m-4 4h6M4 7h6m-6 4h6m-6 4h6"
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     stroke-width="2"
@@ -515,6 +540,192 @@
       :user="selectedUser"
       @close="showStatsModal = false"
     />
+
+    <!-- Referral Details Modal -->
+    <div
+      v-if="showReferralModal"
+      aria-modal="true"
+      class="fixed inset-0 z-50 overflow-y-auto"
+      role="dialog"
+    >
+      <div class="flex min-h-screen items-end justify-center px-4 pb-10 pt-4 text-center sm:block sm:p-0">
+        <div
+          aria-hidden="true"
+          class="fixed inset-0 bg-gray-900/60 transition-opacity"
+          @click="closeReferralModal"
+        ></div>
+
+        <div
+          class="inline-block transform overflow-hidden rounded-lg bg-white text-left align-bottom shadow-2xl transition-all dark:bg-gray-900 sm:my-8 sm:w-full sm:max-w-4xl sm:align-middle"
+        >
+          <div class="bg-white px-6 py-5 dark:bg-gray-900">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+                  邀请详情 - {{ referralModalUser?.displayName || referralModalUser?.username }}
+                </h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">邀请码：{{ referralCode || '暂无' }}</p>
+              </div>
+              <button
+                class="inline-flex items-center rounded-md border border-transparent px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-300"
+                type="button"
+                @click="closeReferralModal"
+              >
+                关闭
+              </button>
+            </div>
+
+            <div class="mt-4 grid gap-4 sm:grid-cols-3">
+              <div class="rounded-2xl border border-gray-200 px-4 py-3 dark:border-gray-700">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  邀请人数
+                </p>
+                <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                  {{ referralStatsView.totalInvites || 0 }}
+                </p>
+              </div>
+              <div class="rounded-2xl border border-gray-200 px-4 py-3 dark:border-gray-700">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  达标人数
+                </p>
+                <p class="mt-2 text-2xl font-bold text-blue-600 dark:text-blue-200">
+                  {{ referralStatsView.qualifiedInvites || 0 }}
+                </p>
+              </div>
+              <div class="rounded-2xl border border-gray-200 px-4 py-3 dark:border-gray-700">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  累计奖励
+                </p>
+                <p class="mt-2 text-2xl font-bold text-emerald-600 dark:text-emerald-200">
+                  ${{ formatCurrency(referralStatsView.totalRewardUsd || 0, 2) }}
+                </p>
+              </div>
+            </div>
+
+            <div class="mt-6">
+              <div class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                <div v-if="referralModalLoading" class="py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                  正在加载邀请数据...
+                </div>
+                <div v-else>
+                  <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-800/60">
+                      <tr>
+                        <th
+                          class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300"
+                          scope="col"
+                        >
+                          用户
+                        </th>
+                        <th
+                          class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300"
+                          scope="col"
+                        >
+                          注册时间
+                        </th>
+                        <th
+                          class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300"
+                          scope="col"
+                        >
+                          累计充值
+                        </th>
+                        <th
+                          class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300"
+                          scope="col"
+                        >
+                          状态
+                        </th>
+                        <th
+                          class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300"
+                          scope="col"
+                        >
+                          奖励信息
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-800 dark:bg-gray-900">
+                      <tr v-for="invite in referralInvitees" :key="invite.inviteeId">
+                        <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                          {{ invite.inviteeUsername || '未知用户' }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                          {{ formatDate(invite.createdAt) || '—' }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                          ${{ formatCurrency(invite.totalRechargeUsd || 0, 2) }}
+                        </td>
+                        <td class="px-4 py-3 text-sm">
+                          <span
+                            :class="[
+                              'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                              getReferralStatusBadge(invite.status).classes
+                            ]"
+                          >
+                            {{ getReferralStatusBadge(invite.status).label }}
+                          </span>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                          <div v-if="invite.rewardedAt">
+                            <p>已发放 ${{ formatCurrency(invite.rewardAmountUsd || 0, 2) }}</p>
+                            <p class="text-xs text-gray-400 dark:text-gray-500">
+                              {{ formatDate(invite.rewardedAt) }}
+                            </p>
+                          </div>
+                          <div v-else-if="invite.qualifiedAt">
+                            <p>待发放</p>
+                            <p class="text-xs text-gray-400 dark:text-gray-500">
+                              达标：{{ formatDate(invite.qualifiedAt) || '—' }}
+                            </p>
+                          </div>
+                          <span v-else>—</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div
+                    v-if="!referralInvitees.length"
+                    class="py-10 text-center text-sm text-gray-500 dark:text-gray-400"
+                  >
+                    暂无邀请数据
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="flex flex-col gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div>
+              共 {{ referralPaginationInfo.total }} 人 - 第 {{ referralPaginationInfo.page }} / {{
+                referralPaginationInfo.totalPages || 1
+              }} 页
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                class="rounded-md border border-gray-300 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:text-gray-200"
+                :disabled="referralPaginationInfo.page <= 1"
+                type="button"
+                @click="handleReferralPageChange('prev')"
+              >
+                上一页
+              </button>
+              <button
+                class="rounded-md border border-gray-300 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:text-gray-200"
+                :disabled="
+                  referralPaginationInfo.totalPages !== 0 &&
+                  referralPaginationInfo.page >= referralPaginationInfo.totalPages
+                "
+                type="button"
+                @click="handleReferralPageChange('next')"
+              >
+                下一页
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Confirm Modals -->
     <ConfirmModal
@@ -734,8 +945,11 @@ const showStatsModal = ref(false)
 const showConfirmModal = ref(false)
 const showRoleModal = ref(false)
 const showRechargeModal = ref(false)
+const showReferralModal = ref(false)
 const rechargeLoading = ref(false)
+const referralModalLoading = ref(false)
 const selectedUser = ref(null)
+const referralModalUser = ref(null)
 const rechargeForm = ref({
   currentBalance: 0,
   totalCost: 0,
@@ -743,6 +957,22 @@ const rechargeForm = ref({
   amount: null,
   remark: ''
 })
+const referralModalData = ref({
+  code: '',
+  stats: {
+    totalInvites: 0,
+    qualifiedInvites: 0,
+    totalRewardUsd: 0
+  },
+  invitees: {
+    records: [],
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 0
+  }
+})
+const referralModalPageSize = ref(10)
 
 const confirmAction = ref({
   title: '',
@@ -768,6 +998,29 @@ const paginationSummary = computed(() => {
   }
   return `Showing ${paginationRange.value.start}-${paginationRange.value.end} of ${pagination.value.total}`
 })
+
+const referralStatsView = computed(() => {
+  return referralModalData.value?.stats || {
+    totalInvites: 0,
+    qualifiedInvites: 0,
+    totalRewardUsd: 0
+  }
+})
+
+const referralInvitees = computed(() => {
+  return referralModalData.value?.invitees?.records || []
+})
+
+const referralPaginationInfo = computed(() => {
+  const paginationData = referralModalData.value?.invitees || {}
+  return {
+    page: paginationData.page || 1,
+    totalPages: paginationData.totalPages || 0,
+    total: paginationData.total || 0
+  }
+})
+
+const referralCode = computed(() => referralModalData.value?.code || '')
 
 const formatNumber = (num) => {
   if (num >= 1000000) {
@@ -795,6 +1048,80 @@ const formatDate = (dateString) => {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+const getReferralStatusBadge = (status) => {
+  const mapping = {
+    rewarded: {
+      label: 'Rewarded',
+      classes: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
+    },
+    qualified: {
+      label: 'Qualified',
+      classes: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200'
+    },
+    pending: {
+      label: 'Pending',
+      classes: 'bg-gray-100 text-gray-700 dark:bg-gray-800/60 dark:text-gray-300'
+    }
+  }
+  return mapping[status] || mapping.pending
+}
+
+const openReferralModal = async (user) => {
+  referralModalUser.value = user
+  showReferralModal.value = true
+  await loadReferralDetails(1)
+}
+
+const loadReferralDetails = async (page = 1) => {
+  if (!referralModalUser.value) {
+    return
+  }
+  referralModalLoading.value = true
+  try {
+    const response = await apiClient.get(`/users/${referralModalUser.value.id}/referrals`, {
+      params: {
+        page,
+        limit: referralModalPageSize.value
+      }
+    })
+
+    if (response.success) {
+      referralModalData.value = response.data
+    }
+  } catch (error) {
+    console.error('Failed to load referral details:', error)
+    showToast('Failed to load referral details', 'error')
+  } finally {
+    referralModalLoading.value = false
+  }
+}
+
+const handleReferralPageChange = async (direction) => {
+  const { page, totalPages } = referralPaginationInfo.value
+  let targetPage = page
+  if (direction === 'prev') {
+    targetPage = Math.max(1, page - 1)
+  } else if (direction === 'next') {
+    targetPage = totalPages === 0 ? page : Math.min(totalPages, page + 1)
+  } else if (typeof direction === 'number') {
+    targetPage = direction
+  }
+
+  if (targetPage === page || targetPage < 1) {
+    return
+  }
+
+  if (totalPages !== 0 && targetPage > totalPages) {
+    return
+  }
+
+  await loadReferralDetails(targetPage)
+}
+
+const closeReferralModal = () => {
+  showReferralModal.value = false
 }
 
 const loadUsers = async (options = {}) => {

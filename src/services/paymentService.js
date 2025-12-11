@@ -411,7 +411,11 @@ class PaymentService {
         order.userId,
         order.amountUsd,
         { id: 'system', name: '在线支付' },
-        `${provider}支付 - 订单${order.id}`
+        `${provider}支付 - 订单${order.id}`,
+        {
+          recordType: 'payment',
+          source: provider || 'payment'
+        }
       )
 
       logger.info('[PaymentService] Balance recharged', {
