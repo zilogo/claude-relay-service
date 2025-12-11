@@ -81,31 +81,53 @@
         </div>
 
         <div v-else>
-          <!-- [已禁用] 套餐选择 - 暂时不需要套餐功能，仅支持自定义金额充值 -->
-          <!--
           <div class="mb-6">
             <label class="mb-3 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              选择充值套餐
+              快速选择充值金额
             </label>
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <button
-                v-for="pkg in paymentStore.packages"
-                :key="pkg.id"
+                v-for="amount in presetAmounts"
+                :key="`preset-${amount}`"
                 class="relative rounded-xl border-2 p-4 text-left transition-all hover:border-[#D97757] hover:shadow-md"
                 :class="
-                  selectedPackage?.id === pkg.id
+                  isPresetSelected(amount)
                     ? 'border-[#D97757] bg-[#D97757]/5 dark:bg-[#D97757]/10'
                     : 'border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-700'
                 "
-                @click="selectPackage(pkg)"
+                @click="selectPresetAmount(amount)"
               >
-                <div class="mb-1 text-lg font-bold text-gray-900 dark:text-white">
-                  ¥{{ pkg.amountCny }}
+                <div class="mb-1 text-lg font-bold text-gray-900 dark:text-white">¥{{ amount }}</div>
+                <div class="text-sm text-gray-500 dark:text-gray-400">
+                  ≈ ${{ formatPresetUsd(amount) }}
                 </div>
-                <div class="text-sm text-gray-500 dark:text-gray-400">≈ ${{ pkg.amountUsd }}</div>
-                <div class="mt-2 text-xs font-medium text-[#D97757]">{{ pkg.name }}</div>
                 <div
-                  v-if="selectedPackage?.id === pkg.id"
+                  v-if="isPresetSelected(amount)"
+                  class="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#D97757] text-white"
+                >
+                  <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fill-rule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                </div>
+              </button>
+              <button
+                v-if="paymentStore.allowCustomAmount"
+                class="relative rounded-xl border-2 p-4 text-left transition-all hover:border-[#D97757] hover:shadow-md"
+                :class="
+                  isOtherPresetSelected
+                    ? 'border-[#D97757] bg-[#D97757]/5 dark:bg-[#D97757]/10'
+                    : 'border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-700'
+                "
+                @click="selectPresetAmount('other')"
+              >
+                <div class="mb-1 text-lg font-bold text-gray-900 dark:text-white">其他</div>
+                <div class="text-sm text-gray-500 dark:text-gray-400">自定义金额</div>
+                <div
+                  v-if="isOtherPresetSelected"
                   class="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#D97757] text-white"
                 >
                   <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
@@ -118,11 +140,13 @@
                 </div>
               </button>
             </div>
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              微信支付最低充值金额：¥{{ minWechatAmountDisplay }}
+            </p>
           </div>
-          -->
 
           <!-- 自定义金额 -->
-          <div v-if="paymentStore.allowCustomAmount" class="mb-6">
+          <div v-if="shouldShowCustomAmount" class="mb-6">
             <label class="mb-3 block text-sm font-medium text-gray-700 dark:text-gray-300">
               输入充值金额（{{ currencyDisplayName }}）
             </label>
@@ -727,6 +751,10 @@ const paymentPollingTimer = ref(null)
 const paymentCountdownTimer = ref(null)
 const manualCheckLoading = ref(false)
 const refreshPaymentLoading = ref(false)
+const selectedPresetId = ref('')
+const presetAmounts = Object.freeze([100, 200, 500, 1000])
+const OTHER_PRESET_ID = 'preset-other'
+const WECHAT_MIN_CNY = 100
 
 const getRechargeDashboardUrl = () => {
   if (typeof window === 'undefined') {
@@ -905,7 +933,7 @@ const buildWechatQrPopupHtml = ({ qrHtml, expiresLabel }) => {
           }
         }, 200);
       }
-    </script>
+    <\/script>
   </body>
 </html>`
 }
@@ -956,6 +984,13 @@ const stripeMinimumCny = computed(() => {
   const value = cfg.minConvertedAmount * rate
   return Number.isFinite(value) ? parseFloat(value.toFixed(2)) : 0
 })
+
+const minWechatAmountCny = computed(() => {
+  const stripeMin = Number(stripeMinimumCny.value) || 0
+  return Math.max(WECHAT_MIN_CNY, stripeMin)
+})
+
+const minWechatAmountDisplay = computed(() => minWechatAmountCny.value.toFixed(2))
 
 const convertedAmountHint = computed(() => {
   if (!customAmount.value) return ''
@@ -1011,13 +1046,63 @@ const displayAmount = computed(() => {
   return ''
 })
 
+const convertCnyToUsd = (amount) => {
+  const rate = parseFloat(exchangeRate.value)
+  if (!Number.isFinite(rate) || rate <= 0) {
+    return parseFloat(amount.toFixed(2))
+  }
+  return parseFloat((amount / rate).toFixed(2))
+}
+
 // 选择套餐
-// 预留套餐功能（前端暂未开放入口）
-// eslint-disable-next-line no-unused-vars
 const selectPackage = (pkg) => {
   selectedPackage.value = pkg
+  selectedPresetId.value = pkg?.id || ''
   customAmount.value = '' // 清空自定义金额
 }
+
+const createPresetPackage = (amount) => {
+  const numeric = Number(amount)
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return null
+  }
+  return {
+    id: `preset-${numeric}`,
+    amountCny: numeric,
+    amountUsd: convertCnyToUsd(numeric),
+    isPreset: true
+  }
+}
+
+const selectPresetAmount = (amount) => {
+  if (amount === 'other') {
+    selectedPresetId.value = OTHER_PRESET_ID
+    selectedPackage.value = null
+    return
+  }
+
+  const preset = createPresetPackage(amount)
+  if (!preset) return
+  selectPackage(preset)
+}
+
+const isPresetSelected = (amount) => {
+  const presetId = `preset-${Number(amount)}`
+  return selectedPresetId.value === presetId
+}
+
+const formatPresetUsd = (amount) => {
+  const rate = parseFloat(exchangeRate.value)
+  if (!Number.isFinite(rate) || rate <= 0) {
+    return '--'
+  }
+  return (amount / rate).toFixed(2)
+}
+
+const isOtherPresetSelected = computed(() => selectedPresetId.value === OTHER_PRESET_ID)
+const shouldShowCustomAmount = computed(
+  () => paymentStore.allowCustomAmount && isOtherPresetSelected.value
+)
 
 // 选择支付方式
 const updateCurrencyByMethod = (method) => {
@@ -1238,6 +1323,7 @@ const onCustomAmountChange = () => {
   if (customAmount.value) {
     selectedPackage.value = null
   }
+  selectedPresetId.value = OTHER_PRESET_ID
 }
 
 // 创建支付订单
@@ -1250,21 +1336,20 @@ const createPaymentOrder = async () => {
     if (selectedPackage.value) {
       amount = selectedPackage.value.amountCny
       currency = 'CNY'
-      packageId = selectedPackage.value.id
+      packageId = selectedPackage.value.isPreset ? null : selectedPackage.value.id
     } else {
       amount = parseFloat(customAmount.value)
       currency = customCurrency.value
       packageId = null
     }
 
-    if (
-      selectedMethod.value.provider === 'stripe' &&
-      stripeMinimumCny.value > 0 &&
-      ((currency === 'CNY' && amount < stripeMinimumCny.value) ||
-        (currency !== 'CNY' && amount * exchangeRate.value < stripeMinimumCny.value))
-    ) {
-      showToast(`微信支付最少需要充值 ¥${stripeMinimumCny.value.toFixed(2)}`, 'error')
-      return
+    if (selectedMethod.value.provider === 'stripe' && selectedMethod.value.method === 'wechat_pay') {
+      const minCny = minWechatAmountCny.value
+      const convertedAmount = currency === 'CNY' ? amount : amount * exchangeRate.value
+      if (convertedAmount < minCny) {
+        showToast(`微信支付最少需要充值 ¥${minWechatAmountDisplay.value}`, 'error')
+        return
+      }
     }
 
     const order = await paymentStore.createOrder({
@@ -1314,6 +1399,10 @@ const loadPaymentConfig = async () => {
       updateCurrencyByMethod(selectedMethod.value)
     } else {
       selectedMethod.value = null
+    }
+
+    if (!selectedPackage.value && !customAmount.value && presetAmounts.length > 0) {
+      selectPresetAmount(presetAmounts[0])
     }
   } catch (error) {
     console.error('Failed to load payment config:', error)
