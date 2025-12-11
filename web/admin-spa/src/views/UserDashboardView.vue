@@ -334,10 +334,6 @@
                 <h3 class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">分享获取额度</h3>
                 <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
                   {{ referralInfo.rules }}
-                  <span class="ml-1 text-amber-700 dark:text-amber-200">
-                    达标金额：¥{{ (referralInfo.qualifiedRechargeCny || 0).toFixed(2) }}
-                    （≈${{ (referralInfo.qualifiedRechargeUsd || 0).toFixed(2) }}）
-                  </span>
                 </p>
               </div>
               <div class="flex flex-wrap gap-3">
