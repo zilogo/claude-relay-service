@@ -284,7 +284,14 @@ class UserService {
   async getAllUsers(options = {}) {
     try {
       const client = redis.getClientSafe()
-      const { page = 1, limit = 20, role, isActive, search } = options
+      const {
+        page = 1,
+        limit = 20,
+        role,
+        isActive,
+        search,
+        disablePagination = false
+      } = options
       const pageNumber = Number.isInteger(page)
         ? Math.max(page, 1)
         : Math.max(parseInt(page, 10) || 1, 1)
@@ -357,18 +364,23 @@ class UserService {
 
       // 排序和分页
       filteredUsers.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      const startIndex = (pageNumber - 1) * limitNumber
-      const endIndex = startIndex + limitNumber
-      const paginatedUsers = filteredUsers.slice(startIndex, endIndex)
+      let paginatedUsers
+      if (disablePagination) {
+        paginatedUsers = filteredUsers
+      } else {
+        const startIndex = (pageNumber - 1) * limitNumber
+        const endIndex = startIndex + limitNumber
+        paginatedUsers = filteredUsers.slice(startIndex, endIndex)
+      }
       const total = filteredUsers.length
       const totalPages = total === 0 ? 0 : Math.ceil(total / limitNumber)
 
       return {
         users: paginatedUsers,
         total,
-        page: pageNumber,
-        limit: limitNumber,
-        totalPages
+        page: disablePagination ? 1 : pageNumber,
+        limit: disablePagination ? paginatedUsers.length || 0 : limitNumber,
+        totalPages: disablePagination ? (total === 0 ? 0 : 1) : totalPages
       }
     } catch (error) {
       logger.error('❌ Error getting all users:', error)

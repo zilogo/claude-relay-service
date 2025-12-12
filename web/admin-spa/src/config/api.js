@@ -204,6 +204,74 @@ class ApiClient {
       throw error
     }
   }
+
+  // 文件下载（CSV 等非 JSON 响应）
+  async download(url, options = {}) {
+    let fullUrl = createApiUrl(url)
+    if (options.params) {
+      const params = new URLSearchParams(options.params)
+      fullUrl += `?${params.toString()}`
+    }
+
+    const {
+      params, // eslint-disable-line no-unused-vars
+      responseType = 'blob',
+      method = 'GET',
+      ...restOptions
+    } = options
+
+    const config = this.buildConfig({
+      ...restOptions,
+      method
+    })
+
+    try {
+      const response = await fetch(fullUrl, config)
+
+      if (response.status === 401) {
+        const currentPath = window.location.pathname + window.location.hash
+        const isLoginPage = currentPath.includes('/login') || currentPath.endsWith('/')
+
+        if (!isLoginPage) {
+          localStorage.removeItem('authToken')
+          window.location.href = getLoginUrl()
+        }
+        throw new Error('Unauthorized')
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        const error = new Error(errorText || `HTTP ${response.status}`)
+        error.response = {
+          status: response.status,
+          data: errorText
+        }
+        throw error
+      }
+
+      let data
+      if (responseType === 'arraybuffer') {
+        data = await response.arrayBuffer()
+      } else if (responseType === 'text') {
+        data = await response.text()
+      } else {
+        data = await response.blob()
+      }
+
+      const disposition = response.headers.get('content-disposition') || ''
+      const match = disposition.match(/filename="?([^";]+)"?/i)
+      const filename = match ? decodeURIComponent(match[1]) : null
+
+      return {
+        data,
+        filename,
+        headers: response.headers
+      }
+    } catch (error) {
+      console.error('API DOWNLOAD Error:', error)
+      throw error
+    }
+  }
 }
 
 // 导出单例实例

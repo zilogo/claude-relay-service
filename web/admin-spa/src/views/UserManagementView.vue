@@ -8,7 +8,24 @@
           Manage users, their API keys, and view usage statistics
         </p>
       </div>
-      <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
+      <div
+        class="mt-4 flex flex-col gap-2 sm:ml-16 sm:mt-0 sm:flex-none sm:flex sm:flex-row sm:items-center sm:space-x-3"
+      >
+        <button
+          class="inline-flex items-center justify-center rounded-md border border-[#D97757] bg-white px-4 py-2 text-sm font-medium text-[#D97757] shadow-sm hover:bg-[#fff3ee] focus:outline-none focus:ring-2 focus:ring-[#D97757] focus:ring-offset-2 disabled:opacity-50"
+          :disabled="exportLoading || loading"
+          @click="exportUsers"
+        >
+          <svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+            />
+          </svg>
+          <span>{{ exportLoading ? '导出中...' : '导出 CSV' }}</span>
+        </button>
         <button
           class="inline-flex items-center justify-center rounded-md border border-transparent bg-[#D97757] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#c86847] focus:outline-none focus:ring-2 focus:ring-[#D97757] focus:ring-offset-2 disabled:opacity-50 sm:w-auto"
           :disabled="loading"
@@ -929,6 +946,7 @@ import ConfirmModal from '@/components/common/ConfirmModal.vue'
 
 const loading = ref(true)
 const users = ref([])
+const exportLoading = ref(false)
 const userStats = ref(null)
 const searchQuery = ref('')
 const selectedRole = ref('')
@@ -1124,6 +1142,25 @@ const closeReferralModal = () => {
   showReferralModal.value = false
 }
 
+const buildUserQueryParams = (includePagination = true) => {
+  const params = {}
+  if (includePagination) {
+    params.page = pagination.value.page
+    params.limit = pagination.value.limit
+  }
+  if (selectedRole.value && selectedRole.value.trim() !== '') {
+    params.role = selectedRole.value
+  }
+  if (selectedStatus.value !== '') {
+    params.isActive = selectedStatus.value
+  }
+  const trimmedSearch = searchQuery.value.trim()
+  if (trimmedSearch) {
+    params.search = trimmedSearch
+  }
+  return params
+}
+
 const loadUsers = async (options = {}) => {
   if (options.resetPage) {
     pagination.value.page = 1
@@ -1137,21 +1174,7 @@ const loadUsers = async (options = {}) => {
 
   loading.value = true
   try {
-    // Build params object, only including parameters with actual values
-    const params = {
-      page: pagination.value.page,
-      limit: pagination.value.limit
-    }
-    if (selectedRole.value && selectedRole.value.trim() !== '') {
-      params.role = selectedRole.value
-    }
-    if (selectedStatus.value !== '') {
-      params.isActive = selectedStatus.value
-    }
-    const trimmedSearch = searchQuery.value.trim()
-    if (trimmedSearch) {
-      params.search = trimmedSearch
-    }
+    const params = buildUserQueryParams(true)
 
     const [usersResponse, statsResponse] = await Promise.all([
       apiClient.get('/users', { params }),
@@ -1205,6 +1228,35 @@ const goToNextPage = () => {
     return
   }
   loadUsers({ page: pagination.value.page + 1 })
+}
+
+const exportUsers = async () => {
+  if (exportLoading.value) {
+    return
+  }
+  exportLoading.value = true
+  try {
+    const params = buildUserQueryParams(false)
+    const response = await apiClient.download('/users/export', { params })
+    const blob =
+      response.data instanceof Blob
+        ? response.data
+        : new Blob([response.data], { type: 'text/csv;charset=utf-8;' })
+    const blobUrl = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = response.filename || 'users-export.csv'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(blobUrl)
+    showToast('导出成功', 'success')
+  } catch (error) {
+    console.error('Failed to export users:', error)
+    showToast(error.message || '导出失败', 'error')
+  } finally {
+    exportLoading.value = false
+  }
 }
 
 const viewUserStats = (user) => {

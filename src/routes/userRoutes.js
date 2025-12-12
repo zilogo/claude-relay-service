@@ -12,6 +12,96 @@ const { authenticateUser, authenticateUserOrAdmin, requireAdmin } = require('../
 const CostCalculator = require('../utils/costCalculator')
 const referralService = require('../services/referralService')
 
+function formatCsvValue(value) {
+  if (value === null || value === undefined) {
+    return '""'
+  }
+  const stringValue = String(value)
+  const escaped = stringValue.replace(/"/g, '""')
+  return `"${escaped}"`
+}
+
+function toNumberString(value, decimals) {
+  const num = Number(value)
+  if (!Number.isFinite(num)) {
+    return ''
+  }
+  return typeof decimals === 'number' ? num.toFixed(decimals) : String(num)
+}
+
+function buildUserExportCsv(users = []) {
+  const columns = [
+    { header: 'Username', value: (user) => user.username || '' },
+    { header: 'Display Name', value: (user) => user.displayName || '' },
+    { header: 'Email', value: (user) => user.email || '' },
+    { header: 'Role', value: (user) => user.role || '' },
+    { header: 'Status', value: (user) => (user.isActive ? 'Active' : 'Disabled') },
+    { header: 'Created At', value: (user) => user.createdAt || '' },
+    { header: 'Last Login At', value: (user) => user.lastLoginAt || '' },
+    {
+      header: 'API Key Count',
+      value: (user) => toNumberString(user.apiKeyCount ?? 0)
+    },
+    {
+      header: 'Requests',
+      value: (user) => toNumberString(user.totalUsage?.requests ?? 0)
+    },
+    {
+      header: 'Input Tokens',
+      value: (user) => toNumberString(user.totalUsage?.inputTokens ?? 0)
+    },
+    {
+      header: 'Output Tokens',
+      value: (user) => toNumberString(user.totalUsage?.outputTokens ?? 0)
+    },
+    {
+      header: 'Total Cost (USD)',
+      value: (user) => toNumberString(user.totalUsage?.totalCost ?? 0, 4)
+    },
+    {
+      header: 'Balance (USD)',
+      value: (user) => toNumberString(user.balance ?? 0, 4)
+    },
+    {
+      header: 'Total Recharge (USD)',
+      value: (user) => toNumberString(user.totalRecharge ?? 0, 4)
+    },
+    {
+      header: 'Available Balance (USD)',
+      value: (user) => toNumberString(user.availableBalance ?? user.balance ?? 0, 4)
+    },
+    { header: 'Last Recharge At', value: (user) => user.lastRechargeAt || '' },
+    {
+      header: 'Referral Invites',
+      value: (user) => toNumberString(user.referralStats?.totalInvites ?? 0)
+    },
+    {
+      header: 'Referral Qualified',
+      value: (user) => toNumberString(user.referralStats?.qualifiedInvites ?? 0)
+    },
+    {
+      header: 'Referral Rewards (USD)',
+      value: (user) => toNumberString(user.referralStats?.totalRewardUsd ?? 0, 2)
+    },
+    {
+      header: 'Email Verified',
+      value: (user) =>
+        typeof user.emailVerified === 'boolean'
+          ? user.emailVerified
+            ? 'Yes'
+            : 'No'
+          : ''
+    }
+  ]
+
+  const header = columns.map((column) => formatCsvValue(column.header)).join(',')
+  const lines = users.map((user) =>
+    columns.map((column) => formatCsvValue(column.value(user))).join(',')
+  )
+
+  return [header, ...lines].join('\n')
+}
+
 // 🚦 配置登录速率限制
 // 只基于IP地址限制，避免攻击者恶意锁定特定账户
 
@@ -1251,6 +1341,51 @@ router.get('/', authenticateUserOrAdmin, requireAdmin, async (req, res) => {
     res.status(500).json({
       error: 'Users list error',
       message: 'Failed to retrieve users list'
+    })
+  }
+})
+
+// 📤 导出用户列表（管理员）
+router.get('/export', authenticateUserOrAdmin, requireAdmin, async (req, res) => {
+  try {
+    const { role, isActive, search } = req.query
+    const searchQuery = typeof search === 'string' ? search.trim() : ''
+    const options = {
+      role,
+      search: searchQuery,
+      isActive: isActive === 'true' ? true : isActive === 'false' ? false : undefined,
+      disablePagination: true
+    }
+
+    const result = await userService.getAllUsers(options)
+    const users = result.users || []
+
+    if (referralService.isEnabled()) {
+      await Promise.all(
+        users.map(async (user) => {
+          user.referralStats = await referralService.getUserStats(user.id)
+          return user
+        })
+      )
+    }
+
+    const csv = buildUserExportCsv(users)
+    const dateLabel =
+      typeof redis.getDateStringInTimezone === 'function'
+        ? redis.getDateStringInTimezone(new Date())
+        : new Date().toISOString().slice(0, 10)
+    const filename = `users-${dateLabel}.csv`
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+    logger.info(`📤 Admin exported ${users.length} users to CSV`)
+
+    return res.status(200).send(csv)
+  } catch (error) {
+    logger.error('❌ Export users CSV error:', error)
+    return res.status(500).json({
+      error: 'Export error',
+      message: error.message || 'Failed to export users CSV'
     })
   }
 })
