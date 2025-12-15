@@ -15,6 +15,16 @@ function createTextResponse(message) {
   }
 }
 
+function createMarkdownResponse(title, text) {
+  return {
+    msgtype: 'markdown',
+    markdown: {
+      title: title,
+      text: text
+    }
+  }
+}
+
 function cleanContent(rawContent = '', atUsers = []) {
   let content = rawContent.replace(/\r?\n/g, ' ')
 
@@ -72,6 +82,21 @@ function verifySignature(secret, timestamp, providedSign) {
     return false
   }
 
+  // 验证时间戳是否在有效期内（防止重放攻击）
+  const now = Date.now()
+  const requestTime = parseInt(timestamp, 10)
+  const timeDiff = Math.abs(now - requestTime)
+  const MAX_TIME_DIFF = 60 * 60 * 1000 // 1小时
+
+  if (timeDiff > MAX_TIME_DIFF) {
+    logger.warn('⚠️ DingTalk request timestamp expired', {
+      timestamp,
+      timeDiff: `${Math.floor(timeDiff / 1000)}s`,
+      now
+    })
+    return false
+  }
+
   try {
     const stringToSign = `${timestamp}\n${secret}`
     const hmac = crypto.createHmac('sha256', secret)
@@ -88,14 +113,17 @@ function verifySignature(secret, timestamp, providedSign) {
 router.get('/recharge', (req, res) => {
   const botConfig = config.dingtalkBot || {}
   if (!botConfig.enabled) {
-    return res.status(503).json(createTextResponse('钉钉机器人充值功能未启用'))
+    return res.status(503).json({
+      ...createTextResponse('钉钉机器人充值功能未启用'),
+      status: { enabled: false }
+    })
   }
-  
   return res.json(createTextResponse('✅ 接口可用'))
 })
 
 router.post('/recharge', async (req, res) => {
   const botConfig = config.dingtalkBot || {}
+
   if (!botConfig.enabled) {
     return res.status(503).json(createTextResponse('钉钉机器人充值功能未启用'))
   }
@@ -185,8 +213,14 @@ router.post('/recharge', async (req, res) => {
     )
 
     return res.json(
-      createTextResponse(
-        `✅ 成功为 ${user.username} 充值 $${amount.toFixed(2)}，当前余额 $${(rechargeResult.balance || 0).toFixed(2)}`
+      createMarkdownResponse(
+        '充值成功',
+        `### ✅ 充值成功\n\n` +
+          `- **用户**: ${user.username}\n` +
+          `- **充值金额**: $${amount.toFixed(2)}\n` +
+          `- **当前余额**: $${(rechargeResult.balance || 0).toFixed(2)}\n` +
+          `- **操作人**: ${operatorName}\n` +
+          `- **操作时间**: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`
       )
     )
   } catch (error) {
