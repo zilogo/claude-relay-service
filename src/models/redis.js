@@ -205,6 +205,21 @@ class RedisClient {
     return model.replace(/-v\d+:\d+$|:latest$/, '')
   }
 
+  _formatMinuteLabel(minuteTimestamp) {
+    if (!minuteTimestamp && minuteTimestamp !== 0) {
+      return ''
+    }
+    const date = new Date(minuteTimestamp * 60000)
+    const tzDate = getDateInTimezone(date)
+
+    const month = String(tzDate.getUTCMonth() + 1).padStart(2, '0')
+    const day = String(tzDate.getUTCDate()).padStart(2, '0')
+    const hour = String(tzDate.getUTCHours()).padStart(2, '0')
+    const minute = String(tzDate.getUTCMinutes()).padStart(2, '0')
+
+    return `${month}/${day} ${hour}:${minute}`
+  }
+
   async incrementTokenUsage(
     keyId,
     tokens,
@@ -244,9 +259,10 @@ class RedisClient {
     const keyModelMonthly = `usage:${keyId}:model:monthly:${normalizedModel}:${currentMonth}`
     const keyModelHourly = `usage:${keyId}:model:hourly:${normalizedModel}:${currentHour}` // 新增API Key模型小时级别
 
-    // 新增：系统级分钟统计
+    // 新增：系统级分钟统计 + API Key分钟统计
     const minuteTimestamp = Math.floor(now.getTime() / 60000)
     const systemMinuteKey = `system:metrics:minute:${minuteTimestamp}`
+    const apiKeyMinuteKey = `apikey:metrics:minute:${minuteTimestamp}`
 
     // 智能处理输入输出token分配
     const finalInputTokens = inputTokens || 0
@@ -385,6 +401,12 @@ class RedisClient {
     pipeline.hincrby(systemMinuteKey, 'cacheCreateTokens', finalCacheCreateTokens)
     pipeline.hincrby(systemMinuteKey, 'cacheReadTokens', finalCacheReadTokens)
 
+    // API Key 分钟级监控（请求 & tokens）
+    pipeline.hincrby(apiKeyMinuteKey, `req:${keyId}`, 1)
+    pipeline.hincrby(apiKeyMinuteKey, `tok:${keyId}`, totalTokens)
+    pipeline.hincrby(apiKeyMinuteKey, 'totalRequests', 1)
+    pipeline.hincrby(apiKeyMinuteKey, 'totalTokens', totalTokens)
+
     // 设置过期时间
     pipeline.expire(daily, 86400 * 32) // 32天过期
     pipeline.expire(monthly, 86400 * 365) // 1年过期
@@ -398,8 +420,11 @@ class RedisClient {
 
     // 系统级分钟统计的过期时间（窗口时间的2倍）
     const configLocal = require('../../config/config')
-    const { metricsWindow } = configLocal.system
-    pipeline.expire(systemMinuteKey, metricsWindow * 60 * 2)
+    const { metricsWindow, apiKeyMinuteRetentionMinutes } = configLocal.system
+    const metricsWindowMinutes = Math.max(metricsWindow || 5, 1)
+    const retentionMinutes = Math.max(apiKeyMinuteRetentionMinutes || 1440, metricsWindowMinutes)
+    pipeline.expire(systemMinuteKey, metricsWindowMinutes * 60 * 2)
+    pipeline.expire(apiKeyMinuteKey, retentionMinutes * 60)
 
     // 执行Pipeline
     await pipeline.exec()
@@ -1582,6 +1607,171 @@ class RedisClient {
         totalOutputTokens: historicalMetrics.totalOutputTokens,
         totalCacheCreateTokens: 0,
         totalCacheReadTokens: 0
+      }
+    }
+  }
+
+  async getApiKeyMinuteStats(rangeMinutes = 60, limit = 5) {
+    const configLocal = require('../../config/config')
+    const retentionMinutes = Math.max(
+      configLocal.system?.apiKeyMinuteRetentionMinutes || 1440,
+      30
+    )
+    const sanitizedRange = Math.min(
+      Math.max(parseInt(rangeMinutes, 10) || 60, 1),
+      retentionMinutes
+    )
+    const sanitizedLimit = Math.min(Math.max(parseInt(limit, 10) || 5, 1), 20)
+
+    try {
+      const client = this.getClientSafe()
+      const nowMinute = Math.floor(Date.now() / 60000)
+      const pipeline = client.pipeline()
+      const minutesMeta = []
+
+      for (let i = 0; i < sanitizedRange; i++) {
+        const minuteTimestamp = nowMinute - i
+        minutesMeta.push(minuteTimestamp)
+        pipeline.hgetall(`apikey:metrics:minute:${minuteTimestamp}`)
+      }
+
+      const responses = await pipeline.exec()
+      const totalsByKey = new Map()
+      const minuteBucketsDesc = []
+      let totalRequests = 0
+      let totalTokens = 0
+
+      responses.forEach(([error, data], index) => {
+        const minuteTimestamp = minutesMeta[index]
+        const bucket = {
+          minute: minuteTimestamp,
+          timestamp: minuteTimestamp * 60000,
+          label: this._formatMinuteLabel(minuteTimestamp),
+          totalRequests: 0,
+          totalTokens: 0,
+          apiKeys: {}
+        }
+
+        if (!error && data && Object.keys(data).length > 0) {
+          bucket.totalRequests = parseInt(data.totalRequests) || 0
+          bucket.totalTokens = parseInt(data.totalTokens) || 0
+          totalRequests += bucket.totalRequests
+          totalTokens += bucket.totalTokens
+
+          for (const [field, rawValue] of Object.entries(data)) {
+            if (!rawValue) {
+              continue
+            }
+
+            if (field === 'totalRequests' || field === 'totalTokens') {
+              continue
+            }
+
+            if (field.startsWith('req:')) {
+              const keyId = field.slice(4)
+              const requests = parseInt(rawValue) || 0
+              if (requests === 0) continue
+
+              const keyEntry = bucket.apiKeys[keyId] || { requests: 0, tokens: 0 }
+              keyEntry.requests += requests
+              bucket.apiKeys[keyId] = keyEntry
+
+              const totalEntry = totalsByKey.get(keyId) || { requests: 0, tokens: 0 }
+              totalEntry.requests += requests
+              totalsByKey.set(keyId, totalEntry)
+            } else if (field.startsWith('tok:')) {
+              const keyId = field.slice(4)
+              const tokens = parseInt(rawValue) || 0
+              if (tokens === 0) continue
+
+              const keyEntry = bucket.apiKeys[keyId] || { requests: 0, tokens: 0 }
+              keyEntry.tokens += tokens
+              bucket.apiKeys[keyId] = keyEntry
+
+              const totalEntry = totalsByKey.get(keyId) || { requests: 0, tokens: 0 }
+              totalEntry.tokens += tokens
+              totalsByKey.set(keyId, totalEntry)
+            }
+          }
+        }
+
+        minuteBucketsDesc.push(bucket)
+      })
+
+      const recentSummary = {
+        last1m: 0,
+        last5m: 0,
+        last10m: 0
+      }
+
+      const summaryWindows = [
+        { key: 'last1m', minutes: 1 },
+        { key: 'last5m', minutes: 5 },
+        { key: 'last10m', minutes: 10 }
+      ]
+
+      summaryWindows.forEach(({ key, minutes }) => {
+        const slice = minuteBucketsDesc.slice(0, minutes)
+        recentSummary[key] = slice.reduce((sum, bucket) => sum + (bucket.totalRequests || 0), 0)
+      })
+
+      const sortedTopKeys = Array.from(totalsByKey.entries()).sort((a, b) => {
+        if (b[1].requests === a[1].requests) {
+          return (b[1].tokens || 0) - (a[1].tokens || 0)
+        }
+        return b[1].requests - a[1].requests
+      })
+
+      const topKeyEntries = sortedTopKeys.slice(0, sanitizedLimit).map(([keyId, stats]) => ({
+        id: keyId,
+        requests: stats.requests,
+        tokens: stats.tokens
+      }))
+      const topKeyIds = topKeyEntries.map((entry) => entry.id)
+
+      const timeline = minuteBucketsDesc
+        .slice()
+        .reverse()
+        .map((bucket) => {
+          const filteredApiKeys = {}
+          for (const keyId of topKeyIds) {
+            if (bucket.apiKeys[keyId]) {
+              filteredApiKeys[keyId] = bucket.apiKeys[keyId]
+            }
+          }
+          return {
+            ...bucket,
+            apiKeys: filteredApiKeys
+          }
+        })
+
+      return {
+        rangeMinutes: sanitizedRange,
+        retentionMinutes,
+        limit: sanitizedLimit,
+        totalRequests,
+        totalTokens,
+        topApiKeys: topKeyEntries,
+        timeline,
+        recentSummary,
+        generatedAt: new Date().toISOString()
+      }
+    } catch (error) {
+      logger.error('Error getting API key minute stats:', error)
+      return {
+        rangeMinutes: sanitizedRange,
+        retentionMinutes,
+        limit: sanitizedLimit,
+        totalRequests: 0,
+        totalTokens: 0,
+        topApiKeys: [],
+        timeline: [],
+        recentSummary: {
+          last1m: 0,
+          last5m: 0,
+          last10m: 0
+        },
+        generatedAt: new Date().toISOString()
       }
     }
   }

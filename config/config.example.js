@@ -132,7 +132,12 @@ const config = {
     metricsWindow: (() => {
       const minutes = getIntEnv(5, 'METRICS_WINDOW')
       return Math.min(Math.max(minutes, 1), 60)
-    })() // 实时指标窗口（分钟，限制在1-60之间）
+    })(), // 实时指标窗口（分钟，限制在1-60之间）
+    apiKeyMinuteRetentionMinutes: (() => {
+      const minutes = getIntEnv(1440, 'API_KEY_MINUTE_RETENTION_MINUTES')
+      // 最短保留 30 分钟，最长 7 天（10080 分钟）
+      return Math.min(Math.max(minutes, 30), 10080)
+    })() // API Key 分钟级调用统计保留时长
   },
 
   // 🛡️ 管理功能开关

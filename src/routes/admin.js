@@ -6823,6 +6823,83 @@ router.get('/api-keys-usage-trend', authenticateAdmin, async (req, res) => {
   }
 })
 
+// API Key 分钟级调用统计
+router.get('/api-key-calls-metrics', authenticateAdmin, async (req, res) => {
+  try {
+    const retentionMinutes = Math.max(config.system?.apiKeyMinuteRetentionMinutes || 1440, 30)
+    let { rangeMinutes = '60', limit = '5' } = req.query
+
+    let range = parseInt(rangeMinutes, 10)
+    if (!Number.isFinite(range) || range < 1) {
+      range = 60
+    }
+    range = Math.min(range, retentionMinutes)
+
+    let topLimit = parseInt(limit, 10)
+    if (!Number.isFinite(topLimit) || topLimit < 1) {
+      topLimit = 5
+    }
+    topLimit = Math.min(topLimit, 20)
+
+    const [metrics, apiKeys] = await Promise.all([
+      redis.getApiKeyMinuteStats(range, topLimit),
+      apiKeyService.getAllApiKeys()
+    ])
+
+    const nameMap = new Map()
+    apiKeys.forEach((key) => {
+      const displayName =
+        key.name ||
+        key.keyName ||
+        key.displayName ||
+        key.alias ||
+        key.memo ||
+        key.description ||
+        (key.usage && key.usage.nickname) ||
+        key.id
+      nameMap.set(key.id, displayName)
+    })
+
+    const timeline = (metrics.timeline || []).map((bucket) => {
+      const apiKeyEntries = {}
+      Object.entries(bucket.apiKeys || {}).forEach(([keyId, stats]) => {
+        apiKeyEntries[keyId] = {
+          ...stats,
+          name: nameMap.get(keyId) || keyId
+        }
+      })
+      return {
+        ...bucket,
+        apiKeys: apiKeyEntries
+      }
+    })
+
+    const totalRequests = metrics.totalRequests || 0
+    const topApiKeys = (metrics.topApiKeys || []).map((entry) => ({
+      id: entry.id,
+      name: nameMap.get(entry.id) || entry.id,
+      requests: entry.requests,
+      tokens: entry.tokens,
+      percentage:
+        totalRequests > 0 ? Math.round((entry.requests / totalRequests) * 10000) / 100 : 0
+    }))
+
+    return res.json({
+      success: true,
+      data: {
+        ...metrics,
+        timeline,
+        topApiKeys
+      }
+    })
+  } catch (error) {
+    logger.error('❌ Failed to get API key call metrics:', error)
+    return res
+      .status(500)
+      .json({ error: 'Failed to get API key call metrics', message: error.message })
+  }
+})
+
 // 计算总体使用费用
 router.get('/usage-costs', authenticateAdmin, async (req, res) => {
   try {

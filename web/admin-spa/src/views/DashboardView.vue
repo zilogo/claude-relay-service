@@ -673,6 +673,143 @@
         </div>
       </div>
     </div>
+
+    <!-- API Key 调用监控 -->
+    <div class="mb-4 sm:mb-6 md:mb-8">
+      <div class="card p-4 sm:p-6">
+        <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100 sm:text-lg">
+              API Key 调用监控
+            </h3>
+            <p class="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
+              最近 {{ apiKeyCallMetrics.rangeMinutes || apiKeyCallRange }} 分钟请求趋势
+              <span
+                v-if="apiKeyCallMetrics.retentionMinutes"
+                class="ml-2 text-[11px] text-gray-400 dark:text-gray-500"
+              >
+                数据保留 {{ apiKeyCallMetrics.retentionMinutes }} 分钟
+              </span>
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="option in apiKeyCallRangeOptions"
+              :key="option.value"
+              :class="[
+                'rounded-md px-3 py-1 text-sm font-medium transition-colors',
+                apiKeyCallRange === option.value
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-600 hover:text-gray-900 dark:bg-gray-700 dark:text-gray-300 dark:hover:text-gray-100'
+              ]"
+              @click="handleApiKeyCallRangeChange(option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+        </div>
+
+        <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div
+            class="rounded-lg border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+          >
+            <p class="text-xs text-gray-500 dark:text-gray-400">最近 1 分钟</p>
+            <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {{ formatRequestCount(apiKeyCallMetrics.recentSummary?.last1m || 0) }}
+            </p>
+            <p class="text-xs text-gray-400 dark:text-gray-500">请求数</p>
+          </div>
+          <div
+            class="rounded-lg border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+          >
+            <p class="text-xs text-gray-500 dark:text-gray-400">最近 5 分钟</p>
+            <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {{ formatRequestCount(apiKeyCallMetrics.recentSummary?.last5m || 0) }}
+            </p>
+            <p class="text-xs text-gray-400 dark:text-gray-500">请求数</p>
+          </div>
+          <div
+            class="rounded-lg border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+          >
+            <p class="text-xs text-gray-500 dark:text-gray-400">最近 10 分钟</p>
+            <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {{ formatRequestCount(apiKeyCallMetrics.recentSummary?.last10m || 0) }}
+            </p>
+            <p class="text-xs text-gray-400 dark:text-gray-500">请求数</p>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <div
+            v-if="apiKeyCallLoading"
+            class="flex h-48 items-center justify-center text-sm text-gray-500 dark:text-gray-400"
+          >
+            <i class="fas fa-circle-notch mr-2 animate-spin" /> 正在加载调用数据...
+          </div>
+          <div
+            v-else-if="!apiKeyCallMetrics.timeline || apiKeyCallMetrics.timeline.length === 0"
+            class="flex h-48 items-center justify-center text-sm text-gray-500 dark:text-gray-400"
+          >
+            暂无 API Key 调用数据
+          </div>
+          <div v-else class="sm:h-[320px]" style="height: 260px">
+            <canvas ref="apiKeyCallChart" />
+          </div>
+        </div>
+
+        <div>
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 sm:text-base">
+              Top API Keys
+            </h4>
+            <span class="text-xs text-gray-500 dark:text-gray-400">
+              总请求：{{ (apiKeyCallMetrics.totalRequests || 0).toLocaleString() }}
+            </span>
+          </div>
+          <div
+            v-if="!apiKeyCallMetrics.topApiKeys || apiKeyCallMetrics.topApiKeys.length === 0"
+            class="py-4 text-center text-sm text-gray-500 dark:text-gray-400"
+          >
+            暂无 Top API Key 数据
+          </div>
+          <div v-else class="overflow-auto">
+            <table class="min-w-full text-sm">
+              <thead class="bg-gray-50 text-left text-xs dark:bg-gray-800">
+                <tr>
+                  <th class="px-3 py-2 font-medium text-gray-500 dark:text-gray-400">API Key</th>
+                  <th class="px-3 py-2 font-medium text-gray-500 dark:text-gray-400">请求数</th>
+                  <th class="px-3 py-2 font-medium text-gray-500 dark:text-gray-400">占比</th>
+                  <th class="px-3 py-2 font-medium text-gray-500 dark:text-gray-400">Tokens</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                <tr
+                  v-for="(item, idx) in apiKeyCallMetrics.topApiKeys"
+                  :key="item.id"
+                  class="hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  <td class="px-3 py-2 text-gray-900 dark:text-gray-100">
+                    <span class="font-semibold text-sm text-blue-600 dark:text-blue-300">
+                      #{{ idx + 1 }}
+                    </span>
+                    <span class="ml-2 truncate">{{ item.name }}</span>
+                  </td>
+                  <td class="px-3 py-2 text-gray-900 dark:text-gray-100">
+                    {{ (item.requests || 0).toLocaleString() }}
+                  </td>
+                  <td class="px-3 py-2 text-gray-900 dark:text-gray-100">
+                    {{ formatPercentage(item.percentage || 0) }}
+                  </td>
+                  <td class="px-3 py-2 text-gray-900 dark:text-gray-100">
+                    {{ formatNumber(item.tokens || 0) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -699,7 +836,10 @@ const {
   dateFilter,
   trendGranularity,
   apiKeysTrendMetric,
-  defaultTime
+  defaultTime,
+  apiKeyCallMetrics,
+  apiKeyCallRange,
+  apiKeyCallLoading
 } = storeToRefs(dashboardStore)
 
 const {
@@ -710,7 +850,8 @@ const {
   setTrendGranularity,
   refreshChartsData,
   setAccountUsageGroup,
-  disabledDate
+  disabledDate,
+  loadApiKeyCallMetrics
 } = dashboardStore
 
 // Chart 实例
@@ -718,16 +859,24 @@ const modelUsageChart = ref(null)
 const usageTrendChart = ref(null)
 const apiKeysUsageTrendChart = ref(null)
 const accountUsageTrendChart = ref(null)
+const apiKeyCallChart = ref(null)
 let modelUsageChartInstance = null
 let usageTrendChartInstance = null
 let apiKeysUsageTrendChartInstance = null
 let accountUsageTrendChartInstance = null
+let apiKeyCallChartInstance = null
 
 const accountGroupOptions = [
   { value: 'claude', label: 'Claude' },
   { value: 'openai', label: 'OpenAI' },
   { value: 'gemini', label: 'Gemini' },
   { value: 'droid', label: 'Droid' }
+]
+const apiKeyCallRangeOptions = [
+  { value: 10, label: '10分钟' },
+  { value: 60, label: '1小时' },
+  { value: 360, label: '6小时' },
+  { value: 1440, label: '24小时' }
 ]
 
 const accountTrendUpdating = ref(false)
@@ -761,6 +910,24 @@ function formatNumber(num) {
     return (num / 1000).toFixed(2) + 'K'
   }
   return num.toString()
+}
+
+function formatRequestCount(num) {
+  if (!Number.isFinite(num)) {
+    return '0'
+  }
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(2) + 'M'
+  }
+  if (num >= 10000) {
+    return (num / 1000).toFixed(1) + 'K'
+  }
+  return num.toLocaleString()
+}
+
+function formatPercentage(value) {
+  if (!Number.isFinite(value)) return '0%'
+  return `${value.toFixed(2)}%`
 }
 
 function formatCostValue(cost) {
@@ -1460,6 +1627,131 @@ async function handleAccountUsageGroupChange(group) {
   }
 }
 
+function createApiKeyCallChart() {
+  if (!apiKeyCallChart.value) return
+
+  if (apiKeyCallChartInstance) {
+    apiKeyCallChartInstance.destroy()
+  }
+
+  const metrics = apiKeyCallMetrics.value || {}
+  const timeline = metrics.timeline || []
+  const topKeys = metrics.topApiKeys || []
+
+  if (timeline.length === 0 || topKeys.length === 0) {
+    apiKeyCallChartInstance = null
+    return
+  }
+
+  const labels = timeline.map((item) => item.label || '')
+  const colors = [
+    '#2563EB',
+    '#DC2626',
+    '#059669',
+    '#F59E0B',
+    '#7C3AED',
+    '#0EA5E9',
+    '#D946EF',
+    '#10B981'
+  ]
+
+  const datasets = topKeys.map((key, index) => ({
+    label: key.name || key.id,
+    data: timeline.map((bucket) => bucket.apiKeys?.[key.id]?.requests || 0),
+    borderColor: colors[index % colors.length],
+    backgroundColor: colors[index % colors.length] + '33',
+    fill: false,
+    borderWidth: 2,
+    tension: 0.4,
+    pointRadius: 0
+  }))
+
+  datasets.push({
+    label: '总请求数',
+    data: timeline.map((bucket) => bucket.totalRequests || 0),
+    borderColor: '#9CA3AF',
+    backgroundColor: '#9CA3AF',
+    fill: false,
+    borderDash: [6, 4],
+    borderWidth: 1.5,
+    tension: 0.4,
+    pointRadius: 0
+  })
+
+  apiKeyCallChartInstance = new Chart(apiKeyCallChart.value, {
+    type: 'line',
+    data: {
+      labels,
+      datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+            padding: 15,
+            color: chartColors.value.legend
+          }
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: function (context) {
+              const label = context.dataset.label || ''
+              const value = context.parsed.y || 0
+              return `${label}: ${value.toLocaleString()} 次`
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            color: chartColors.value.grid
+          },
+          ticks: {
+            color: chartColors.value.text,
+            maxRotation: 45,
+            minRotation: 45
+          }
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: chartColors.value.grid
+          },
+          ticks: {
+            color: chartColors.value.text,
+            callback: (value) => value.toLocaleString()
+          },
+          title: {
+            display: true,
+            text: '请求数',
+            color: chartColors.value.text
+          }
+        }
+      }
+    }
+  })
+}
+
+async function handleApiKeyCallRangeChange(value) {
+  if (apiKeyCallRange.value === value || apiKeyCallLoading.value) {
+    return
+  }
+  await loadApiKeyCallMetrics(value)
+  await nextTick()
+  createApiKeyCallChart()
+}
+
 // 监听数据变化更新图表
 watch(dashboardModelStats, () => {
   nextTick(() => createModelUsageChart())
@@ -1475,6 +1767,10 @@ watch(apiKeysTrendData, () => {
 
 watch(accountUsageTrendData, () => {
   nextTick(() => createAccountUsageTrendChart())
+})
+
+watch(apiKeyCallMetrics, () => {
+  nextTick(() => createApiKeyCallChart())
 })
 
 // 刷新所有数据
@@ -1561,6 +1857,7 @@ watch(isDarkMode, () => {
     createUsageTrendChart()
     createApiKeysUsageTrendChart()
     createAccountUsageTrendChart()
+    createApiKeyCallChart()
   })
 })
 
@@ -1575,6 +1872,7 @@ onMounted(async () => {
   createUsageTrendChart()
   createApiKeysUsageTrendChart()
   createAccountUsageTrendChart()
+  createApiKeyCallChart()
 })
 
 // 清理
@@ -1592,6 +1890,9 @@ onUnmounted(() => {
   }
   if (accountUsageTrendChartInstance) {
     accountUsageTrendChartInstance.destroy()
+  }
+  if (apiKeyCallChartInstance) {
+    apiKeyCallChartInstance.destroy()
   }
 })
 </script>

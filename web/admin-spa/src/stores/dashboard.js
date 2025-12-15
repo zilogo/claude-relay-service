@@ -66,6 +66,18 @@ export const useDashboardStore = defineStore('dashboard', () => {
     group: 'claude',
     groupLabel: 'Claude账户'
   })
+  const apiKeyCallRange = ref(60)
+  const apiKeyCallMetrics = ref({
+    rangeMinutes: 60,
+    retentionMinutes: 1440,
+    totalRequests: 0,
+    totalTokens: 0,
+    recentSummary: { last1m: 0, last5m: 0, last10m: 0 },
+    topApiKeys: [],
+    timeline: [],
+    generatedAt: ''
+  })
+  const apiKeyCallLoading = ref(false)
 
   // 日期筛选
   const dateFilter = ref({
@@ -602,6 +614,24 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }
   }
 
+  async function loadApiKeyCallMetrics(range = apiKeyCallRange.value, limit = 5) {
+    apiKeyCallLoading.value = true
+    try {
+      const params = new URLSearchParams()
+      params.set('rangeMinutes', range)
+      params.set('limit', limit)
+      const response = await apiClient.get(`/admin/api-key-calls-metrics?${params.toString()}`)
+      if (response.success && response.data) {
+        apiKeyCallMetrics.value = response.data
+        apiKeyCallRange.value = response.data.rangeMinutes || range
+      }
+    } catch (error) {
+      console.error('加载 API Key 调用统计失败:', error)
+    } finally {
+      apiKeyCallLoading.value = false
+    }
+  }
+
   // 日期筛选相关方法
   function setDateFilterPreset(preset) {
     dateFilter.value.type = 'preset'
@@ -848,7 +878,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
       loadUsageTrend(days, trendGranularity.value),
       loadModelStats(modelPeriod),
       loadApiKeysTrend(apiKeysTrendMetric.value),
-      loadAccountUsageTrend(accountUsageGroup.value)
+      loadAccountUsageTrend(accountUsageGroup.value),
+      loadApiKeyCallMetrics(apiKeyCallRange.value)
     ])
   }
 
@@ -880,6 +911,9 @@ export const useDashboardStore = defineStore('dashboard', () => {
     dashboardModelStats,
     apiKeysTrendData,
     accountUsageTrendData,
+    apiKeyCallMetrics,
+    apiKeyCallRange,
+    apiKeyCallLoading,
     dateFilter,
     trendGranularity,
     apiKeysTrendMetric,
@@ -895,6 +929,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     loadModelStats,
     loadApiKeysTrend,
     loadAccountUsageTrend,
+    loadApiKeyCallMetrics,
     setDateFilterPreset,
     onCustomDateRangeChange,
     setTrendGranularity,
