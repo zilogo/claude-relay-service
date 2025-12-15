@@ -647,6 +647,124 @@ class RedisClient {
     }
   }
 
+  /**
+   * 聚合多个 API Key 在指定时间桶内的模型使用情况
+   * @param {string[]|string} keyIds
+   * @param {Object} options
+   * @param {'daily'|'monthly'} [options.granularity='daily']
+   * @param {string[]} [options.buckets] - 日期或月份字符串，daily: YYYY-MM-DD, monthly: YYYY-MM
+   * @returns {{ modelUsage: Array, totalTokens: number, totalRequests: number }}
+   */
+  async getApiKeyModelUsage(keyIds, options = {}) {
+    const client = this.getClientSafe()
+    const normalizedIds = Array.isArray(keyIds) ? keyIds.filter(Boolean) : [keyIds].filter(Boolean)
+
+    if (!normalizedIds.length) {
+      return {
+        modelUsage: [],
+        totalTokens: 0,
+        totalRequests: 0
+      }
+    }
+
+    const { granularity = 'daily', buckets = [] } = options
+    const bucketValues = Array.isArray(buckets) && buckets.length > 0 ? buckets : [
+      granularity === 'monthly'
+        ? (() => {
+            const tzDate = getDateInTimezone()
+            return `${tzDate.getUTCFullYear()}-${String(tzDate.getUTCMonth() + 1).padStart(2, '0')}`
+          })()
+        : getDateStringInTimezone()
+    ]
+
+    const patternRegex =
+      granularity === 'monthly'
+        ? /usage:.+:model:monthly:(.+):\d{4}-\d{2}$/
+        : /usage:.+:model:daily:(.+):\d{4}-\d{2}-\d{2}$/
+
+    const modelUsageMap = new Map()
+
+    for (const keyId of normalizedIds) {
+      for (const bucket of bucketValues) {
+        const pattern =
+          granularity === 'monthly'
+            ? `usage:${keyId}:model:monthly:*:${bucket}`
+            : `usage:${keyId}:model:daily:*:${bucket}`
+
+        const keys = await client.keys(pattern)
+        if (!keys || keys.length === 0) {
+          continue
+        }
+
+        const pipeline = client.pipeline()
+        keys.forEach((redisKey) => pipeline.hgetall(redisKey))
+        const results = await pipeline.exec()
+
+        results.forEach(([error, data], index) => {
+          if (error || !data || Object.keys(data).length === 0) {
+            return
+          }
+
+          const redisKey = keys[index]
+          const match = redisKey.match(patternRegex)
+          if (!match) {
+            return
+          }
+
+          const model = match[1]
+          if (!modelUsageMap.has(model)) {
+            modelUsageMap.set(model, {
+              requests: 0,
+              inputTokens: 0,
+              outputTokens: 0,
+              cacheCreateTokens: 0,
+              cacheReadTokens: 0,
+              allTokens: 0
+            })
+          }
+
+          const usage = modelUsageMap.get(model)
+          usage.requests += parseInt(data.requests) || 0
+          usage.inputTokens += parseInt(data.inputTokens) || 0
+          usage.outputTokens += parseInt(data.outputTokens) || 0
+          usage.cacheCreateTokens += parseInt(data.cacheCreateTokens) || 0
+          usage.cacheReadTokens += parseInt(data.cacheReadTokens) || 0
+
+          if (data.allTokens !== undefined) {
+            usage.allTokens += parseInt(data.allTokens) || 0
+          } else {
+            usage.allTokens +=
+              (parseInt(data.inputTokens) || 0) +
+              (parseInt(data.outputTokens) || 0) +
+              (parseInt(data.cacheCreateTokens) || 0) +
+              (parseInt(data.cacheReadTokens) || 0)
+          }
+        })
+      }
+    }
+
+    let totalTokens = 0
+    let totalRequests = 0
+    const modelUsage = []
+
+    for (const [model, usage] of modelUsageMap.entries()) {
+      totalTokens += usage.allTokens
+      totalRequests += usage.requests
+      modelUsage.push({
+        model,
+        ...usage
+      })
+    }
+
+    modelUsage.sort((a, b) => b.allTokens - a.allTokens)
+
+    return {
+      modelUsage,
+      totalTokens,
+      totalRequests
+    }
+  }
+
   async addUsageRecord(keyId, record, maxRecords = 200) {
     const listKey = `usage:records:${keyId}`
     const client = this.getClientSafe()

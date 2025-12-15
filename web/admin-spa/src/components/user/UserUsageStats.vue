@@ -211,13 +211,13 @@
       </div>
     </div>
 
-    <!-- Model Usage Breakdown -->
+    <!-- Model Usage Distribution -->
     <div
-      v-if="!loading && usageStats && usageStats.modelStats?.length > 0"
+      v-if="!loading && modelChartEntries.length > 0"
       class="overflow-hidden rounded-3xl border border-gray-200/50 bg-white/80 shadow-xl backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/80"
     >
-      <div class="bg-[#D97757] px-6 py-5">
-        <h3 class="flex items-center text-xl font-bold text-white">
+      <div class="flex items-center justify-between bg-[#D97757] px-6 py-5 text-white">
+        <h3 class="flex items-center text-xl font-bold">
           <svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
@@ -226,28 +226,58 @@
               stroke-width="2"
             />
           </svg>
-          按模型统计
+          模型使用分布
         </h3>
+        <span class="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
+          {{ modelUsageTotals.totalModels }} 个模型
+        </span>
       </div>
-      <div class="p-6">
-        <div class="space-y-3">
+      <div class="grid gap-8 p-6 lg:grid-cols-2">
+        <div class="flex flex-col items-center justify-center">
+          <div class="relative h-72 w-full">
+            <canvas ref="modelChartCanvas"></canvas>
+            <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              <p class="text-sm text-gray-500 dark:text-gray-400">总 Token</p>
+              <p class="text-3xl font-bold text-gray-900 dark:text-gray-50">
+                {{ formatNumber(modelUsageTotals.totalTokens || 0) }}
+              </p>
+            </div>
+          </div>
+          <p class="mt-4 text-sm text-gray-600 dark:text-gray-400">
+            其他模型合计 {{ formatNumber(modelUsageTotals.otherTokens || 0) }} Token
+          </p>
+        </div>
+        <div class="space-y-4">
           <div
-            v-for="model in usageStats.modelStats"
-            :key="model.name"
-            class="flex items-center justify-between"
+            v-for="entry in visibleModelEntries"
+            :key="entry.key"
+            class="flex items-center justify-between rounded-2xl bg-gray-50 px-5 py-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:bg-gray-700/40"
           >
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <div class="h-2 w-2 rounded-full bg-[#D97757]"></div>
-              </div>
-              <div class="ml-3">
-                <p class="text-sm font-medium text-gray-900">{{ model.name }}</p>
+            <div class="flex items-center gap-3">
+              <span class="h-3 w-3 rounded-full" :style="{ backgroundColor: entry.color }"></span>
+              <div>
+                <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  {{ entry.label }}
+                </p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  {{ entry.percentage }}% · {{ formatNumber(entry.tokens) }} Tokens
+                </p>
               </div>
             </div>
             <div class="text-right">
-              <p class="text-sm text-gray-900">{{ formatNumber(model.requests) }} requests</p>
-              <p class="text-xs text-gray-500">${{ model.cost.toFixed(4) }}</p>
+              <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {{ entry.costDisplay || '$0.0000' }}
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                {{ formatNumber(entry.requests || 0) }} 次请求
+              </p>
             </div>
+          </div>
+          <div
+            v-if="modelUsageTotals.otherTokens > 0"
+            class="rounded-2xl border border-dashed border-gray-200 px-5 py-3 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-400"
+          >
+            其他模型合计 {{ formatNumber(modelUsageTotals.otherTokens) }} Tokens
           </div>
         </div>
       </div>
@@ -398,7 +428,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { Chart } from 'chart.js/auto'
 import { useUserStore } from '@/stores/user'
 import { useChartConfig } from '@/composables/useChartConfig'
@@ -412,7 +442,9 @@ const usageStats = ref(null)
 const userApiKeys = ref([])
 const trendData = ref([])
 const chartCanvas = ref(null)
-let chart = null
+const modelChartCanvas = ref(null)
+let trendChart = null
+let modelChart = null
 
 const formatNumber = (num) => {
   if (num >= 1000000) {
@@ -434,20 +466,109 @@ const getPeriodDays = (period) => {
   return periodMap[period] || 7
 }
 
-// 创建图表
-const createChart = () => {
-  if (!chartCanvas.value || !trendData.value.length) return
-
-  if (chart) {
-    chart.destroy()
+const modelUsageTotals = computed(() => {
+  const totals = usageStats.value?.modelUsageTotals
+  const stats = usageStats.value?.modelStats || []
+  if (totals) {
+    return {
+      totalTokens: totals.totalTokens || 0,
+      totalModels: totals.totalModels || stats.length,
+      includedTokens: totals.includedTokens || stats.reduce((sum, stat) => sum + (stat.allTokens || 0), 0),
+      otherTokens: totals.otherTokens || 0
+    }
   }
+
+  const fallbackTokens = stats.reduce((sum, stat) => sum + (stat.allTokens || 0), 0)
+  return {
+    totalTokens: fallbackTokens,
+    totalModels: stats.length,
+    includedTokens: fallbackTokens,
+    otherTokens: 0
+  }
+})
+
+const modelChartEntries = computed(() => {
+  const stats = usageStats.value?.modelStats || []
+  const totals = modelUsageTotals.value
+  if (!stats.length || totals.totalTokens === 0) {
+    return []
+  }
+
+  const palette = ['#D97757', '#F472B6', '#A855F7', '#60A5FA', '#34D399', '#FBBF24', '#FB7185']
+  const entries = stats.map((stat, index) => {
+    const tokens = stat.allTokens || 0
+    const percentage = totals.totalTokens
+      ? Math.round((tokens / totals.totalTokens) * 1000) / 10
+      : 0
+
+    return {
+      key: stat.model || `model-${index}`,
+      label: stat.model || `模型 ${index + 1}`,
+      tokens,
+      requests: stat.requests || 0,
+      costDisplay:
+        stat.formatted?.total ||
+        (stat.costs?.total !== undefined ? `$${(stat.costs.total || 0).toFixed(4)}` : '$0.0000'),
+      color: palette[index % palette.length],
+      percentage
+    }
+  })
+
+  const includedTokens = entries.reduce((sum, entry) => sum + entry.tokens, 0)
+  const otherTokens =
+    totals.otherTokens !== undefined
+      ? totals.otherTokens
+      : Math.max(0, totals.totalTokens - includedTokens)
+
+  if (otherTokens > 0) {
+    entries.push({
+      key: 'others',
+      label: '其他',
+      tokens: otherTokens,
+      requests: null,
+      costDisplay: '',
+      color: '#D1D5DB',
+      percentage: totals.totalTokens
+        ? Math.round((otherTokens / totals.totalTokens) * 1000) / 10
+        : 0,
+      isOther: true
+    })
+  }
+
+  return entries
+})
+
+const visibleModelEntries = computed(() => modelChartEntries.value.filter((entry) => !entry.isOther))
+
+// 创建图表
+const destroyTrendChart = () => {
+  if (trendChart) {
+    trendChart.destroy()
+    trendChart = null
+  }
+}
+
+const destroyModelChart = () => {
+  if (modelChart) {
+    modelChart.destroy()
+    modelChart = null
+  }
+}
+
+const createTrendChart = () => {
+  if (!chartCanvas.value || !trendData.value.length) {
+    destroyTrendChart()
+    return
+  }
+
+  destroyTrendChart()
 
   const { getGradient } = useChartConfig()
   const ctx = chartCanvas.value.getContext('2d')
 
   const labels = trendData.value.map((item) => item.date)
 
-  chart = new Chart(ctx, {
+  trendChart = new Chart(ctx, {
     type: 'line',
     data: {
       labels,
@@ -555,6 +676,61 @@ const createChart = () => {
   })
 }
 
+const createModelUsageChart = () => {
+  if (!modelChartCanvas.value) {
+    return
+  }
+
+  const entries = modelChartEntries.value
+  if (!entries || entries.length === 0) {
+    destroyModelChart()
+    return
+  }
+
+  destroyModelChart()
+  const ctx = modelChartCanvas.value.getContext('2d')
+
+  modelChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: entries.map((entry) => entry.label),
+      datasets: [
+        {
+          data: entries.map((entry) => entry.tokens),
+          backgroundColor: entries.map((entry) => entry.color),
+          borderWidth: 0
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: (context) => {
+              const datum = entries[context.dataIndex]
+              if (!datum) {
+                return ''
+              }
+              const parts = [datum.label]
+              parts.push(`${formatNumber(datum.tokens)} Tokens`)
+              if (datum.percentage) {
+                parts.push(`${datum.percentage}%`)
+              }
+              return parts.join(' · ')
+            }
+          }
+        }
+      }
+    }
+  })
+}
+
 const loadUsageStats = async () => {
   loading.value = true
   try {
@@ -582,8 +758,24 @@ watch(
   (newVal) => {
     if (newVal && newVal.length > 0) {
       nextTick(() => {
-        createChart()
+        createTrendChart()
       })
+    } else {
+      destroyTrendChart()
+    }
+  },
+  { deep: true }
+)
+
+watch(
+  () => modelChartEntries.value,
+  (entries) => {
+    if (entries && entries.length > 0) {
+      nextTick(() => {
+        createModelUsageChart()
+      })
+    } else {
+      destroyModelChart()
     }
   },
   { deep: true }
@@ -594,9 +786,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (chart) {
-    chart.destroy()
-  }
+  destroyTrendChart()
+  destroyModelChart()
 })
 </script>
 

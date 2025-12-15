@@ -1160,6 +1160,14 @@ router.delete('/api-keys/:keyId', authenticateUser, async (req, res) => {
 router.get('/usage-stats', authenticateUser, async (req, res) => {
   try {
     const { period = 'week', model } = req.query
+    const includeModelUsage =
+      req.query.includeModelUsage === undefined
+        ? true
+        : req.query.includeModelUsage === 'true' ||
+          req.query.includeModelUsage === '1' ||
+          req.query.includeModelUsage === true
+    const modelLimit = req.query.modelLimit
+    const modelMinTokens = req.query.modelMinTokens
 
     // 获取用户的API Keys (including deleted ones for complete usage stats)
     const userApiKeys = await apiKeyService.getUserApiKeys(req.user.id, true)
@@ -1180,7 +1188,13 @@ router.get('/usage-stats', authenticateUser, async (req, res) => {
     }
 
     // 获取使用统计
-    const stats = await apiKeyService.getAggregatedUsageStats(apiKeyIds, { period, model })
+    const stats = await apiKeyService.getAggregatedUsageStats(apiKeyIds, {
+      period,
+      model,
+      includeModelUsage,
+      modelLimit,
+      modelMinTokens
+    })
 
     res.json({
       success: true,
@@ -1609,6 +1623,12 @@ router.get('/:userId/usage-stats', authenticateUserOrAdmin, requireAdmin, async 
   try {
     const { userId } = req.params
     const { period = 'week', model } = req.query
+    const includeModelUsage =
+      req.query.includeModelUsage === 'true' ||
+      req.query.includeModelUsage === '1' ||
+      req.query.includeModelUsage === true
+    const modelLimit = req.query.modelLimit
+    const modelMinTokens = req.query.modelMinTokens
 
     const user = await userService.getUserById(userId)
     if (!user) {
@@ -1642,7 +1662,13 @@ router.get('/:userId/usage-stats', authenticateUserOrAdmin, requireAdmin, async 
     }
 
     // 获取使用统计
-    const stats = await apiKeyService.getAggregatedUsageStats(apiKeyIds, { period, model })
+    const stats = await apiKeyService.getAggregatedUsageStats(apiKeyIds, {
+      period,
+      model,
+      includeModelUsage,
+      modelLimit,
+      modelMinTokens
+    })
 
     res.json({
       success: true,

@@ -171,7 +171,13 @@ export const useUserStore = defineStore('user', {
     // 📊 获取使用统计
     async getUserUsageStats(params = {}) {
       try {
-        const response = await axios.get(`${API_BASE}/usage-stats`, { params })
+        const response = await axios.get(`${API_BASE}/usage-stats`, {
+          params: {
+            includeModelUsage: true,
+            modelLimit: 6,
+            ...params
+          }
+        })
         return response.data.success ? response.data.stats : null
       } catch (error) {
         console.error('Failed to fetch usage stats:', error)

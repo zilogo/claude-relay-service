@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid')
 const config = require('../../config/config')
 const redis = require('../models/redis')
 const logger = require('../utils/logger')
+const CostCalculator = require('../utils/costCalculator')
 
 const apiKeyRevealConfig = config.adminFeatures?.apiKeyReveal || {}
 const API_KEY_ENCRYPTION_ALGORITHM =
@@ -53,6 +54,83 @@ const configuredRevealScanBatch = parseInt(
 const API_KEY_REVEAL_SCAN_BATCH = Number.isNaN(configuredRevealScanBatch)
   ? 200
   : Math.max(configuredRevealScanBatch, 50)
+
+const PERIOD_PRESET_CONFIG = {
+  day: { granularity: 'daily', days: 1 },
+  week: { granularity: 'daily', days: 7 },
+  month: { granularity: 'daily', days: 30 },
+  quarter: { granularity: 'monthly', months: 3 }
+}
+const DEFAULT_MODEL_LIMIT = 8
+const MAX_MODEL_LIMIT = 25
+
+function normalizePeriodKey(period) {
+  if (!period || typeof period !== 'string') {
+    return 'week'
+  }
+  const normalized = period.toLowerCase()
+  if (PERIOD_PRESET_CONFIG[normalized]) {
+    return normalized
+  }
+  return 'week'
+}
+
+function buildDailyBuckets(days = 1) {
+  const buckets = []
+  const now = new Date()
+  for (let i = days - 1; i >= 0; i--) {
+    const target = new Date(now)
+    target.setUTCDate(target.getUTCDate() - i)
+    if (typeof redis.getDateStringInTimezone === 'function') {
+      buckets.push(redis.getDateStringInTimezone(target))
+    } else {
+      buckets.push(target.toISOString().slice(0, 10))
+    }
+  }
+  return buckets
+}
+
+function buildMonthlyBuckets(months = 1) {
+  const buckets = []
+  const base = typeof redis.getDateInTimezone === 'function' ? redis.getDateInTimezone() : new Date()
+  const current = new Date(base)
+  current.setUTCDate(1)
+  for (let i = months - 1; i >= 0; i--) {
+    const date = new Date(current)
+    date.setUTCMonth(date.getUTCMonth() - i)
+    buckets.push(`${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`)
+  }
+  return buckets
+}
+
+function resolvePeriodBuckets(periodKey) {
+  const preset = PERIOD_PRESET_CONFIG[periodKey] || PERIOD_PRESET_CONFIG.week
+  if (preset.granularity === 'monthly') {
+    return {
+      granularity: 'monthly',
+      buckets: buildMonthlyBuckets(preset.months || 1)
+    }
+  }
+  return {
+    granularity: 'daily',
+    buckets: buildDailyBuckets(preset.days || 1)
+  }
+}
+
+function createEmptyUsageStats(periodKey) {
+  return {
+    period: periodKey,
+    totalRequests: 0,
+    totalInputTokens: 0,
+    totalOutputTokens: 0,
+    totalCacheCreateTokens: 0,
+    totalCacheReadTokens: 0,
+    totalCost: 0,
+    dailyStats: [],
+    modelStats: [],
+    modelUsageTotals: null
+  }
+}
 
 function normalizeAccountTypeKey(type) {
   if (!type) {
@@ -1800,51 +1878,139 @@ class ApiKeyService {
 
   // 📊 获取聚合使用统计（支持多个API Key）
   async getAggregatedUsageStats(keyIds, options = {}) {
+    const normalizedPeriod = normalizePeriodKey(options.period || 'week')
+    const stats = createEmptyUsageStats(normalizedPeriod)
+
     try {
-      if (!Array.isArray(keyIds)) {
-        keyIds = [keyIds]
+      const normalizedIds = Array.isArray(keyIds) ? keyIds.filter(Boolean) : [keyIds].filter(Boolean)
+      if (!normalizedIds.length) {
+        return stats
       }
 
-      const { period: _period = 'week', model: _model } = options
-      const stats = {
-        totalRequests: 0,
-        totalInputTokens: 0,
-        totalOutputTokens: 0,
-        totalCacheCreateTokens: 0,
-        totalCacheReadTokens: 0,
-        totalCost: 0,
-        dailyStats: [],
-        modelStats: []
-      }
+      const { granularity, buckets } = resolvePeriodBuckets(normalizedPeriod)
+      const client = redis.getClientSafe()
 
-      // 汇总所有API Key的统计数据
-      for (const keyId of keyIds) {
-        const keyStats = await redis.getUsageStats(keyId)
-        const costStats = await redis.getCostStats(keyId)
-        if (keyStats && keyStats.total) {
-          stats.totalRequests += keyStats.total.requests || 0
-          stats.totalInputTokens += keyStats.total.inputTokens || 0
-          stats.totalOutputTokens += keyStats.total.outputTokens || 0
-          stats.totalCacheCreateTokens += keyStats.total.cacheCreateTokens || 0
-          stats.totalCacheReadTokens += keyStats.total.cacheReadTokens || 0
-          stats.totalCost += costStats?.total || 0
+      for (const keyId of normalizedIds) {
+        const usagePipeline = client.pipeline()
+        const costPipeline = client.pipeline()
+
+        for (const bucket of buckets) {
+          const usageKey =
+            granularity === 'monthly'
+              ? `usage:monthly:${keyId}:${bucket}`
+              : `usage:daily:${keyId}:${bucket}`
+          const costKey =
+            granularity === 'monthly'
+              ? `usage:cost:monthly:${keyId}:${bucket}`
+              : `usage:cost:daily:${keyId}:${bucket}`
+
+          usagePipeline.hgetall(usageKey)
+          costPipeline.get(costKey)
+        }
+
+        const [usageResults, costResults] = await Promise.all([
+          usagePipeline.exec(),
+          costPipeline.exec()
+        ])
+
+        if (usageResults) {
+          usageResults.forEach(([error, data]) => {
+            if (error || !data || Object.keys(data).length === 0) {
+              return
+            }
+
+            stats.totalRequests += parseInt(data.requests) || parseInt(data.totalRequests) || 0
+            stats.totalInputTokens +=
+              parseInt(data.inputTokens) || parseInt(data.totalInputTokens) || 0
+            stats.totalOutputTokens +=
+              parseInt(data.outputTokens) || parseInt(data.totalOutputTokens) || 0
+            stats.totalCacheCreateTokens +=
+              parseInt(data.cacheCreateTokens) || parseInt(data.totalCacheCreateTokens) || 0
+            stats.totalCacheReadTokens +=
+              parseInt(data.cacheReadTokens) || parseInt(data.totalCacheReadTokens) || 0
+          })
+        }
+
+        if (costResults) {
+          costResults.forEach(([error, value]) => {
+            if (error || value === null || value === undefined) {
+              return
+            }
+            const numeric = parseFloat(value)
+            if (!Number.isNaN(numeric)) {
+              stats.totalCost += numeric
+            }
+          })
         }
       }
 
-      // TODO: 实现日期范围和模型统计
-      // 这里可以根据需要添加更详细的统计逻辑
+      const includeModelUsage =
+        options.includeModelUsage === true ||
+        options.includeModelUsage === 'true' ||
+        options.includeModelUsage === 1 ||
+        options.includeModelUsage === '1'
+
+      if (includeModelUsage) {
+        const modelLimitRaw = parseInt(options.modelLimit, 10)
+        const modelLimit = Number.isNaN(modelLimitRaw)
+          ? DEFAULT_MODEL_LIMIT
+          : Math.min(Math.max(modelLimitRaw, 1), MAX_MODEL_LIMIT)
+        const minTokensRaw = parseInt(options.modelMinTokens, 10)
+        const minTokens = Number.isNaN(minTokensRaw) ? 0 : Math.max(minTokensRaw, 0)
+
+        let { modelUsage } = await redis.getApiKeyModelUsage(normalizedIds, {
+          granularity: granularity === 'monthly' ? 'monthly' : 'daily',
+          buckets
+        })
+
+        const modelFilter = typeof options.model === 'string' ? options.model.trim() : ''
+        if (modelFilter) {
+          modelUsage = modelUsage.filter((stat) => stat.model === modelFilter)
+        }
+
+        const totalModelTokens = modelUsage.reduce((sum, stat) => sum + (stat.allTokens || 0), 0)
+        const totalModelRequests = modelUsage.reduce((sum, stat) => sum + (stat.requests || 0), 0)
+
+        const filteredByTokens = modelUsage.filter((stat) => (stat.allTokens || 0) >= minTokens)
+
+        const statsWithCost = filteredByTokens.map((stat) => {
+          const usagePayload = {
+            input_tokens: stat.inputTokens,
+            output_tokens: stat.outputTokens,
+            cache_creation_input_tokens: stat.cacheCreateTokens,
+            cache_read_input_tokens: stat.cacheReadTokens
+          }
+          const costData = CostCalculator.calculateCost(usagePayload, stat.model)
+
+          return {
+            ...stat,
+            costs: costData.costs,
+            formatted: costData.formatted,
+            pricing: costData.pricing,
+            usingDynamicPricing: costData.usingDynamicPricing
+          }
+        })
+
+        const limitedModelStats = statsWithCost.slice(0, modelLimit)
+        const includedTokens = limitedModelStats.reduce(
+          (sum, stat) => sum + (stat.allTokens || 0),
+          0
+        )
+
+        stats.modelStats = limitedModelStats
+        stats.modelUsageTotals = {
+          totalTokens: totalModelTokens,
+          totalModels: modelUsage.length,
+          totalRequests: totalModelRequests,
+          includedTokens,
+          otherTokens: Math.max(0, totalModelTokens - includedTokens)
+        }
+      }
 
       return stats
     } catch (error) {
       logger.error('❌ Failed to get usage stats:', error)
-      return {
-        totalRequests: 0,
-        totalInputTokens: 0,
-        totalOutputTokens: 0,
-        totalCost: 0,
-        dailyStats: [],
-        modelStats: []
-      }
+      return stats
     }
   }
 
