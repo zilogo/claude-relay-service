@@ -28,6 +28,7 @@ const userRoutes = require('./routes/userRoutes')
 const azureOpenaiRoutes = require('./routes/azureOpenaiRoutes')
 const webhookRoutes = require('./routes/webhook')
 const paymentRoutes = require('./routes/paymentRoutes')
+const dingtalkBotRoutes = require('./routes/dingtalkBot')
 
 // Import middleware
 const {
@@ -356,6 +357,7 @@ class Application {
       this.app.use('/azure', azureOpenaiRoutes)
       this.app.use('/admin/webhook', webhookRoutes)
       this.app.use('/payment', paymentRoutes) // 支付路由
+      this.app.use('/hooks/dingtalk', dingtalkBotRoutes)
 
       // 🏠 根路径服务 Frontpage 首页
       this.app.get('/', (req, res) => {

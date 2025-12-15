@@ -240,6 +240,19 @@ const config = {
       '所有注册的用户都具备资格，当推荐的客户通过您的链接完成账号的注册，并充值20元以上时，我们赠送您10美金的使用额度，该额度将直接存入您的账户中；该赠送额度没有使用期限；'
   },
 
+  // 🤖 钉钉机器人（入站）配置
+  dingtalkBot: {
+    enabled: process.env.DINGTALK_BOT_ENABLED === 'true',
+    accessToken: process.env.DINGTALK_BOT_ACCESS_TOKEN || '',
+    signSecret: process.env.DINGTALK_BOT_SIGN_SECRET || '',
+    allowedSenderIds: process.env.DINGTALK_BOT_ALLOWED_SENDERS
+      ? process.env.DINGTALK_BOT_ALLOWED_SENDERS.split(',')
+          .map((id) => id.trim())
+          .filter(Boolean)
+      : [],
+    defaultRemark: process.env.DINGTALK_BOT_DEFAULT_REMARK || '钉钉机器人充值'
+  },
+
   // 📧 邮件服务配置
   email: {
     enabled: process.env.EMAIL_ENABLED === 'true',

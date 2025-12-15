@@ -97,6 +97,7 @@ API 请求流程:
 | GET | `/admin/users/:userId/balance` | 获取用户余额 | ✅ 已实现 |
 | GET | `/admin/users/:userId/recharge-records` | 获取用户充值记录 | ✅ 已实现 |
 | GET | `/admin/recharge-records` | 获取所有充值记录 | ✅ 已实现 |
+| POST | `/hooks/dingtalk/recharge` | 钉钉机器人触发手动充值（需配置Token/签名） | ✅ 已实现 |
 
 #### 2.3.3 接口详情
 
@@ -144,6 +145,33 @@ API 请求流程:
   }
 }
 ```
+
+**POST /hooks/dingtalk/recharge**
+
+- 该接口供钉钉机器人调用，URL 需附加 `token`、`timestamp`、`sign`（如启用）。
+- 消息正文示例：`@充值机器人 《user001》 《10.5》`，会从 `text.content` 或 `markdown.text` 中解析。
+
+请求示例：
+```json
+{
+  "text": { "content": "@充值机器人 《user001》 《10.5》" },
+  "senderNick": "运营A",
+  "senderStaffId": "012345",
+  "conversationId": "cidxyz"
+}
+```
+
+响应：
+```json
+{
+  "msgtype": "text",
+  "text": {
+    "content": "✅ 成功为 user001 充值 $10.50，当前余额 $50.00"
+  }
+}
+```
+
+> 配置项（.env）：`DINGTALK_BOT_ENABLED`、`DINGTALK_BOT_ACCESS_TOKEN`、`DINGTALK_BOT_SIGN_SECRET`、`DINGTALK_BOT_ALLOWED_SENDERS`（逗号分隔）、`DINGTALK_BOT_DEFAULT_REMARK`。
 
 **余额不足响应（HTTP 402）**
 
