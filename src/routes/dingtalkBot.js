@@ -85,6 +85,15 @@ function verifySignature(secret, timestamp, providedSign) {
   }
 }
 
+router.get('/recharge', (req, res) => {
+  const botConfig = config.dingtalkBot || {}
+  if (!botConfig.enabled) {
+    return res.status(503).json(createTextResponse('钉钉机器人充值功能未启用'))
+  }
+  
+  return res.json(createTextResponse('✅ 接口可用'))
+})
+
 router.post('/recharge', async (req, res) => {
   const botConfig = config.dingtalkBot || {}
   if (!botConfig.enabled) {
