@@ -1306,6 +1306,34 @@ class UserService {
         throw new Error('Invalid recharge amount: must be a positive number')
       }
 
+      let paymentAmount = null
+      if (options.paymentAmount !== undefined && options.paymentAmount !== null) {
+        const parsedPayment = parseFloat(options.paymentAmount)
+        if (Number.isNaN(parsedPayment) || parsedPayment < 0) {
+          throw new Error('Invalid payment amount metadata')
+        }
+        paymentAmount = parsedPayment
+      }
+
+      let displayAmount = null
+      if (options.displayAmount !== undefined && options.displayAmount !== null) {
+        const parsedDisplay = parseFloat(options.displayAmount)
+        if (Number.isNaN(parsedDisplay) || parsedDisplay < 0) {
+          throw new Error('Invalid display amount metadata')
+        }
+        displayAmount = parsedDisplay
+      }
+
+      const paymentCurrency =
+        typeof options.paymentCurrency === 'string' && options.paymentCurrency.trim().length > 0
+          ? options.paymentCurrency.trim().toUpperCase()
+          : null
+
+      const displayCurrency =
+        typeof options.displayCurrency === 'string' && options.displayCurrency.trim().length > 0
+          ? options.displayCurrency.trim().toUpperCase()
+          : null
+
       // 获取用户（不计算 usage，避免循环依赖）
       const user = await this.getUserById(userId, false)
       if (!user) {
@@ -1346,6 +1374,10 @@ class UserService {
         operatorId: operator.id || '',
         operatorName: operator.name || 'system',
         remark: remark || '',
+        paymentAmount,
+        paymentCurrency,
+        displayAmount,
+        displayCurrency,
         createdAt: now
       }
 
@@ -1391,7 +1423,11 @@ class UserService {
         balance: balanceAfter,
         totalRecharge: user.totalRecharge,
         operatorName: operator.name || 'system',
-        createdAt: now
+        createdAt: now,
+        paymentAmount,
+        paymentCurrency,
+        displayAmount,
+        displayCurrency
       }
 
       if (!skipReferralProcessing && shouldCountTowardsTotalRecharge) {

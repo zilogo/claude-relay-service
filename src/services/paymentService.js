@@ -475,7 +475,13 @@ class PaymentService {
         `${provider}支付 - 订单${order.id}`,
         {
           recordType: 'payment',
-          source: provider || 'payment'
+          source: provider || 'payment',
+          paymentAmount:
+            typeof order.payableAmountCny === 'number' ? order.payableAmountCny : order.amount,
+          paymentCurrency: (order.currency || 'CNY').toUpperCase(),
+          displayAmount:
+            typeof order.displayAmount === 'number' ? order.displayAmount : order.amountUsd,
+          displayCurrency: order.displayCurrency || order.currency || 'USD'
         }
       )
 

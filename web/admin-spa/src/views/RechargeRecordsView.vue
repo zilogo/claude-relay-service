@@ -292,7 +292,12 @@
               <th
                 class="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
               >
-                金额
+                支付金额
+              </th>
+              <th
+                class="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
+              >
+                充值额度
               </th>
               <th
                 class="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
@@ -341,6 +346,16 @@
                 >
                   {{ getTypeName(record.type) }}
                 </span>
+              </td>
+              <td class="whitespace-nowrap px-6 py-4 text-right">
+                <span
+                  v-if="hasPaymentAmount(record)"
+                  class="text-sm font-semibold"
+                  :class="getAmountColorClass(record.paymentAmount)"
+                >
+                  {{ getRecordPaymentAmountText(record) }}
+                </span>
+                <span v-else class="text-sm text-gray-400 dark:text-gray-500">-</span>
               </td>
               <td class="whitespace-nowrap px-6 py-4 text-right">
                 <span
@@ -467,6 +482,59 @@ const getTypeClass = (type) => {
   return classMap[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
 }
 
+const formatNumber = (value, fractionDigits = 2) => {
+  const numeric = Number.parseFloat(value)
+  if (!Number.isFinite(numeric)) {
+    return (0).toFixed(fractionDigits)
+  }
+  return numeric.toFixed(fractionDigits)
+}
+
+const resolveCurrencySymbol = (currencyCode) => {
+  const normalized = (currencyCode || '').toUpperCase()
+  if (normalized === 'USD') return '$'
+  if (normalized === 'CNY') return '¥'
+  if (normalized === 'EUR') return '€'
+  return normalized || '$'
+}
+
+const formatSignedCurrency = (value, currencyCode = 'CNY') => {
+  const numeric = Number.parseFloat(value)
+  if (!Number.isFinite(numeric)) {
+    return ''
+  }
+  const symbol = resolveCurrencySymbol(currencyCode)
+  const sign = numeric >= 0 ? '+' : '-'
+  return `${sign}${symbol}${formatNumber(Math.abs(numeric))}`
+}
+
+const hasPaymentAmount = (record) => {
+  if (!record) return false
+  const raw = record.paymentAmount
+  if (raw === undefined || raw === null) {
+    return false
+  }
+  const numeric = Number.parseFloat(raw)
+  return Number.isFinite(numeric)
+}
+
+const getRecordPaymentAmountText = (record) => {
+  if (!hasPaymentAmount(record)) {
+    return ''
+  }
+  return formatSignedCurrency(record.paymentAmount, record.paymentCurrency || 'CNY')
+}
+
+const getAmountColorClass = (value) => {
+  const numeric = Number.parseFloat(value)
+  if (!Number.isFinite(numeric)) {
+    return 'text-gray-500 dark:text-gray-400'
+  }
+  return numeric >= 0
+    ? 'text-emerald-600 dark:text-emerald-400'
+    : 'text-red-600 dark:text-red-400'
+}
+
 const debounceSearch = () => {
   if (searchTimeout) clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
@@ -535,11 +603,12 @@ const exportRecords = async () => {
   exporting.value = true
   try {
     // 构建 CSV 内容
-    const headers = ['时间', '用户', '类型', '金额', '充值前余额', '充值后余额', '操作者', '备注']
+    const headers = ['时间', '用户', '类型', '支付金额', '充值额度', '充值前余额', '充值后余额', '操作者', '备注']
     const rows = records.value.map((record) => [
       formatDate(record.createdAt),
       record.username || record.userId,
       getTypeName(record.type),
+      getRecordPaymentAmountText(record) || '-',
       `$${record.amount?.toFixed(2) || '0.00'}`,
       `$${record.balanceBefore?.toFixed(2) || '0.00'}`,
       `$${record.balanceAfter?.toFixed(2) || '0.00'}`,
