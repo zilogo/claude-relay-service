@@ -208,6 +208,9 @@ router.post('/recharge', async (req, res) => {
       }
     )
 
+    // 获取包含totalCost的完整余额信息
+    const balanceInfo = await userService.getBalanceInfo(user.id)
+
     logger.info(
       `🤖 DingTalk recharge success: ${username} +$${amount.toFixed(2)} by ${operatorName}`
     )
@@ -218,7 +221,7 @@ router.post('/recharge', async (req, res) => {
         `### ✅ 充值成功\n\n` +
           `- **用户**: ${user.username}\n` +
           `- **充值金额**: $${amount.toFixed(2)}\n` +
-          `- **当前余额**: $${(rechargeResult.balance || 0).toFixed(2)}\n` +
+          `- **可用余额**: $${balanceInfo.availableBalance.toFixed(2)}\n` +
           `- **操作人**: ${operatorName}\n` +
           `- **操作时间**: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`
       )
