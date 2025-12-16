@@ -377,7 +377,9 @@ PAYMENT_MIN_AMOUNT=1                         # 支持 RECHARGE_MIN_AMOUNT
 PAYMENT_MAX_AMOUNT=1000                      # 支持 RECHARGE_MAX_AMOUNT
 PAYMENT_ALLOW_CUSTOM_AMOUNT=true             # 支持 ALLOW_CUSTOM_AMOUNT
 PAYMENT_DEFAULT_CURRENCY=CNY                 # 支持 DEFAULT_CURRENCY
-PAYMENT_EXCHANGE_RATE=7.2                    # 支持 EXCHANGE_RATE
+PAYMENT_DISPLAY_CURRENCY=USD                 # 展示货币，默认为 PAYMENT_DEFAULT_CURRENCY
+PAYMENT_EXCHANGE_RATE=7.1                    # 支持 EXCHANGE_RATE
+PAYMENT_DISCOUNT_RATE=0.2                    # 折扣率，0.2 表示最终实付为 20%
 PAYMENT_ORDER_EXPIRE_MINUTES=30              # 支持 ZPAY_ORDER_EXPIRE_MINUTES
 MAX_ORDERS_PER_MINUTE=3
 PAYMENT_PACKAGES=[]                          # JSON 字符串，定义充值套餐
@@ -444,10 +446,10 @@ ZPAY_REQUIRE_HTTPS=true
 ##### 前端实现
 
 用户充值界面功能：
-- 套餐选择：显示预设套餐（如 ¥70/$10、¥350/$50、¥700/$100）
-- 自定义金额：支持人民币/美元输入，自动换算
-- 支付方式：支付宝、微信支付、Stripe 微信支付（三者共享 UI，自动切换货币与限额）
-- 实时显示：支付金额预览
+- 套餐选择：按展示货币（如 `$100`）列出预设额度，并同步显示“实付约 ¥142.00”；点击任意额度会弹出“$金额 × 汇率 × 折扣率 = ¥实付”提示框。
+- 自定义金额：用户输入展示货币金额（默认 USD），系统实时提示 `$X × 7.10 × 0.20 = ¥Y` 并在输入结束时弹出计算弹窗。
+- 支付方式：支付宝、微信支付、Stripe 微信支付（三者共享 UI，自动切换支付币种，但最终实付固定为人民币）。
+- 实时显示：提交按钮侧会展示 `$金额 (实付约 ¥xxx)`，与弹窗保持一致。
 - Stripe 微信支付：创建订单后弹出二维码弹窗（含倒计时、轮询状态、重新生成二维码按钮）；ZPay 仍保持跳转收银台流程
 - 成功提示：所有渠道支付成功后在 toast、弹窗、弹出页中统一展示“支付成功，余额已到账”，并立即刷新余额/充值记录。
 - 失败/取消提示：所有渠道失败、取消、关闭订单时统一提示“支付未完成，请重新发起或稍后重试”，便于客服与运营排查。

@@ -97,9 +97,11 @@
                 "
                 @click="selectPresetAmount(amount)"
               >
-                <div class="mb-1 text-lg font-bold text-gray-900 dark:text-white">¥{{ amount }}</div>
+                <div class="mb-1 text-lg font-bold text-gray-900 dark:text-white">
+                  {{ currencySymbol }}{{ amount }}
+                </div>
                 <div class="text-sm text-gray-500 dark:text-gray-400">
-                  ≈ ${{ formatPresetUsd(amount) }}
+                  实付约 ¥{{ formatPresetCny(amount) }}
                 </div>
                 <div
                   v-if="isPresetSelected(amount)"
@@ -107,9 +109,9 @@
                 >
                   <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
                     <path
-                      fill-rule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
                       clip-rule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      fill-rule="evenodd"
                     />
                   </svg>
                 </div>
@@ -132,9 +134,9 @@
                 >
                   <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
                     <path
-                      fill-rule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
                       clip-rule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      fill-rule="evenodd"
                     />
                   </svg>
                 </div>
@@ -164,25 +166,16 @@
                   :min="minAmount"
                   placeholder="输入金额"
                   type="number"
+                  @blur="handleCustomAmountBlur"
                   @input="onCustomAmountChange"
                 />
               </div>
-              <!-- [已禁用] 货币选择 - 暂时只支持人民币充值 -->
-              <!--
-              <select
-                v-model="customCurrency"
-                class="rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-gray-900 transition-colors focus:border-[#D97757] focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-              >
-                <option value="CNY">人民币 (¥)</option>
-                <option value="USD">美元 ($)</option>
-              </select>
-              -->
             </div>
             <p v-if="convertedAmountHint" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
               {{ convertedAmountHint }}
             </p>
             <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              充值100元人民币，得100美元使用额度！
+              {{ conversionFormulaHint }}
             </p>
           </div>
 
@@ -386,13 +379,18 @@
             class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
             @change="handleTypeFilterChange"
           >
-            <option v-for="option in typeFilterOptions" :key="option.value || 'all'" :value="option.value">
+            <option
+              v-for="option in typeFilterOptions"
+              :key="option.value || 'all'"
+              :value="option.value"
+            >
               {{ option.label }}
             </option>
           </select>
         </div>
         <p class="text-xs text-gray-500 dark:text-gray-400">
-          “在线充值” 表示二维码/支付网关订单，“手动充值” 为管理员在后台手动调整，邀请奖励会标记为 “邀请奖励”。
+          “在线充值” 表示二维码/支付网关订单，“手动充值” 为管理员在后台手动调整，邀请奖励会标记为
+          “邀请奖励”。
         </p>
       </div>
       <!-- 加载状态 -->
@@ -738,19 +736,90 @@
         </div>
       </div>
     </transition>
+    <transition name="fade">
+      <div
+        v-if="calculationModal.visible"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6"
+        @click="closeCalculationModal"
+      >
+        <div
+          class="w-full max-w-md rounded-2xl bg-white p-6 shadow-lg dark:bg-gray-900"
+          @click.stop
+        >
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">充值金额计算</h3>
+            <button
+              class="rounded-full p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              @click="closeCalculationModal"
+            >
+              <span class="sr-only">关闭</span>
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  d="M6 18L18 6M6 6l12 12"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
+            </button>
+          </div>
+          <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            系统会根据以下计算公式确定人民币实付金额
+          </p>
+          <div
+            class="mt-4 space-y-4 rounded-2xl bg-gray-50 p-4 text-gray-700 dark:bg-gray-800/80 dark:text-gray-100"
+          >
+            <div>
+              <p class="text-sm text-gray-500 dark:text-gray-400">显示额度</p>
+              <p class="text-2xl font-bold text-gray-900 dark:text-white">
+                {{ currencySymbol }}{{ formatNumber(calculationModal.displayAmount) }}
+              </p>
+            </div>
+            <div class="rounded-xl bg-white p-4 text-sm shadow-sm dark:bg-gray-900/50">
+              <p class="text-gray-500 dark:text-gray-400">计算公式</p>
+              <p class="mt-1 font-semibold text-gray-900 dark:text-white">
+                {{ currencySymbol }}{{ formatNumber(calculationModal.displayAmount) }} ×
+                {{ formatRate(calculationModal.exchangeRate) }}
+                <span v-if="Math.abs(calculationModal.discountRate - 1) > 0.0001">
+                  × {{ formatRate(calculationModal.discountRate) }}
+                </span>
+                = ¥{{ formatNumber(calculationModal.finalAmountCny) }}
+              </p>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+              <span>汇率</span>
+              <span>{{ formatRate(calculationModal.exchangeRate) }}</span>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+              <span>折扣率</span>
+              <span>{{ formatRate(calculationModal.discountRate) }}</span>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500 dark:text-gray-400">最终实付金额</p>
+              <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-300">
+                ¥{{ formatNumber(calculationModal.finalAmountCny) }}
+              </p>
+            </div>
+          </div>
+          <button
+            class="mt-6 w-full rounded-2xl bg-[#D97757] py-3 text-sm font-semibold text-white shadow hover:bg-[#c86747]"
+            @click="closeCalculationModal"
+          >
+            确认金额
+          </button>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, reactive } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { usePaymentStore } from '@/stores/payment'
 import { showToast } from '@/utils/toast'
 import { APP_CONFIG } from '@/config/app'
-import {
-  PAYMENT_SUCCESS_MESSAGE,
-  PAYMENT_INCOMPLETE_MESSAGE
-} from '@/constants/paymentMessages'
+import { PAYMENT_SUCCESS_MESSAGE, PAYMENT_INCOMPLETE_MESSAGE } from '@/constants/paymentMessages'
 
 const userStore = useUserStore()
 const paymentStore = usePaymentStore()
@@ -776,7 +845,6 @@ const typeFilterOptions = [
 const selectedPackage = ref(null)
 const selectedMethod = ref(null)
 const customAmount = ref('')
-const customCurrency = ref('CNY')
 const showPaymentDialog = ref(false)
 const paymentDialogData = ref(null)
 const paymentStatus = ref('pending')
@@ -791,6 +859,14 @@ const OTHER_PRESET_ID = 'preset-other'
 const parsedEnvWechatMin = Number(import.meta.env?.VITE_WECHAT_MIN_CNY ?? '')
 const WECHAT_MIN_CNY =
   Number.isFinite(parsedEnvWechatMin) && parsedEnvWechatMin > 0 ? parsedEnvWechatMin : 100
+const paymentCurrency = ref('CNY')
+const calculationModal = reactive({
+  visible: false,
+  displayAmount: 0,
+  exchangeRate: 0,
+  discountRate: 1,
+  finalAmountCny: 0
+})
 
 let wechatPaymentPopup = null
 const paymentSuccessMessage = PAYMENT_SUCCESS_MESSAGE
@@ -890,11 +966,11 @@ const formatWechatExpiresLabel = (expiresAt) => {
   })}`
 }
 
+/* eslint-disable no-useless-escape */
 const buildWechatQrPopupHtml = ({ qrHtml, expiresLabel, orderId }) => {
   const dashboardUrl = getRechargeDashboardUrl()
   const qrContent =
-    qrHtml ||
-    '<div class="qr-placeholder">二维码加载失败，请返回上一页重新发起支付。</div>'
+    qrHtml || '<div class="qr-placeholder">二维码加载失败，请返回上一页重新发起支付。</div>'
   const expiresMarkup = expiresLabel
     ? `<p class="expires" style="margin-top:8px;">${expiresLabel}</p>`
     : ''
@@ -1087,17 +1163,26 @@ const buildWechatQrPopupHtml = ({ qrHtml, expiresLabel, orderId }) => {
   </body>
 </html>`
 }
+/* eslint-enable no-useless-escape */
 
 const currencyMap = {
   CNY: { symbol: '¥', label: '人民币' },
   USD: { symbol: '$', label: '美元' }
 }
 
-const exchangeRate = computed(() => paymentStore.currency?.exchangeRate || 7.2)
-
-const currentCurrency = computed(() =>
-  (customCurrency.value || paymentStore.currency?.default || 'CNY').toUpperCase()
+const displayCurrencyCode = computed(() =>
+  (paymentStore.currency?.display || paymentStore.currency?.default || 'CNY').toUpperCase()
 )
+
+const exchangeRate = computed(() => paymentStore.currency?.exchangeRate || 7.1)
+
+const discountRate = computed(() => {
+  const raw = paymentStore.discountRate ?? paymentStore.currency?.discountRate ?? 1
+  const value = parseFloat(raw)
+  return Number.isFinite(value) && value > 0 ? value : 1
+})
+
+const currentCurrency = computed(() => displayCurrencyCode.value)
 
 const currencySymbol = computed(
   () => currencyMap[currentCurrency.value]?.symbol || currencyMap.USD.symbol
@@ -1106,6 +1191,32 @@ const currencySymbol = computed(
 const currencyDisplayName = computed(
   () => currencyMap[currentCurrency.value]?.label || currentCurrency.value
 )
+
+const formatNumber = (value, fractionDigits = 2) => {
+  const numeric = Number.parseFloat(value)
+  if (!Number.isFinite(numeric)) {
+    return (0).toFixed(fractionDigits)
+  }
+  return numeric.toFixed(fractionDigits)
+}
+
+const formatRate = (value) => {
+  const numeric = Number.parseFloat(value)
+  return Number.isFinite(numeric) ? numeric.toFixed(2) : '0.00'
+}
+
+const calculatePayableCny = (amount) => {
+  const numeric = parseFloat(amount)
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return 0
+  }
+  const rate = parseFloat(exchangeRate.value)
+  if (!Number.isFinite(rate) || rate <= 0) {
+    return 0
+  }
+  const discount = discountRate.value || 1
+  return parseFloat((numeric * rate * discount).toFixed(2))
+}
 
 const minAmount = computed(() => {
   const minUsd = paymentStore.limits?.min || 1
@@ -1146,10 +1257,23 @@ const convertedAmountHint = computed(() => {
   if (!customAmount.value) return ''
   const amount = parseFloat(customAmount.value)
   if (!Number.isFinite(amount) || amount <= 0) return ''
-  if (currentCurrency.value === 'CNY') {
-    return `约等于 $${(amount / exchangeRate.value).toFixed(2)}`
+  const finalCny = calculatePayableCny(amount)
+  const parts = [
+    `${currencySymbol.value}${amount.toFixed(2)}`,
+    `× ${formatRate(exchangeRate.value)}`
+  ]
+  if (Math.abs(discountRate.value - 1) > 0.0001) {
+    parts.push(`× ${formatRate(discountRate.value)}`)
   }
-  return `约等于 ¥${(amount * exchangeRate.value).toFixed(2)}`
+  parts.push(`= ¥${formatNumber(finalCny)}`)
+  return parts.join(' ')
+})
+
+const conversionFormulaHint = computed(() => {
+  const base = `${currencySymbol.value}额度 × ${formatRate(exchangeRate.value)}`
+  const extra =
+    Math.abs(discountRate.value - 1) > 0.0001 ? ` × ${formatRate(discountRate.value)}` : ''
+  return `系统将按照 ${base}${extra} 计算人民币实付金额`
 })
 
 const availablePaymentMethods = computed(() =>
@@ -1168,6 +1292,11 @@ const availablePaymentMethods = computed(() =>
 
 const totalPages = computed(() => Math.ceil(totalRecords.value / pageSize.value))
 
+const formatPresetCny = (amount) => {
+  const payable = calculatePayableCny(amount)
+  return formatNumber(payable)
+}
+
 // 计算是否可以提交
 const canSubmit = computed(() => {
   // 必须选择支付方式
@@ -1181,28 +1310,28 @@ const canSubmit = computed(() => {
 })
 
 // 显示金额
+const buildDisplayAmountLabel = (amountDisplay, payableCny) => {
+  if (!Number.isFinite(amountDisplay) || amountDisplay <= 0) {
+    return ''
+  }
+  return `${currencySymbol.value}${amountDisplay.toFixed(2)} (实付约 ¥${formatNumber(payableCny)})`
+}
+
 const displayAmount = computed(() => {
   if (selectedPackage.value) {
-    return `¥${selectedPackage.value.amountCny} (≈$${selectedPackage.value.amountUsd})`
+    return buildDisplayAmountLabel(
+      selectedPackage.value.amountUsd,
+      selectedPackage.value.payableAmountCny
+    )
   }
   if (customAmount.value) {
     const amount = parseFloat(customAmount.value)
     if (!Number.isFinite(amount) || amount <= 0) return ''
-    if (currentCurrency.value === 'CNY') {
-      return `¥${amount.toFixed(2)} (≈$${(amount / exchangeRate.value).toFixed(2)})`
-    }
-    return `$${amount.toFixed(2)} (≈¥${(amount * exchangeRate.value).toFixed(2)})`
+    const payable = calculatePayableCny(amount)
+    return buildDisplayAmountLabel(amount, payable)
   }
   return ''
 })
-
-const convertCnyToUsd = (amount) => {
-  const rate = parseFloat(exchangeRate.value)
-  if (!Number.isFinite(rate) || rate <= 0) {
-    return parseFloat(amount.toFixed(2))
-  }
-  return parseFloat((amount / rate).toFixed(2))
-}
 
 // 选择套餐
 const selectPackage = (pkg) => {
@@ -1216,15 +1345,17 @@ const createPresetPackage = (amount) => {
   if (!Number.isFinite(numeric) || numeric <= 0) {
     return null
   }
+  const payableAmountCny = calculatePayableCny(numeric)
   return {
     id: `preset-${numeric}`,
-    amountCny: numeric,
-    amountUsd: convertCnyToUsd(numeric),
+    amountUsd: parseFloat(numeric.toFixed(2)),
+    payableAmountCny,
+    displayCurrency: currentCurrency.value,
     isPreset: true
   }
 }
 
-const selectPresetAmount = (amount) => {
+const selectPresetAmount = (amount, options = {}) => {
   if (amount === 'other') {
     selectedPresetId.value = OTHER_PRESET_ID
     selectedPackage.value = null
@@ -1234,19 +1365,14 @@ const selectPresetAmount = (amount) => {
   const preset = createPresetPackage(amount)
   if (!preset) return
   selectPackage(preset)
+  if (options.showModal !== false) {
+    showCalculationModal(preset.amountUsd)
+  }
 }
 
 const isPresetSelected = (amount) => {
   const presetId = `preset-${Number(amount)}`
   return selectedPresetId.value === presetId
-}
-
-const formatPresetUsd = (amount) => {
-  const rate = parseFloat(exchangeRate.value)
-  if (!Number.isFinite(rate) || rate <= 0) {
-    return '--'
-  }
-  return (amount / rate).toFixed(2)
 }
 
 const isOtherPresetSelected = computed(() => selectedPresetId.value === OTHER_PRESET_ID)
@@ -1258,11 +1384,11 @@ const shouldShowCustomAmount = computed(
 const updateCurrencyByMethod = (method) => {
   const fallbackCurrency = (paymentStore.currency?.default || 'CNY').toUpperCase()
   if (!method) {
-    customCurrency.value = fallbackCurrency
+    paymentCurrency.value = fallbackCurrency
     return
   }
   const methodCurrency = method.currency ? method.currency.toUpperCase() : fallbackCurrency
-  customCurrency.value = methodCurrency
+  paymentCurrency.value = methodCurrency
 }
 
 const selectMethod = (method) => {
@@ -1475,6 +1601,30 @@ const regenerateWechatPayment = async () => {
   }
 }
 
+const showCalculationModal = (amountDisplay) => {
+  const numeric = parseFloat(amountDisplay)
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return
+  }
+  calculationModal.displayAmount = parseFloat(numeric.toFixed(2))
+  calculationModal.exchangeRate = exchangeRate.value
+  calculationModal.discountRate = discountRate.value
+  calculationModal.finalAmountCny = calculatePayableCny(numeric)
+  calculationModal.visible = true
+}
+
+const closeCalculationModal = () => {
+  calculationModal.visible = false
+}
+
+const handleCustomAmountBlur = () => {
+  const numeric = parseFloat(customAmount.value)
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return
+  }
+  showCalculationModal(numeric)
+}
+
 // 自定义金额变化时清空套餐选择
 const onCustomAmountChange = () => {
   if (customAmount.value) {
@@ -1485,25 +1635,48 @@ const onCustomAmountChange = () => {
 
 // 创建支付订单
 const createPaymentOrder = async () => {
-  if (!canSubmit.value) return
+  if (!canSubmit.value || !selectedMethod.value) return
 
   try {
-    let amount, currency, packageId
+    let amount
+    let packageId = null
+    let displayAmountValue = null
 
     if (selectedPackage.value) {
-      amount = selectedPackage.value.amountCny
-      currency = 'CNY'
+      displayAmountValue = selectedPackage.value.amountUsd
       packageId = selectedPackage.value.isPreset ? null : selectedPackage.value.id
+      amount =
+        paymentCurrency.value === 'CNY'
+          ? selectedPackage.value.payableAmountCny
+          : selectedPackage.value.amountUsd
     } else {
-      amount = parseFloat(customAmount.value)
-      currency = customCurrency.value
-      packageId = null
+      const parsedDisplay = parseFloat(customAmount.value)
+      if (!Number.isFinite(parsedDisplay) || parsedDisplay <= 0) {
+        showToast('请输入有效的充值金额', 'error')
+        return
+      }
+      displayAmountValue = parseFloat(parsedDisplay.toFixed(2))
+      amount =
+        paymentCurrency.value === 'CNY'
+          ? calculatePayableCny(displayAmountValue)
+          : displayAmountValue
     }
 
-    if (selectedMethod.value.provider === 'stripe' && selectedMethod.value.method === 'wechat_pay') {
+    if (!Number.isFinite(displayAmountValue) || displayAmountValue <= 0) {
+      showToast('请选择充值金额', 'error')
+      return
+    }
+
+    const normalizedCurrency = (paymentCurrency.value || 'CNY').toUpperCase()
+    const payableAmountCny =
+      normalizedCurrency === 'CNY' ? amount : calculatePayableCny(displayAmountValue)
+
+    if (
+      selectedMethod.value.provider === 'stripe' &&
+      selectedMethod.value.method === 'wechat_pay'
+    ) {
       const minCny = minWechatAmountCny.value
-      const convertedAmount = currency === 'CNY' ? amount : amount * exchangeRate.value
-      if (convertedAmount < minCny) {
+      if (payableAmountCny < minCny) {
         showToast(`微信支付最少需要充值 ¥${minWechatAmountDisplay.value}`, 'error')
         return
       }
@@ -1511,10 +1684,12 @@ const createPaymentOrder = async () => {
 
     const order = await paymentStore.createOrder({
       amount,
-      currency,
+      currency: normalizedCurrency,
       provider: selectedMethod.value.provider,
       paymentMethod: selectedMethod.value.method,
-      packageId
+      packageId,
+      displayAmount: displayAmountValue,
+      displayCurrency: currentCurrency.value
     })
 
     if (
@@ -1556,7 +1731,6 @@ const createPaymentOrder = async () => {
 const loadPaymentConfig = async () => {
   try {
     await paymentStore.loadConfig()
-    customCurrency.value = (paymentStore.currency?.default || 'CNY').toUpperCase()
     const methods = availablePaymentMethods.value
     if (methods.length > 0) {
       selectedMethod.value = methods[0]
@@ -1566,7 +1740,7 @@ const loadPaymentConfig = async () => {
     }
 
     if (!selectedPackage.value && !customAmount.value && presetAmounts.length > 0) {
-      selectPresetAmount(presetAmounts[0])
+      selectPresetAmount(presetAmounts[0], { showModal: false })
     }
   } catch (error) {
     console.error('Failed to load payment config:', error)
@@ -1576,9 +1750,7 @@ const loadPaymentConfig = async () => {
 watch(
   () => selectedMethod.value,
   (method) => {
-    if (method) {
-      updateCurrencyByMethod(method)
-    }
+    updateCurrencyByMethod(method)
   }
 )
 

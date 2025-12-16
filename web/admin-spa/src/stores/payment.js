@@ -39,7 +39,21 @@ export const usePaymentStore = defineStore('payment', {
     paymentMethods: (state) => state.config?.methods || [],
 
     // 货币配置
-    currency: (state) => state.config?.currency || { default: 'CNY', exchangeRate: 7.2 },
+    currency: (state) => {
+      const currency = state.config?.currency || {}
+      return {
+        default: (currency.default || 'CNY').toUpperCase(),
+        display: (currency.display || currency.default || 'CNY').toUpperCase(),
+        exchangeRate: currency.exchangeRate || 7.1
+      }
+    },
+
+    // 折扣配置
+    discountRate: (state) => {
+      const raw = state.config?.discountRate
+      const value = typeof raw === 'number' ? raw : parseFloat(raw)
+      return Number.isFinite(value) && value > 0 ? value : 1
+    },
 
     // 金额限制
     limits: (state) => state.config?.limits || { min: 1, max: 1000, allowCustom: true },
@@ -80,7 +94,15 @@ export const usePaymentStore = defineStore('payment', {
      * @param {Object} options - 订单选项
      */
     async createOrder(options) {
-      const { amount, currency, provider, paymentMethod, packageId } = options
+      const {
+        amount,
+        currency,
+        provider,
+        paymentMethod,
+        packageId,
+        displayAmount,
+        displayCurrency
+      } = options
 
       this.orderLoading = true
       try {
@@ -89,7 +111,9 @@ export const usePaymentStore = defineStore('payment', {
           currency: currency || 'CNY',
           provider,
           paymentMethod,
-          packageId
+          packageId,
+          displayAmount,
+          displayCurrency
         })
 
         if (response.data.success) {

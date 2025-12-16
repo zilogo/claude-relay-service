@@ -30,6 +30,13 @@ const getFloatEnv = (defaultValue, ...names) => {
 const serverPort = parseInt(process.env.PORT, 10) || 3000
 const defaultBaseUrl = process.env.BASE_URL || `http://localhost:${serverPort}`
 
+const resolvedDefaultCurrency =
+  (pickEnv('PAYMENT_DEFAULT_CURRENCY', 'DEFAULT_CURRENCY') || 'CNY').toUpperCase()
+const resolvedDisplayCurrency = (() => {
+  const raw = pickEnv('PAYMENT_DISPLAY_CURRENCY')
+  return raw ? raw.toUpperCase() : resolvedDefaultCurrency
+})()
+
 const config = {
   // 🌐 服务器配置
   server: {
@@ -304,8 +311,10 @@ const config = {
     })(),
 
     // 货币配置
-    defaultCurrency: pickEnv('PAYMENT_DEFAULT_CURRENCY', 'DEFAULT_CURRENCY') || 'CNY',
-    exchangeRate: getFloatEnv(7.2, 'PAYMENT_EXCHANGE_RATE', 'EXCHANGE_RATE'),
+    defaultCurrency: resolvedDefaultCurrency,
+    displayCurrency: resolvedDisplayCurrency,
+    exchangeRate: getFloatEnv(7.1, 'PAYMENT_EXCHANGE_RATE', 'EXCHANGE_RATE'),
+    discountRate: getFloatEnv(1, 'PAYMENT_DISCOUNT_RATE', 'DISCOUNT_RATE'),
 
     // 订单配置
     orderExpireMinutes: getIntEnv(30, 'PAYMENT_ORDER_EXPIRE_MINUTES', 'ZPAY_ORDER_EXPIRE_MINUTES'),

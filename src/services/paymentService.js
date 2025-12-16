@@ -56,8 +56,13 @@ class PaymentService {
       methods: this.getAvailableMethods(),
       currency: {
         default: config.payment.defaultCurrency || 'CNY',
-        exchangeRate: config.payment.exchangeRate || 7.2
+        display: config.payment.displayCurrency || config.payment.defaultCurrency || 'CNY',
+        exchangeRate: config.payment.exchangeRate || 7.1
       },
+      discountRate:
+        typeof config.payment.discountRate === 'number' && config.payment.discountRate > 0
+          ? config.payment.discountRate
+          : 1,
       limits: {
         min: config.payment.minAmount || 1,
         max: config.payment.maxAmount || 1000,
@@ -129,7 +134,15 @@ class PaymentService {
    * @returns {object} - 订单信息
    */
   async createOrder(userId, options) {
-    const { amount, currency = 'CNY', provider, paymentMethod, packageId = null } = options
+    const {
+      amount,
+      currency = 'CNY',
+      provider,
+      paymentMethod,
+      packageId = null,
+      displayAmount = null,
+      displayCurrency = null
+    } = options
 
     // 检查支付是否启用
     if (!this.isEnabled()) {
@@ -157,13 +170,52 @@ class PaymentService {
       throw new Error('Invalid amount')
     }
 
-    // 计算美元金额
-    let amountUsd = parsedAmount
-    let exchangeRate = 1
+    const normalizedCurrency = (currency || 'CNY').toUpperCase()
+    const configuredDisplayCurrency =
+      (config.payment.displayCurrency || config.payment.defaultCurrency || 'CNY').toUpperCase()
+    const configuredDiscountRate =
+      typeof config.payment.discountRate === 'number' && config.payment.discountRate > 0
+        ? config.payment.discountRate
+        : 1
+    const exchangeRateValue = config.payment.exchangeRate || 7.1
 
-    if (currency === 'CNY') {
-      exchangeRate = config.payment.exchangeRate || 7.2
-      amountUsd = parsedAmount / exchangeRate
+    // 计算展示额度与实际应付人民币
+    let amountUsd = parsedAmount
+    let exchangeRate = exchangeRateValue
+    let payableAmountCny = parsedAmount
+    let effectiveDisplayAmount = null
+
+    const parsedDisplayAmount =
+      displayAmount !== null && displayAmount !== undefined
+        ? parseFloat(displayAmount)
+        : null
+    const normalizedDisplayCurrency = (displayCurrency || configuredDisplayCurrency).toUpperCase()
+
+    if (
+      parsedDisplayAmount !== null &&
+      !Number.isNaN(parsedDisplayAmount) &&
+      parsedDisplayAmount > 0 &&
+      normalizedDisplayCurrency === configuredDisplayCurrency
+    ) {
+      // 以展示货币（通常为 USD）为准计算实付人民币
+      amountUsd = parseFloat(parsedDisplayAmount.toFixed(2))
+      payableAmountCny = parseFloat((amountUsd * exchangeRateValue * configuredDiscountRate).toFixed(2))
+      effectiveDisplayAmount = amountUsd
+
+      if (normalizedCurrency === 'CNY' && Math.abs(payableAmountCny - parsedAmount) > 0.05) {
+        throw new Error('Amount mismatch between display amount and payable total')
+      }
+    } else if (normalizedCurrency === 'CNY') {
+      // 沿用旧逻辑：直接使用人民币输入金额
+      payableAmountCny = parsedAmount
+      amountUsd = parsedAmount / exchangeRateValue
+      effectiveDisplayAmount = amountUsd
+    } else if (normalizedCurrency === 'USD') {
+      amountUsd = parsedAmount
+      payableAmountCny = parseFloat((parsedAmount * exchangeRateValue).toFixed(2))
+      effectiveDisplayAmount = amountUsd
+    } else {
+      effectiveDisplayAmount = amountUsd
     }
 
     // 验证金额限制
@@ -194,9 +246,13 @@ class PaymentService {
       userId,
       username: user.username,
       amount: parsedAmount,
-      currency,
+      currency: normalizedCurrency,
       amountUsd: parseFloat(amountUsd.toFixed(2)),
       exchangeRate,
+      displayAmount: effectiveDisplayAmount,
+      displayCurrency: normalizedDisplayCurrency,
+      payableAmountCny,
+      discountRate: configuredDiscountRate,
       packageId: packageInfo?.id || null,
       packageName: packageInfo?.name || null,
       provider,
@@ -213,12 +269,16 @@ class PaymentService {
     // 调用支付渠道创建支付
     const paymentResult = await providerService.createOrder(orderId, parsedAmount, paymentMethod, {
       name: packageInfo ? `充值套餐-${packageInfo.name}` : 'AI Token充值',
-      currency,
+      currency: normalizedCurrency,
       amountUsd: order.amountUsd,
       userId,
       username: user.username,
       packageId: packageInfo?.id || null,
-      exchangeRate
+      exchangeRate,
+      displayAmount: effectiveDisplayAmount,
+      displayCurrency: normalizedDisplayCurrency,
+      discountRate: configuredDiscountRate,
+      payableAmountCny
     })
 
     order.payUrl = paymentResult.payUrl || null
@@ -236,8 +296,9 @@ class PaymentService {
       orderId,
       userId,
       amount: parsedAmount,
-      currency,
+      currency: normalizedCurrency,
       amountUsd: order.amountUsd,
+      payableAmountCny,
       provider,
       paymentMethod
     })

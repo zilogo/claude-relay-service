@@ -38,7 +38,8 @@ router.get('/config', async (req, res) => {
 router.post('/orders', authenticateUser, async (req, res) => {
   try {
     const userId = req.user.id
-    const { amount, currency, provider, paymentMethod, packageId } = req.body
+    const { amount, currency, provider, paymentMethod, packageId, displayAmount, displayCurrency } =
+      req.body
 
     // 参数验证
     if (!amount || !provider || !paymentMethod) {
@@ -53,7 +54,9 @@ router.post('/orders', authenticateUser, async (req, res) => {
       currency: currency || 'CNY',
       provider,
       paymentMethod,
-      packageId
+      packageId,
+      displayAmount,
+      displayCurrency
     })
 
     res.json({
@@ -65,6 +68,9 @@ router.post('/orders', authenticateUser, async (req, res) => {
         amount: order.amount,
         currency: order.currency,
         amountUsd: order.amountUsd,
+        displayAmount: order.displayAmount || order.amountUsd,
+        displayCurrency: order.displayCurrency,
+        payableAmountCny: order.payableAmountCny || order.amount,
         expiredAt: order.expiredAt,
         provider: order.provider,
         paymentMethod: order.paymentMethod
