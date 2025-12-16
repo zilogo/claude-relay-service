@@ -796,7 +796,7 @@
                 {{ currencySymbol }}{{ formatNumber(calculationModal.displayAmount) }} ×
                 {{ formatRate(calculationModal.exchangeRate) }}
                 <span v-if="Math.abs(calculationModal.discountRate - 1) > 0.0001">
-                  × {{ formatRate(calculationModal.discountRate) }}
+                  × {{ formatDiscountRate(calculationModal.discountRate) }}
                 </span>
                 = ¥{{ formatNumber(calculationModal.finalAmountCny) }}
               </p>
@@ -807,7 +807,7 @@
             </div>
             <div class="flex items-center justify-between text-sm">
               <span>折扣率</span>
-              <span>{{ formatRate(calculationModal.discountRate) }}</span>
+              <span>{{ formatDiscountRate(calculationModal.discountRate) }}</span>
             </div>
             <div>
               <p class="text-sm text-gray-500 dark:text-gray-400">最终实付金额</p>
@@ -1220,6 +1220,11 @@ const formatRate = (value) => {
   return Number.isFinite(numeric) ? numeric.toFixed(2) : '0.00'
 }
 
+const formatDiscountRate = (value) => {
+  const numeric = Number.parseFloat(value)
+  return Number.isFinite(numeric) ? numeric.toFixed(4) : '0.0000'
+}
+
 const resolveCurrencySymbol = (currencyCode) => {
   const normalized = (currencyCode || '').toUpperCase()
   if (currencyMap[normalized]?.symbol) {
@@ -1321,7 +1326,7 @@ const convertedAmountHint = computed(() => {
     `× ${formatRate(exchangeRate.value)}`
   ]
   if (Math.abs(discountRate.value - 1) > 0.0001) {
-    parts.push(`× ${formatRate(discountRate.value)}`)
+    parts.push(`× ${formatDiscountRate(discountRate.value)}`)
   }
   parts.push(`= ¥${formatNumber(finalCny)}`)
   return parts.join(' ')
@@ -1330,7 +1335,7 @@ const convertedAmountHint = computed(() => {
 const conversionFormulaHint = computed(() => {
   const base = `${currencySymbol.value}额度 × ${formatRate(exchangeRate.value)}`
   const extra =
-    Math.abs(discountRate.value - 1) > 0.0001 ? ` × ${formatRate(discountRate.value)}` : ''
+    Math.abs(discountRate.value - 1) > 0.0001 ? ` × ${formatDiscountRate(discountRate.value)}` : ''
   return `系统将按照 ${base}${extra} 计算人民币实付金额`
 })
 
