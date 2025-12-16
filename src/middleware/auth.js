@@ -1788,9 +1788,13 @@ const requestLogger = (req, res, next) => {
   const referer = req.get('Referer') || 'none'
 
   // 记录请求开始
+  const isDebugRoute = req.originalUrl.includes('event_logging')
   if (req.originalUrl !== '/health') {
-    // 避免健康检查日志过多
-    logger.info(`▶️ [${requestId}] ${req.method} ${req.originalUrl} | IP: ${clientIP}`)
+    if (isDebugRoute) {
+      logger.debug(`▶️ [${requestId}] ${req.method} ${req.originalUrl} | IP: ${clientIP}`)
+    } else {
+      logger.info(`▶️ [${requestId}] ${req.method} ${req.originalUrl} | IP: ${clientIP}`)
+    }
   }
 
   res.on('finish', () => {
@@ -1822,7 +1826,11 @@ const requestLogger = (req, res, next) => {
         logMetadata
       )
     } else if (req.originalUrl !== '/health') {
-      logger.request(req.method, req.originalUrl, res.statusCode, duration, logMetadata)
+      if (isDebugRoute) {
+        logger.debug(`🟢 ${req.method} ${req.originalUrl} - ${res.statusCode} (${duration}ms)`, logMetadata)
+      } else {
+        logger.request(req.method, req.originalUrl, res.statusCode, duration, logMetadata)
+      }
     }
 
     // API Key相关日志
