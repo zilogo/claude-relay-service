@@ -531,12 +531,12 @@
               </td>
               <td class="whitespace-nowrap px-6 py-4">
                 <div class="text-sm text-gray-600 dark:text-gray-400">
-                  {{ record.operatorName || '-' }}
+                  {{ record.source === 'dingtalk-bot' ? '-' : record.operatorName || '-' }}
                 </div>
               </td>
               <td class="max-w-xs truncate px-6 py-4">
                 <div class="text-sm text-gray-600 dark:text-gray-400" :title="record.remark">
-                  {{ record.remark || '-' }}
+                  {{ record.source === 'dingtalk-bot' ? '-' : record.remark || '-' }}
                 </div>
               </td>
             </tr>
@@ -1263,9 +1263,7 @@ const getAmountColorClass = (value) => {
   if (!Number.isFinite(numeric)) {
     return 'text-gray-500 dark:text-gray-400'
   }
-  return numeric >= 0
-    ? 'text-emerald-600 dark:text-emerald-400'
-    : 'text-red-600 dark:text-red-400'
+  return numeric >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
 }
 
 const calculatePayableCny = (amount) => {
@@ -1930,7 +1928,16 @@ const exportRecords = async () => {
   exporting.value = true
   try {
     // 构建 CSV 内容
-    const headers = ['时间', '类型', '支付金额', '充值额度', '充值前余额', '充值后余额', '操作者', '备注']
+    const headers = [
+      '时间',
+      '类型',
+      '支付金额',
+      '充值额度',
+      '充值前余额',
+      '充值后余额',
+      '操作者',
+      '备注'
+    ]
     const rows = records.value.map((record) => [
       formatDate(record.createdAt),
       getTypeName(record.type),
@@ -1938,8 +1945,8 @@ const exportRecords = async () => {
       `$${record.amount.toFixed(2)}`,
       `$${record.balanceBefore?.toFixed(2) || '0.00'}`,
       `$${record.balanceAfter?.toFixed(2) || '0.00'}`,
-      record.operatorName || '-',
-      record.remark || '-'
+      record.source === 'dingtalk-bot' ? '-' : record.operatorName || '-',
+      record.source === 'dingtalk-bot' ? '-' : record.remark || '-'
     ])
 
     // 添加 BOM 以支持 Excel 正确识别 UTF-8

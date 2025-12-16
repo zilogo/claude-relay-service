@@ -380,12 +380,12 @@
               </td>
               <td class="whitespace-nowrap px-6 py-4">
                 <div class="text-sm text-gray-600 dark:text-gray-400">
-                  {{ record.source === 'dingtalk-bot' ? '-' : record.operatorName || '-' }}
+                  {{ record.operatorName || '-' }}
                 </div>
               </td>
               <td class="max-w-xs truncate px-6 py-4">
                 <div class="text-sm text-gray-600 dark:text-gray-400" :title="record.remark">
-                  {{ record.source === 'dingtalk-bot' ? '-' : record.remark || '-' }}
+                  {{ record.remark || '-' }}
                 </div>
               </td>
             </tr>
@@ -620,8 +620,8 @@ const exportRecords = async () => {
       `$${record.amount?.toFixed(2) || '0.00'}`,
       `$${record.balanceBefore?.toFixed(2) || '0.00'}`,
       `$${record.balanceAfter?.toFixed(2) || '0.00'}`,
-      record.source === 'dingtalk-bot' ? '-' : record.operatorName || '-',
-      record.source === 'dingtalk-bot' ? '-' : record.remark || '-'
+      record.operatorName || '-',
+      record.remark || '-'
     ])
 
     // 添加 BOM 以支持 Excel 正确识别 UTF-8
