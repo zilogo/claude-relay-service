@@ -284,14 +284,7 @@ class UserService {
   async getAllUsers(options = {}) {
     try {
       const client = redis.getClientSafe()
-      const {
-        page = 1,
-        limit = 20,
-        role,
-        isActive,
-        search,
-        disablePagination = false
-      } = options
+      const { page = 1, limit = 20, role, isActive, search, disablePagination = false } = options
       const pageNumber = Number.isInteger(page)
         ? Math.max(page, 1)
         : Math.max(parseInt(page, 10) || 1, 1)
@@ -991,9 +984,9 @@ class UserService {
       }
 
       if (!user) {
-        // 不透露用户是否存在，直接返回成功（安全考虑）
+        // 用户不存在，抛出明确错误（根据用户需求：完全透明）
         logger.warn(`⚠️ Password reset requested for non-existent email: ${email}`)
-        return { success: true, message: 'If the email exists, a reset link will be sent' }
+        throw new Error('该邮箱未注册或不是本地账户')
       }
 
       // 检查速率限制（防止滥用）
@@ -1030,9 +1023,14 @@ class UserService {
 
       // 发送重置邮件
       const emailService = require('./emailService')
-      await emailService.sendPasswordResetEmail(email, resetToken, user.username)
-
-      logger.info(`📧 Password reset token generated for: ${email}`)
+      try {
+        await emailService.sendPasswordResetEmail(email, resetToken, user.username)
+        logger.info(`📧 Password reset token generated and email sent for: ${email}`)
+      } catch (emailError) {
+        logger.error('❌ Failed to send password reset email:', emailError)
+        // 重新抛出包含明确信息的错误
+        throw new Error(`邮件发送失败：${emailError.message}`)
+      }
 
       return {
         success: true,
@@ -1348,9 +1346,7 @@ class UserService {
       const recordType = options.recordType || 'manual'
       const recordSource = options.source || 'admin'
       const shouldCountTowardsTotalRecharge =
-        options.countTowardTotalRecharge !== undefined
-          ? options.countTowardTotalRecharge
-          : true
+        options.countTowardTotalRecharge !== undefined ? options.countTowardTotalRecharge : true
       const shouldUpdateLastRecharge =
         options.updateLastRecharge !== undefined
           ? options.updateLastRecharge

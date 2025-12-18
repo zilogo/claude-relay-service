@@ -56,11 +56,14 @@ class EmailService {
 
   // 发送邮件（基础方法）
   async sendEmail(options) {
-    if (!this.isAvailable()) {
-      // 如果服务未启用，先尝试初始化
+    // 检查邮件服务是否已配置
+    if (!this.isConfigured) {
+      // 如果服务未配置，先尝试初始化
       const initialized = await this.initialize()
       if (!initialized) {
-        throw new Error('Email service is not available')
+        throw new Error(
+          'Email service is not configured or disabled. Please check EMAIL_ENABLED and SMTP configuration in .env file.'
+        )
       }
     }
 

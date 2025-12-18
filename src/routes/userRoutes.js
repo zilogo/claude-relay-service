@@ -86,11 +86,7 @@ function buildUserExportCsv(users = []) {
     {
       header: 'Email Verified',
       value: (user) =>
-        typeof user.emailVerified === 'boolean'
-          ? user.emailVerified
-            ? 'Yes'
-            : 'No'
-          : ''
+        typeof user.emailVerified === 'boolean' ? (user.emailVerified ? 'Yes' : 'No') : ''
     }
   ]
 
@@ -1769,15 +1765,14 @@ router.post('/forgot-password', async (req, res) => {
     }
 
     // 生成重置Token并发送邮件
-    await userService.generatePasswordResetToken(email.trim())
+    const result = await userService.generatePasswordResetToken(email.trim())
 
     logger.info(`📧 Password reset requested for: ${email} from IP: ${clientIp}`)
 
-    // 始终返回成功响应（安全考虑：不透露用户是否存在）
+    // 返回真实的发送状态（完全透明策略）
     res.json({
       success: true,
-      message:
-        'If a user account with that email exists, a password reset link has been sent to it.'
+      message: '密码重置邮件已发送，请检查您的邮箱'
     })
   } catch (error) {
     logger.error('❌ Forgot password error:', error)
@@ -1785,16 +1780,44 @@ router.post('/forgot-password', async (req, res) => {
     // 如果是速率限制错误，返回具体错误信息
     if (error.message.includes('Too many')) {
       return res.status(429).json({
+        success: false,
         error: 'Too many requests',
         message: error.message
       })
     }
 
-    // 其他错误也返回通用成功消息（安全考虑）
-    res.json({
-      success: true,
-      message:
-        'If a user account with that email exists, a password reset link has been sent to it.'
+    // 用户不存在的错误
+    if (error.message.includes('该邮箱未注册') || error.message.includes('不是本地账户')) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+        message: error.message
+      })
+    }
+
+    // 邮件发送失败的错误
+    if (error.message.includes('邮件发送失败') || error.message.includes('Email service')) {
+      return res.status(500).json({
+        success: false,
+        error: 'Email sending failed',
+        message: '邮件发送失败，请联系管理员检查邮件服务配置'
+      })
+    }
+
+    // 密码重置功能未启用
+    if (error.message.includes('not enabled') || error.message.includes('disabled')) {
+      return res.status(503).json({
+        success: false,
+        error: 'Feature disabled',
+        message: '密码重置功能未启用，请联系管理员'
+      })
+    }
+
+    // 其他未知错误
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      message: '密码重置请求失败，请稍后重试或联系管理员'
     })
   }
 })
