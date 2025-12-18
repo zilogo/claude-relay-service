@@ -262,7 +262,7 @@ class RedisClient {
     // 新增：系统级分钟统计 + API Key分钟统计
     const minuteTimestamp = Math.floor(now.getTime() / 60000)
     const systemMinuteKey = `system:metrics:minute:${minuteTimestamp}`
-    const apiKeyMinuteKey = `apikey:metrics:minute:${minuteTimestamp}`
+    const apiKeyMinuteKey = `metrics:apikey:minute:${minuteTimestamp}`
 
     // 智能处理输入输出token分配
     const finalInputTokens = inputTokens || 0
@@ -1632,7 +1632,7 @@ class RedisClient {
       for (let i = 0; i < sanitizedRange; i++) {
         const minuteTimestamp = nowMinute - i
         minutesMeta.push(minuteTimestamp)
-        pipeline.hgetall(`apikey:metrics:minute:${minuteTimestamp}`)
+        pipeline.hgetall(`metrics:apikey:minute:${minuteTimestamp}`)
       }
 
       const responses = await pipeline.exec()
