@@ -50,6 +50,15 @@ class ReferralService {
     return parseFloat((usd * exchangeRate).toFixed(2))
   }
 
+  getQualifiedRechargeTypes() {
+    const program = this.getProgramConfig()
+    const types = program.qualifiedRechargeTypes
+    if (Array.isArray(types) && types.length > 0) {
+      return types
+    }
+    return ['payment']
+  }
+
   getRulesDescription() {
     return this.getProgramConfig().rulesDescription || ''
   }
@@ -115,6 +124,7 @@ class ReferralService {
       rewardIssued: record.rewardIssued === true,
       rewardsIssued: record.rewardsIssued || 0,
       totalRechargeUsd: record.totalRechargeUsd || 0,
+      onlineRechargeUsd: record.onlineRechargeUsd || 0,
       lastRechargeAt: record.lastRechargeAt || null,
       lastRechargeAmountUsd: record.lastRechargeAmountUsd || 0,
       status: record.rewardIssued
@@ -264,6 +274,7 @@ class ReferralService {
       qualifiedAt: null,
       rewardedAt: null,
       totalRechargeUsd: 0,
+      onlineRechargeUsd: 0,
       rewardIssued: false,
       rewardsIssued: 0,
       rewardAmountUsd: this.getRewardAmountUsd()
@@ -368,8 +379,19 @@ class ReferralService {
     }
   }
 
-  async processInviteeRecharge({ inviteeId, totalRechargeUsd, rechargeAmountUsd }) {
+  async processInviteeRecharge({ inviteeId, totalRechargeUsd, rechargeAmountUsd, recordType = 'payment' }) {
     if (!this.isEnabled()) {
+      return null
+    }
+
+    // 只处理配置允许的充值类型
+    const qualifiedTypes = this.getQualifiedRechargeTypes()
+    if (!qualifiedTypes.includes(recordType)) {
+      logger.debug('Referral: Skipping non-qualified recharge type', {
+        inviteeId,
+        recordType,
+        qualifiedTypes
+      })
       return null
     }
 
@@ -379,22 +401,33 @@ class ReferralService {
     }
 
     const now = new Date().toISOString()
+
+    // 初始化在线充值总额（如果不存在）
+    if (record.onlineRechargeUsd === undefined) {
+      record.onlineRechargeUsd = 0
+    }
+
+    // 只累计在线支付充值金额
+    record.onlineRechargeUsd = parseFloat(record.onlineRechargeUsd) + parseFloat(rechargeAmountUsd || 0)
     record.totalRechargeUsd = parseFloat(totalRechargeUsd) || 0
     record.lastRechargeAt = now
     record.lastRechargeAmountUsd = parseFloat(rechargeAmountUsd) || 0
 
     const threshold = this.getQualifiedRechargeUsd()
-    if (!record.qualifiedAt && record.totalRechargeUsd >= threshold) {
+    // 使用在线充值金额判断是否达标
+    if (!record.qualifiedAt && record.onlineRechargeUsd >= threshold) {
       record.qualifiedAt = now
       record.status = 'qualified'
       await this.updateStats(record.referrerId, {
         inc: { qualifiedInvites: 1 },
         set: { lastQualifiedAt: now }
       })
-      logger.info('Referral invitee qualified', {
+      logger.info('Referral invitee qualified (qualified recharge types)', {
         inviteeId,
         referrerId: record.referrerId,
-        totalRechargeUsd: record.totalRechargeUsd
+        onlineRechargeUsd: record.onlineRechargeUsd,
+        totalRechargeUsd: record.totalRechargeUsd,
+        qualifiedTypes: this.getQualifiedRechargeTypes()
       })
     }
 

@@ -244,12 +244,17 @@ const config = {
     rewardUsd: getFloatEnv(10, 'REFERRAL_REWARD_USD'),
     qualifiedRechargeCny: getFloatEnv(20, 'REFERRAL_QUALIFIED_RECHARGE_CNY'),
     qualifiedRechargeUsd: getFloatEnv(undefined, 'REFERRAL_QUALIFIED_RECHARGE_USD'),
+    qualifiedRechargeTypes: process.env.REFERRAL_QUALIFIED_RECHARGE_TYPES
+      ? process.env.REFERRAL_QUALIFIED_RECHARGE_TYPES.split(',')
+          .map((type) => type.trim())
+          .filter(Boolean)
+      : ['payment'],
     maxRewardsPerInvitee: getIntEnv(1, 'REFERRAL_MAX_REWARDS_PER_INVITEE'),
     maxInviteesPerUser: getIntEnv(0, 'REFERRAL_MAX_INVITEES_PER_USER'),
     codeLength: getIntEnv(8, 'REFERRAL_CODE_LENGTH'),
     rulesDescription:
       process.env.REFERRAL_RULES_DESCRIPTION ||
-      '所有注册的用户都具备资格，当推荐的客户通过您的链接完成账号的注册，并充值20元以上时，我们赠送您10美金的使用额度，该额度将直接存入您的账户中；该赠送额度没有使用期限；'
+      '所有注册的用户都具备资格，当推荐的客户通过您的链接完成账号的注册，并通过在线支付充值20元以上时，我们赠送您10美金的使用额度，该额度将直接存入您的账户中；该赠送额度没有使用期限；注意：只有在线支付充值(ZPAY/Stripe)才计入邀请奖励条件，管理员手动充值不计入；'
   },
 
   // 🤖 钉钉机器人（入站）配置

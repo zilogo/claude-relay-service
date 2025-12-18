@@ -1426,8 +1426,12 @@ class UserService {
         displayCurrency
       }
 
-      if (!skipReferralProcessing && shouldCountTowardsTotalRecharge) {
-        await this.handleReferralReward(user, rechargeAmount)
+      // 只有符合配置的充值类型才触发邀请奖励
+      const qualifiedTypes = config.referralProgram?.qualifiedRechargeTypes || ['payment']
+      const isQualifiedType = qualifiedTypes.includes(recordType)
+
+      if (!skipReferralProcessing && shouldCountTowardsTotalRecharge && isQualifiedType) {
+        await this.handleReferralReward(user, rechargeAmount, recordType)
       }
 
       return result
@@ -1437,7 +1441,7 @@ class UserService {
     }
   }
 
-  async handleReferralReward(user, rechargeAmount) {
+  async handleReferralReward(user, rechargeAmount, recordType = 'payment') {
     try {
       const referralService = require('./referralService')
       if (!referralService.isEnabled()) {
@@ -1447,7 +1451,8 @@ class UserService {
       const rewardPlan = await referralService.processInviteeRecharge({
         inviteeId: user.id,
         totalRechargeUsd: user.totalRecharge || 0,
-        rechargeAmountUsd: rechargeAmount
+        rechargeAmountUsd: rechargeAmount,
+        recordType
       })
 
       if (!rewardPlan) {
