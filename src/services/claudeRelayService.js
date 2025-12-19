@@ -2555,27 +2555,34 @@ class ClaudeRelayService {
     }
   }
 
+  // 🔧 准备测试请求的公共逻辑（供 testAccountConnection 和 testAccountConnectionSync 共用）
+  async _prepareAccountForTest(accountId) {
+    // 获取账户信息
+    const account = await claudeAccountService.getAccount(accountId)
+    if (!account) {
+      throw new Error('Account not found')
+    }
+
+    // 获取有效的访问token
+    const accessToken = await claudeAccountService.getValidAccessToken(accountId)
+    if (!accessToken) {
+      throw new Error('Failed to get valid access token')
+    }
+
+    // 获取代理配置
+    const proxyAgent = await this._getProxyAgent(accountId)
+
+    return { account, accessToken, proxyAgent }
+  }
+
   // 🧪 测试账号连接（供Admin API使用，直接复用 _makeClaudeStreamRequestWithUsageCapture）
-  async testAccountConnection(accountId, responseStream) {
-    const testRequestBody = createClaudeTestPayload('claude-sonnet-4-5-20250929', { stream: true })
+  async testAccountConnection(accountId, responseStream, model = 'claude-sonnet-4-5-20250929') {
+    const testRequestBody = createClaudeTestPayload(model, { stream: true })
 
     try {
-      // 获取账户信息
-      const account = await claudeAccountService.getAccount(accountId)
-      if (!account) {
-        throw new Error('Account not found')
-      }
+      const { account, accessToken, proxyAgent } = await this._prepareAccountForTest(accountId)
 
       logger.info(`🧪 Testing Claude account connection: ${account.name} (${accountId})`)
-
-      // 获取有效的访问token
-      const accessToken = await claudeAccountService.getValidAccessToken(accountId)
-      if (!accessToken) {
-        throw new Error('Failed to get valid access token')
-      }
-
-      // 获取代理配置
-      const proxyAgent = await this._getProxyAgent(accountId)
 
       // 设置响应头
       if (!responseStream.headersSent) {
@@ -2622,6 +2629,125 @@ class ClaudeRelayService {
         }
       }
       throw error
+    }
+  }
+
+  // 🧪 非流式测试账号连接（供定时任务使用）
+  // 复用流式请求方法，收集结果后返回
+  async testAccountConnectionSync(accountId, model = 'claude-sonnet-4-5-20250929') {
+    const testRequestBody = createClaudeTestPayload(model, { stream: true })
+    const startTime = Date.now()
+
+    try {
+      // 使用公共方法准备测试所需的账户信息、token 和代理
+      const { account, accessToken, proxyAgent } = await this._prepareAccountForTest(accountId)
+
+      logger.info(`🧪 Testing Claude account connection (sync): ${account.name} (${accountId})`)
+
+      // 创建一个收集器来捕获流式响应
+      let responseText = ''
+      let capturedUsage = null
+      let capturedModel = model
+      let hasError = false
+      let errorMessage = ''
+
+      // 创建模拟的响应流对象
+      const mockResponseStream = {
+        headersSent: true, // 跳过设置响应头
+        write: (data) => {
+          // 解析 SSE 数据
+          if (typeof data === 'string' && data.startsWith('data: ')) {
+            try {
+              const jsonStr = data.replace('data: ', '').trim()
+              if (jsonStr && jsonStr !== '[DONE]') {
+                const parsed = JSON.parse(jsonStr)
+                // 提取文本内容
+                if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
+                  responseText += parsed.delta.text
+                }
+                // 提取 usage 信息
+                if (parsed.type === 'message_delta' && parsed.usage) {
+                  capturedUsage = parsed.usage
+                }
+                // 提取模型信息
+                if (parsed.type === 'message_start' && parsed.message?.model) {
+                  capturedModel = parsed.message.model
+                }
+                // 检测错误
+                if (parsed.type === 'error') {
+                  hasError = true
+                  errorMessage = parsed.error?.message || 'Unknown error'
+                }
+              }
+            } catch {
+              // 忽略解析错误
+            }
+          }
+          return true
+        },
+        end: () => {},
+        on: () => {},
+        once: () => {},
+        emit: () => {},
+        writable: true
+      }
+
+      // 复用流式请求方法
+      await this._makeClaudeStreamRequestWithUsageCapture(
+        testRequestBody,
+        accessToken,
+        proxyAgent,
+        {}, // clientHeaders - 测试不需要客户端headers
+        mockResponseStream,
+        null, // usageCallback - 测试不需要统计
+        accountId,
+        'claude-official', // accountType
+        null, // sessionHash - 测试不需要会话
+        null, // streamTransformer - 不需要转换，直接解析原始格式
+        {}, // requestOptions
+        false // isDedicatedOfficialAccount
+      )
+
+      const latencyMs = Date.now() - startTime
+
+      if (hasError) {
+        logger.warn(`⚠️ Test completed with error for account: ${account.name} - ${errorMessage}`)
+        return {
+          success: false,
+          error: errorMessage,
+          latencyMs,
+          timestamp: new Date().toISOString()
+        }
+      }
+
+      logger.info(`✅ Test completed for account: ${account.name} (${latencyMs}ms)`)
+
+      return {
+        success: true,
+        message: responseText.substring(0, 200), // 截取前200字符
+        latencyMs,
+        model: capturedModel,
+        usage: capturedUsage,
+        timestamp: new Date().toISOString()
+      }
+    } catch (error) {
+      const latencyMs = Date.now() - startTime
+      logger.error(`❌ Test account connection (sync) failed:`, error.message)
+
+      // 提取错误详情
+      let errorMessage = error.message
+      if (error.response) {
+        errorMessage =
+          error.response.data?.error?.message || error.response.statusText || error.message
+      }
+
+      return {
+        success: false,
+        error: errorMessage,
+        statusCode: error.response?.status,
+        latencyMs,
+        timestamp: new Date().toISOString()
+      }
     }
   }
 

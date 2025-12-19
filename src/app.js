@@ -759,6 +759,19 @@ class Application {
         '🚦 Skipping concurrency queue cleanup on startup (CLEAR_CONCURRENCY_QUEUES_ON_STARTUP=false)'
       )
     }
+
+    // 🧪 启动账户定时测试调度器
+    // 根据配置定期测试账户连通性并保存测试历史
+    const accountTestSchedulerEnabled =
+      process.env.ACCOUNT_TEST_SCHEDULER_ENABLED !== 'false' &&
+      config.accountTestScheduler?.enabled !== false
+    if (accountTestSchedulerEnabled) {
+      const accountTestSchedulerService = require('./services/accountTestSchedulerService')
+      accountTestSchedulerService.start()
+      logger.info('🧪 Account test scheduler service started')
+    } else {
+      logger.info('🧪 Account test scheduler service disabled')
+    }
   }
 
   setupGracefulShutdown() {
@@ -811,6 +824,15 @@ class Application {
             logger.info('📊 Cost rank service stopped')
           } catch (error) {
             logger.error('❌ Error stopping cost rank service:', error)
+          }
+
+          // 停止账户定时测试调度器
+          try {
+            const accountTestSchedulerService = require('./services/accountTestSchedulerService')
+            accountTestSchedulerService.stop()
+            logger.info('🧪 Account test scheduler service stopped')
+          } catch (error) {
+            logger.error('❌ Error stopping account test scheduler service:', error)
           }
 
           // 🔢 清理所有并发计数（Phase 1 修复：防止重启泄漏）
