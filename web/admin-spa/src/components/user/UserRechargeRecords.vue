@@ -9,7 +9,7 @@
       <!-- 导出按钮 -->
       <button
         class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-        :disabled="records.length === 0 || exporting"
+        :disabled="totalRecords === 0 || exporting"
         @click="exportRecords"
       >
         <svg v-if="exporting" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -35,7 +35,11 @@
             stroke-width="2"
           />
         </svg>
-        {{ exporting ? '导出中...' : '导出 CSV' }}
+        <template v-if="exporting">导出中...</template>
+        <template v-else>
+          导出全部数据
+          <span v-if="totalRecords > 0" class="text-xs opacity-90">({{ totalRecords }}条)</span>
+        </template>
       </button>
     </div>
 
@@ -1920,13 +1924,27 @@ defineExpose({
 })
 
 const exportRecords = async () => {
-  if (records.value.length === 0) {
+  if (totalRecords.value === 0) {
     showToast('没有可导出的记录', 'warning')
     return
   }
 
   exporting.value = true
   try {
+    // 构建查询参数，获取筛选后的全部数据
+    const params = {
+      page: 1,
+      pageSize: 999999 // 获取所有数据
+    }
+    if (typeFilter.value) {
+      params.type = typeFilter.value
+    }
+
+    // 获取全部数据
+    showToast(`正在导出 ${totalRecords.value} 条记录...`, 'info')
+    const result = await userStore.getRechargeRecords(params)
+    const allRecords = result.records || []
+
     // 构建 CSV 内容
     const headers = [
       '时间',
@@ -1938,7 +1956,7 @@ const exportRecords = async () => {
       '操作者',
       '备注'
     ]
-    const rows = records.value.map((record) => [
+    const rows = allRecords.map((record) => [
       formatDate(record.createdAt),
       getTypeName(record.type),
       getRecordPaymentAmountText(record) || '-',
@@ -1958,13 +1976,21 @@ const exportRecords = async () => {
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
     link.setAttribute('href', url)
-    link.setAttribute('download', `充值记录_${new Date().toISOString().split('T')[0]}.csv`)
+
+    // 文件名包含筛选条件信息
+    let filename = '充值记录'
+    if (typeFilter.value) {
+      filename += `_${getTypeName(typeFilter.value)}`
+    }
+    filename += `_${new Date().toISOString().split('T')[0]}.csv`
+
+    link.setAttribute('download', filename)
     link.style.visibility = 'hidden'
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
 
-    showToast('导出成功', 'success')
+    showToast(`成功导出 ${allRecords.length} 条记录`, 'success')
   } catch (error) {
     console.error('Export failed:', error)
     showToast('导出失败', 'error')
