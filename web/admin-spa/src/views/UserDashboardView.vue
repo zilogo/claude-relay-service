@@ -145,100 +145,134 @@
     <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       <!-- Overview Tab -->
       <div v-if="activeTab === 'overview'" class="space-y-6">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">仪表板总览</h1>
-          <p class="mt-2 text-base text-gray-600 dark:text-gray-400">
-            欢迎来到您的 {{ siteName }} 仪表板
-          </p>
+        <!-- 标题和欢迎信息 -->
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">仪表板总览</h1>
+            <p class="mt-2 text-base text-gray-600 dark:text-gray-400">
+              欢迎回来，{{ userStore.userName }}
+            </p>
+          </div>
+          <!-- 快捷操作按钮 -->
+          <div class="hidden gap-3 md:flex">
+            <button
+              class="inline-flex items-center gap-2 rounded-xl bg-[#D97757] px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-[#c86747] focus:outline-none focus:ring-2 focus:ring-[#D97757] focus:ring-offset-2"
+              @click="handleTabChange('api-keys')"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  d="M12 4v16m8-8H4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
+              创建 API Key
+            </button>
+            <button
+              v-if="balanceInfo && (balanceInfo.availableBalance || 0) < 1"
+              class="inline-flex items-center gap-2 rounded-xl border border-emerald-500 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition-all hover:bg-emerald-100 dark:border-emerald-400 dark:bg-emerald-950/50 dark:text-emerald-300"
+              @click="handleTabChange('recharge')"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
+              立即充值
+            </button>
+          </div>
         </div>
 
-        <!-- Stats Cards -->
-        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <!-- 活跃的 API Keys 卡片 -->
+        <!-- 核心统计卡片 - 3大卡片 -->
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <!-- 可用余额卡片 - 最重要，加大尺寸 -->
           <div
-            class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#F4F1EA] to-[#E6E2DA] p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-gray-800/50 dark:to-gray-700/50"
+            class="group relative cursor-pointer overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-50 to-green-50 p-8 transition-all hover:-translate-y-1 hover:shadow-2xl dark:from-emerald-900/30 dark:to-green-900/30"
+            @click="handleTabChange('recharge')"
           >
             <div
-              class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-[#D97757]/10 blur-3xl transition-all group-hover:bg-[#D97757]/20"
+              class="absolute -bottom-12 -right-12 h-40 w-40 rounded-full bg-emerald-500/10 blur-3xl transition-all group-hover:bg-emerald-500/20"
             ></div>
             <div class="relative">
-              <div
-                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#D97757] shadow-lg shadow-[#D97757]/30"
-              >
-                <svg
-                  class="h-7 w-7 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+              <div class="flex items-start justify-between">
+                <div
+                  class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/30"
                 >
-                  <path
-                    d="M15 7a2 2 0 012 2m0 0a2 2 0 012 2m-2-2h-6m6 0v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9a2 2 0 012-2h6z"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                  />
-                </svg>
+                  <svg
+                    class="h-8 w-8 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                    />
+                  </svg>
+                </div>
+                <span
+                  v-if="(balanceInfo?.availableBalance || 0) < 1"
+                  class="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700 dark:bg-red-900/50 dark:text-red-300"
+                >
+                  余额不足
+                </span>
               </div>
               <div>
-                <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  活跃的 API Keys
+                <p class="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+                  当前可用余额
                 </p>
-                <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-50">
-                  {{ apiKeysStats.active }}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <!-- 已删除的 API Keys 卡片 -->
-          <div
-            class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-50 to-slate-50 p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-gray-800/50 dark:to-slate-800/50"
-          >
-            <div
-              class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-gray-500/10 blur-3xl transition-all group-hover:bg-gray-500/20"
-            ></div>
-            <div class="relative">
-              <div
-                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-gray-500 to-slate-600 shadow-lg shadow-gray-500/30"
-              >
-                <svg
-                  class="h-7 w-7 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+                <p
+                  class="mt-3 text-4xl font-bold"
+                  :class="
+                    (balanceInfo?.availableBalance || 0) > 0
+                      ? 'text-emerald-900 dark:text-emerald-50'
+                      : 'text-red-600 dark:text-red-400'
+                  "
                 >
-                  <path
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                  />
-                </svg>
-              </div>
-              <div>
-                <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  已删除的 API Keys
+                  ${{ (balanceInfo?.availableBalance || 0).toFixed(4) }}
                 </p>
-                <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-50">
-                  {{ apiKeysStats.deleted }}
-                </p>
+                <div class="mt-4 flex items-center justify-between text-sm">
+                  <span class="text-emerald-700 dark:text-emerald-300">
+                    累计充值: ${{ (balanceInfo?.totalRecharge || 0).toFixed(2) }}
+                  </span>
+                  <svg
+                    class="h-5 w-5 text-emerald-500 transition-transform group-hover:translate-x-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M9 5l7 7-7 7"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                    />
+                  </svg>
+                </div>
               </div>
             </div>
           </div>
 
           <!-- 总请求数卡片 -->
           <div
-            class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#F4F1EA] to-[#E6E2DA] p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-gray-800/50 dark:to-gray-700/50"
+            class="group relative cursor-pointer overflow-hidden rounded-3xl bg-gradient-to-br from-blue-50 to-indigo-50 p-8 transition-all hover:-translate-y-1 hover:shadow-2xl dark:from-blue-900/30 dark:to-indigo-900/30"
+            @click="handleTabChange('usage')"
           >
             <div
-              class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-[#D97757]/10 blur-3xl transition-all group-hover:bg-[#D97757]/20"
+              class="absolute -bottom-12 -right-12 h-40 w-40 rounded-full bg-blue-500/10 blur-3xl transition-all group-hover:bg-blue-500/20"
             ></div>
             <div class="relative">
               <div
-                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#D97757] shadow-lg shadow-[#D97757]/30"
+                class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30"
               >
                 <svg
-                  class="h-7 w-7 text-white"
+                  class="h-8 w-8 text-white"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -252,27 +286,44 @@
                 </svg>
               </div>
               <div>
-                <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">总请求数</p>
-                <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-50">
+                <p class="text-sm font-semibold text-blue-900 dark:text-blue-100">总请求数</p>
+                <p class="mt-3 text-4xl font-bold text-blue-900 dark:text-blue-50">
                   {{ formatNumber(userProfile?.totalUsage?.requests || 0) }}
                 </p>
+                <div class="mt-4 flex items-center justify-between text-sm">
+                  <span class="text-blue-700 dark:text-blue-300">查看详细统计</span>
+                  <svg
+                    class="h-5 w-5 text-blue-500 transition-transform group-hover:translate-x-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M9 5l7 7-7 7"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                    />
+                  </svg>
+                </div>
               </div>
             </div>
           </div>
 
           <!-- 总成本卡片 -->
           <div
-            class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 to-yellow-50 p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-amber-900/30 dark:to-yellow-900/30"
+            class="group relative cursor-pointer overflow-hidden rounded-3xl bg-gradient-to-br from-amber-50 to-orange-50 p-8 transition-all hover:-translate-y-1 hover:shadow-2xl dark:from-amber-900/30 dark:to-orange-900/30"
+            @click="handleTabChange('usage')"
           >
             <div
-              class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-amber-500/10 blur-3xl transition-all group-hover:bg-amber-500/20"
+              class="absolute -bottom-12 -right-12 h-40 w-40 rounded-full bg-amber-500/10 blur-3xl transition-all group-hover:bg-amber-500/20"
             ></div>
             <div class="relative">
               <div
-                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-600 shadow-lg shadow-amber-500/30"
+                class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/30"
               >
                 <svg
-                  class="h-7 w-7 text-white"
+                  class="h-8 w-8 text-white"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -286,54 +337,154 @@
                 </svg>
               </div>
               <div>
-                <p class="text-sm font-semibold text-amber-900 dark:text-amber-100">总成本</p>
-                <p class="mt-2 text-3xl font-bold text-amber-900 dark:text-amber-50">
+                <p class="text-sm font-semibold text-amber-900 dark:text-amber-100">累计消费</p>
+                <p class="mt-3 text-4xl font-bold text-amber-900 dark:text-amber-50">
                   ${{ (userProfile?.totalUsage?.totalCost || 0).toFixed(4) }}
                 </p>
+                <div class="mt-4 flex items-center justify-between text-sm">
+                  <span class="text-amber-700 dark:text-amber-300">查看消费明细</span>
+                  <svg
+                    class="h-5 w-5 text-amber-500 transition-transform group-hover:translate-x-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M9 5l7 7-7 7"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                    />
+                  </svg>
+                </div>
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- 可用余额卡片 -->
+        <!-- 次要信息卡片 -->
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <!-- 活跃 API Keys -->
           <div
-            class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 to-green-50 p-6 transition-all hover:-translate-y-1 hover:shadow-xl dark:from-emerald-900/30 dark:to-green-900/30"
+            class="group cursor-pointer rounded-2xl border border-gray-200/50 bg-white/80 p-6 shadow-sm transition-all hover:shadow-md dark:border-gray-700/50 dark:bg-gray-800/80"
+            @click="handleTabChange('api-keys')"
           >
-            <div
-              class="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-emerald-500/10 blur-3xl transition-all group-hover:bg-emerald-500/20"
-            ></div>
-            <div class="relative">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">活跃 API Keys</p>
+                <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                  {{ apiKeysStats.active }}
+                </p>
+              </div>
               <div
-                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/30"
+                class="flex h-12 w-12 items-center justify-center rounded-xl bg-[#D97757]/10 dark:bg-[#D97757]/20"
               >
                 <svg
-                  class="h-7 w-7 text-white"
+                  class="h-6 w-6 text-[#D97757]"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
                   <path
-                    d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                    d="M15 7a2 2 0 012 2m0 0a2 2 0 012 2m-2-2h-6m6 0v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9a2 2 0 012-2h6z"
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     stroke-width="2"
                   />
                 </svg>
               </div>
+            </div>
+          </div>
+
+          <!-- 用户信息快捷卡片 -->
+          <div
+            class="rounded-2xl border border-gray-200/50 bg-white/80 p-6 shadow-sm dark:border-gray-700/50 dark:bg-gray-800/80"
+          >
+            <div class="flex items-center justify-between">
               <div>
-                <p class="text-sm font-semibold text-emerald-900 dark:text-emerald-100">可用余额</p>
-                <p
-                  class="mt-2 text-3xl font-bold"
-                  :class="
-                    (balanceInfo?.availableBalance || 0) > 0
-                      ? 'text-emerald-900 dark:text-emerald-50'
-                      : 'text-red-600 dark:text-red-400'
-                  "
+                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">账户信息</p>
+                <p class="mt-2 truncate text-lg font-semibold text-gray-900 dark:text-white">
+                  {{ userProfile?.username }}
+                </p>
+              </div>
+              <div
+                class="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/30"
+              >
+                <svg
+                  class="h-6 w-6 text-purple-600 dark:text-purple-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  ${{ (balanceInfo?.availableBalance || 0).toFixed(4) }}
+                  <path
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- 注册时间 -->
+          <div
+            class="rounded-2xl border border-gray-200/50 bg-white/80 p-6 shadow-sm dark:border-gray-700/50 dark:bg-gray-800/80"
+          >
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">注册时间</p>
+                <p class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+                  {{ formatDate(userProfile?.createdAt) }}
                 </p>
-                <p class="mt-1 text-xs text-emerald-700 dark:text-emerald-300">
-                  已充值: ${{ (balanceInfo?.totalRecharge || 0).toFixed(2) }}
+              </div>
+              <div
+                class="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 dark:bg-gray-700"
+              >
+                <svg
+                  class="h-6 w-6 text-gray-600 dark:text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- 账户角色 -->
+          <div
+            class="rounded-2xl border border-gray-200/50 bg-white/80 p-6 shadow-sm dark:border-gray-700/50 dark:bg-gray-800/80"
+          >
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">账户角色</p>
+                <p class="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
+                  {{ userProfile?.role === 'admin' ? '管理员' : '用户' }}
                 </p>
+              </div>
+              <div
+                class="flex h-12 w-12 items-center justify-center rounded-xl bg-[#D97757]/10 dark:bg-[#D97757]/20"
+              >
+                <svg
+                  class="h-6 w-6 text-[#D97757]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
               </div>
             </div>
           </div>
@@ -508,183 +659,6 @@
           class="rounded-3xl border border-amber-100 bg-white/70 p-6 text-sm text-gray-500 shadow-sm dark:border-amber-500/30 dark:bg-slate-800/70"
         >
           正在加载邀请信息...
-        </div>
-
-        <!-- User Info -->
-        <div
-          class="overflow-hidden rounded-3xl border border-gray-200/50 bg-white/80 shadow-xl backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/80"
-        >
-          <div class="bg-[#D97757] px-6 py-5">
-            <h3 class="flex items-center text-xl font-bold text-white">
-              <svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                />
-              </svg>
-              账户信息
-            </h3>
-          </div>
-          <div class="px-6 py-6">
-            <dl class="space-y-4">
-              <div
-                class="flex items-center justify-between rounded-2xl bg-gray-50 px-5 py-4 dark:bg-gray-700/50"
-              >
-                <dt
-                  class="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300"
-                >
-                  <svg
-                    class="mr-3 h-5 w-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                    />
-                  </svg>
-                  用户名
-                </dt>
-                <dd class="text-base font-bold text-gray-900 dark:text-white">
-                  {{ userProfile?.username }}
-                </dd>
-              </div>
-              <div
-                class="flex items-center justify-between rounded-2xl bg-gray-50 px-5 py-4 dark:bg-gray-700/50"
-              >
-                <dt
-                  class="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300"
-                >
-                  <svg
-                    class="mr-3 h-5 w-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                    />
-                  </svg>
-                  显示名称
-                </dt>
-                <dd class="text-base font-bold text-gray-900 dark:text-white">
-                  {{ userProfile?.displayName || '未设置' }}
-                </dd>
-              </div>
-              <div
-                class="flex items-center justify-between rounded-2xl bg-gray-50 px-5 py-4 dark:bg-gray-700/50"
-              >
-                <dt
-                  class="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300"
-                >
-                  <svg
-                    class="mr-3 h-5 w-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                    />
-                  </svg>
-                  邮箱
-                </dt>
-                <dd class="text-base font-bold text-gray-900 dark:text-white">
-                  {{ userProfile?.email || '未设置' }}
-                </dd>
-              </div>
-              <div
-                class="flex items-center justify-between rounded-2xl bg-gray-50 px-5 py-4 dark:bg-gray-700/50"
-              >
-                <dt
-                  class="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300"
-                >
-                  <svg
-                    class="mr-3 h-5 w-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                    />
-                  </svg>
-                  角色
-                </dt>
-                <dd>
-                  <span
-                    class="inline-flex items-center rounded-full bg-[#D97757] px-4 py-1.5 text-sm font-bold text-white shadow-md"
-                  >
-                    {{ userProfile?.role === 'admin' ? '管理员' : '用户' }}
-                  </span>
-                </dd>
-              </div>
-              <div
-                class="flex items-center justify-between rounded-2xl bg-gray-50 px-5 py-4 dark:bg-gray-700/50"
-              >
-                <dt
-                  class="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300"
-                >
-                  <svg
-                    class="mr-3 h-5 w-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                    />
-                  </svg>
-                  注册时间
-                </dt>
-                <dd class="text-base font-bold text-gray-900 dark:text-white">
-                  {{ formatDate(userProfile?.createdAt) }}
-                </dd>
-              </div>
-              <div
-                class="flex items-center justify-between rounded-2xl bg-gray-50 px-5 py-4 dark:bg-gray-700/50"
-              >
-                <dt
-                  class="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-300"
-                >
-                  <svg
-                    class="mr-3 h-5 w-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                    />
-                  </svg>
-                  最后登录
-                </dt>
-                <dd class="text-base font-bold text-gray-900 dark:text-white">
-                  {{ formatDate(userProfile?.lastLoginAt) || '未记录' }}
-                </dd>
-              </div>
-            </dl>
-          </div>
         </div>
       </div>
 
