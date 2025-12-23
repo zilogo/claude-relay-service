@@ -1,0 +1,45 @@
+<svg width="256" height="256" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景 -->
+  <rect width="256" height="256" fill="#f3f4f6"/>
+  
+  <!-- 边框 -->
+  <rect x="10" y="10" width="236" height="236" fill="white" stroke="#d1d5db" stroke-width="2"/>
+  
+  <!-- 微信图标 -->
+  <g transform="translate(128, 100)">
+    <circle cx="0" cy="0" r="30" fill="#07c160"/>
+    <path d="M -15,-5 Q -15,-15 -5,-15 L 5,-15 Q 15,-15 15,-5 L 15,5 Q 15,15 5,15 L -5,15 Q -15,15 -15,5 Z" fill="white"/>
+  </g>
+  
+  <!-- 占位文字 -->
+  <text x="128" y="160" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#6b7280">
+    微信客服二维码
+  </text>
+  <text x="128" y="180" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#9ca3af">
+    请替换为真实二维码图片
+  </text>
+  <text x="128" y="200" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#d1d5db">
+    wechat-qr.png
+  </text>
+  
+  <!-- 装饰性二维码图案 -->
+  <g opacity="0.3">
+    <rect x="40" y="210" width="8" height="8" fill="#374151"/>
+    <rect x="56" y="210" width="8" height="8" fill="#374151"/>
+    <rect x="72" y="210" width="8" height="8" fill="#374151"/>
+    <rect x="40" y="226" width="8" height="8" fill="#374151"/>
+    <rect x="72" y="226" width="8" height="8" fill="#374151"/>
+    <rect x="40" y="234" width="8" height="8" fill="#374151"/>
+    <rect x="56" y="234" width="8" height="8" fill="#374151"/>
+    <rect x="72" y="234" width="8" height="8" fill="#374151"/>
+    
+    <rect x="176" y="210" width="8" height="8" fill="#374151"/>
+    <rect x="192" y="210" width="8" height="8" fill="#374151"/>
+    <rect x="208" y="210" width="8" height="8" fill="#374151"/>
+    <rect x="176" y="226" width="8" height="8" fill="#374151"/>
+    <rect x="208" y="226" width="8" height="8" fill="#374151"/>
+    <rect x="176" y="234" width="8" height="8" fill="#374151"/>
+    <rect x="192" y="234" width="8" height="8" fill="#374151"/>
+    <rect x="208" y="234" width="8" height="8" fill="#374151"/>
+  </g>
+</svg>
