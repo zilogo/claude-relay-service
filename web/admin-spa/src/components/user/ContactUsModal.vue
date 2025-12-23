@@ -79,13 +79,16 @@ defineProps({
 
 const emit = defineEmits(['close'])
 
+// 获取正确的base路径（开发环境 /admin/ 或生产环境 /admin-next/）
+const basePath = import.meta.env.BASE_URL || '/'
+
 // 尝试加载 PNG，如果不存在则使用 SVG 占位符
-const qrCodeImage = ref('/images/wechat-qr.png')
+const qrCodeImage = ref(`${basePath}images/wechat-qr.png`)
 
 const handleImageError = (event) => {
   // 如果 PNG 加载失败，尝试 SVG 占位符
   if (qrCodeImage.value.endsWith('.png')) {
-    qrCodeImage.value = '/images/wechat-qr.svg'
+    qrCodeImage.value = `${basePath}images/wechat-qr.svg`
   }
 }
 </script>
