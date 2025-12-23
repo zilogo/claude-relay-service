@@ -103,6 +103,23 @@
 
           <!-- 用户区域 -->
           <div class="flex items-center space-x-4">
+            <!-- 联系我们按钮 -->
+            <button
+              class="flex items-center rounded-xl px-4 py-2 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-gray-100"
+              @click="showContactUsModal = true"
+              title="联系我们"
+            >
+              <svg class="mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                />
+              </svg>
+              <span class="hidden lg:inline">联系我们</span>
+            </button>
+
             <div class="hidden text-sm text-gray-700 dark:text-gray-300 sm:block">
               欢迎，<span class="font-semibold text-gray-900 dark:text-white">{{
                 userStore.userName
@@ -383,19 +400,29 @@
             </div>
 
             <div class="mt-6 grid gap-4 md:grid-cols-2">
-              <div class="rounded-2xl border border-gray-200/60 bg-white/90 p-4 dark:border-gray-600/60 dark:bg-slate-800/80">
-                <label class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+              <div
+                class="rounded-2xl border border-gray-200/60 bg-white/90 p-4 dark:border-gray-600/60 dark:bg-slate-800/80"
+              >
+                <label
+                  class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
                   >邀请链接</label
                 >
-                <div class="mt-2 flex items-center rounded-xl border border-gray-200/70 bg-gray-50/70 px-3 py-2 text-sm font-medium text-gray-900 dark:border-gray-600/60 dark:bg-slate-800/80 dark:text-gray-100">
+                <div
+                  class="mt-2 flex items-center rounded-xl border border-gray-200/70 bg-gray-50/70 px-3 py-2 text-sm font-medium text-gray-900 dark:border-gray-600/60 dark:bg-slate-800/80 dark:text-gray-100"
+                >
                   <span class="truncate">{{ referralInfo.link }}</span>
                 </div>
               </div>
-              <div class="rounded-2xl border border-gray-200/60 bg-white/90 p-4 dark:border-gray-600/60 dark:bg-slate-800/80">
-                <label class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+              <div
+                class="rounded-2xl border border-gray-200/60 bg-white/90 p-4 dark:border-gray-600/60 dark:bg-slate-800/80"
+              >
+                <label
+                  class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
                   >邀请码</label
                 >
-                <div class="mt-2 flex items-center justify-between rounded-xl border border-gray-200/70 bg-gray-50/70 px-3 py-2 text-lg font-bold text-gray-900 dark:border-gray-600/60 dark:bg-slate-800/80 dark:text-gray-100">
+                <div
+                  class="mt-2 flex items-center justify-between rounded-xl border border-gray-200/70 bg-gray-50/70 px-3 py-2 text-lg font-bold text-gray-900 dark:border-gray-600/60 dark:bg-slate-800/80 dark:text-gray-100"
+                >
                   <span>{{ referralInfo.code }}</span>
                 </div>
               </div>
@@ -452,19 +479,25 @@
                   <div class="text-right">
                     <span
                       :class="[
-                        'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border',
+                        'inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold',
                         getReferralStatusMeta(invite.status).classes
                       ]"
                     >
                       {{ getReferralStatusMeta(invite.status).label }}
                     </span>
-                    <p v-if="invite.status !== 'rewarded'" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    <p
+                      v-if="invite.status !== 'rewarded'"
+                      class="mt-1 text-xs text-gray-500 dark:text-gray-400"
+                    >
                       累计充值：${{ (invite.totalRechargeUsd || 0).toFixed(2) }}
                     </p>
                   </div>
                 </div>
               </div>
-              <div v-else class="mt-4 rounded-2xl border border-dashed border-gray-300/80 p-6 text-center text-sm text-gray-500 dark:border-gray-600/80 dark:text-gray-400">
+              <div
+                v-else
+                class="mt-4 rounded-2xl border border-dashed border-gray-300/80 p-6 text-center text-sm text-gray-500 dark:border-gray-600/80 dark:text-gray-400"
+              >
                 还没有邀请记录，快复制邀请链接分享给好友吧～
               </div>
             </div>
@@ -675,6 +708,9 @@
         <UserManualView />
       </div>
     </main>
+
+    <!-- 联系我们弹窗 -->
+    <ContactUsModal :show="showContactUsModal" @close="showContactUsModal = false" />
   </div>
 </template>
 
@@ -691,6 +727,7 @@ import UserApiKeysManager from '@/components/user/UserApiKeysManager.vue'
 import UserUsageStats from '@/components/user/UserUsageStats.vue'
 import UserRechargeRecords from '@/components/user/UserRechargeRecords.vue'
 import UserManualView from '@/components/user/UserManualView.vue'
+import ContactUsModal from '@/components/user/ContactUsModal.vue'
 import { createPaymentStatusConfig } from '@/constants/paymentMessages'
 
 const route = useRoute()
@@ -704,6 +741,7 @@ const siteName = computed(() => authStore.oemSettings?.siteName || 'Claude Relay
 
 const activeTab = ref('overview')
 const rechargeRecordsRef = ref(null)
+const showContactUsModal = ref(false)
 
 // Tab 指示器位置计算（5 个 Tab）
 const tabIndicatorPosition = computed(() => {
