@@ -141,6 +141,9 @@
       </div>
     </nav>
 
+    <!-- 活动横幅 -->
+    <PromotionBanner @contact-admin="showContactUsModal = true" />
+
     <!-- 主内容 -->
     <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       <!-- Overview Tab -->
@@ -702,6 +705,7 @@ import UserUsageStats from '@/components/user/UserUsageStats.vue'
 import UserRechargeRecords from '@/components/user/UserRechargeRecords.vue'
 import UserManualView from '@/components/user/UserManualView.vue'
 import ContactUsModal from '@/components/user/ContactUsModal.vue'
+import PromotionBanner from '@/components/user/PromotionBanner.vue'
 import { createPaymentStatusConfig } from '@/constants/paymentMessages'
 
 const route = useRoute()
