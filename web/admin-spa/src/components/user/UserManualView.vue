@@ -298,42 +298,6 @@
           </div>
         </div>
 
-        <!-- VSCode 插件配置 -->
-        <div class="mt-8">
-          <h5
-            class="mb-2 flex items-center text-base font-semibold text-gray-800 dark:text-gray-200 sm:mb-3 sm:text-lg"
-          >
-            <i class="fas fa-puzzle-piece mr-2 text-indigo-600" />
-            VSCode Claude 插件配置
-          </h5>
-          <p class="mb-3 text-sm text-gray-700 dark:text-gray-300 sm:mb-4 sm:text-base">
-            如果使用 VSCode 的 Claude 插件，需要在配置文件中进行设置：
-          </p>
-
-          <div
-            class="rounded-lg border border-indigo-200 bg-indigo-50 p-3 dark:border-indigo-500/40 dark:bg-indigo-950/30 sm:p-4"
-          >
-            <div class="mb-3 space-y-2">
-              <p class="text-sm text-indigo-700 dark:text-indigo-300">
-                <strong>配置文件位置：</strong>
-                <code class="rounded bg-indigo-100 px-1 dark:bg-indigo-900"
-                  >C:\Users\你的用户名\.claude\config.json</code
-                >
-              </p>
-              <p class="text-xs text-indigo-600 dark:text-indigo-400">
-                💡 如果该文件不存在，请手动创建。
-              </p>
-            </div>
-            <div
-              class="overflow-x-auto rounded bg-gray-900 p-2 font-mono text-xs text-green-400 sm:p-3 sm:text-sm"
-            >
-              <div class="whitespace-nowrap text-gray-300">{</div>
-              <div class="whitespace-nowrap text-gray-300">"primaryApiKey": "crs"</div>
-              <div class="whitespace-nowrap text-gray-300">}</div>
-            </div>
-          </div>
-        </div>
-
         <!-- 验证环境变量设置 -->
         <div
           class="mt-6 rounded-lg border border-[#D97757]/40 bg-[#D97757]/5 p-3 dark:border-[#D97757]/40 dark:bg-[#D97757]/10 sm:p-4"
@@ -380,6 +344,42 @@
             <p class="text-xs text-[#D97757] dark:text-[#D97757]">
               💡 如果输出为空或显示变量名本身，说明环境变量设置失败，请重新设置。
             </p>
+          </div>
+        </div>
+
+        <!-- VSCode 插件配置 -->
+        <div class="mt-8">
+          <h5
+            class="mb-2 flex items-center text-base font-semibold text-gray-800 dark:text-gray-200 sm:mb-3 sm:text-lg"
+          >
+            <i class="fas fa-puzzle-piece mr-2 text-indigo-600" />
+            VSCode Claude 插件配置
+          </h5>
+          <p class="mb-3 text-sm text-gray-700 dark:text-gray-300 sm:mb-4 sm:text-base">
+            如果使用 VSCode 的 Claude 插件，需要在配置文件中进行设置：
+          </p>
+
+          <div
+            class="rounded-lg border border-indigo-200 bg-indigo-50 p-3 dark:border-indigo-500/40 dark:bg-indigo-950/30 sm:p-4"
+          >
+            <div class="mb-3 space-y-2">
+              <p class="text-sm text-indigo-700 dark:text-indigo-300">
+                <strong>配置文件位置：</strong>
+                <code class="rounded bg-indigo-100 px-1 dark:bg-indigo-900"
+                  >C:\Users\你的用户名\.claude\config.json</code
+                >
+              </p>
+              <p class="text-xs text-indigo-600 dark:text-indigo-400">
+                💡 如果该文件不存在，请手动创建。
+              </p>
+            </div>
+            <div
+              class="overflow-x-auto rounded bg-gray-900 p-2 font-mono text-xs text-green-400 sm:p-3 sm:text-sm"
+            >
+              <div class="whitespace-nowrap text-gray-300">{</div>
+              <div class="whitespace-nowrap text-gray-300">"primaryApiKey": "crs"</div>
+              <div class="whitespace-nowrap text-gray-300">}</div>
+            </div>
           </div>
         </div>
 
