@@ -1,6 +1,6 @@
 <template>
   <Transition name="slide-fade">
-    <div v-if="!isClosed" class="w-full border-b border-gray-200/50 dark:border-gray-700/50">
+    <div v-if="shouldShowBanner" class="w-full border-b border-gray-200/50 dark:border-gray-700/50">
       <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
         <!-- 渐变卡片容器 -->
         <div class="relative overflow-hidden rounded-2xl shadow-lg">
@@ -40,20 +40,26 @@
                     </svg>
                     联系管理员
                   </button>
-                  <button
-                    class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/50 text-gray-700 transition-all hover:bg-white/80 dark:bg-white/10 dark:text-gray-200 dark:hover:bg-white/20"
-                    @click="closeBanner"
-                    aria-label="关闭横幅"
+                  <!-- 倒计时显示 -->
+                  <div
+                    v-if="remainingMinutes > 0"
+                    class="flex items-center gap-1.5 rounded-lg bg-red-500/90 px-3 py-2 text-sm font-bold text-white shadow-md dark:bg-red-600/90"
                   >
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg
+                      class="h-4 w-4 animate-pulse"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
                       <path
-                        d="M6 18L18 6M6 6l12 12"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                         stroke-linecap="round"
                         stroke-linejoin="round"
                         stroke-width="2"
                       />
                     </svg>
-                  </button>
+                    <span>剩余 {{ remainingMinutes }} 分钟</span>
+                  </div>
                 </div>
               </div>
 
@@ -107,12 +113,20 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+
+const props = defineProps({
+  userCreatedAt: {
+    type: String,
+    default: null,
+    required: false
+  }
+})
 
 const emit = defineEmits(['contact-admin'])
 
-const isClosed = ref(false)
-const STORAGE_KEY = 'promotion_banner_closed'
+const PROMOTION_DURATION_MINUTES = 30
+const currentTime = ref(Date.now())
 
 const promotionTiers = [
   {
@@ -135,24 +149,66 @@ const promotionTiers = [
   }
 ]
 
-onMounted(() => {
-  // 检查用户是否已关闭横幅
+// 计算注册后经过的分钟数
+const minutesSinceRegistration = computed(() => {
+  if (!props.userCreatedAt) {
+    return null
+  }
+
   try {
-    isClosed.value = localStorage.getItem(STORAGE_KEY) === 'true'
+    const registrationTime = new Date(props.userCreatedAt).getTime()
+    const elapsed = (currentTime.value - registrationTime) / 1000 / 60
+    return elapsed
   } catch (error) {
-    // localStorage 不可用时降级处理
-    console.warn('localStorage is not available:', error)
+    console.error('Failed to parse userCreatedAt:', error)
+    return null
   }
 })
 
-const closeBanner = () => {
-  isClosed.value = true
-  try {
-    localStorage.setItem(STORAGE_KEY, 'true')
-  } catch (error) {
-    console.warn('Failed to save banner state:', error)
+// 计算剩余分钟数
+const remainingMinutes = computed(() => {
+  if (minutesSinceRegistration.value === null) {
+    return 0
   }
-}
+
+  const remaining = Math.max(
+    0,
+    Math.ceil(PROMOTION_DURATION_MINUTES - minutesSinceRegistration.value)
+  )
+  return remaining
+})
+
+// 判断是否应该显示横幅（仅在注册后30分钟内显示）
+const shouldShowBanner = computed(() => {
+  // 如果没有传入注册时间，不显示横幅
+  if (!props.userCreatedAt) {
+    return false
+  }
+
+  // 如果注册时间解析失败，不显示横幅
+  if (minutesSinceRegistration.value === null) {
+    return false
+  }
+
+  // 仅在注册后30分钟内显示
+  return minutesSinceRegistration.value < PROMOTION_DURATION_MINUTES
+})
+
+// 定时器用于更新当前时间
+let timer = null
+
+onMounted(() => {
+  // 每分钟更新一次当前时间，以更新剩余时间显示
+  timer = setInterval(() => {
+    currentTime.value = Date.now()
+  }, 60000) // 60秒
+})
+
+onUnmounted(() => {
+  if (timer) {
+    clearInterval(timer)
+  }
+})
 
 const handleContactAdmin = () => {
   emit('contact-admin')

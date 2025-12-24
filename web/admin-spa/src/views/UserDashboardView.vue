@@ -142,7 +142,10 @@
     </nav>
 
     <!-- 活动横幅 -->
-    <PromotionBanner @contact-admin="showContactUsModal = true" />
+    <PromotionBanner
+      :user-created-at="userStore.user?.createdAt"
+      @contact-admin="showContactUsModal = true"
+    />
 
     <!-- 主内容 -->
     <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
