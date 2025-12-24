@@ -249,6 +249,28 @@
               </button>
 
               <button
+                v-if="!(apiKey.isDeleted === 'true' || apiKey.deletedAt) && apiKey.isActive"
+                class="rounded-xl bg-green-100 p-2 text-green-600 transition-all hover:scale-110 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-400 dark:hover:bg-green-900"
+                title="配置指南"
+                @click="showConfigGuide(apiKey)"
+              >
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                  <path
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+              </button>
+
+              <button
                 v-if="
                   !(apiKey.isDeleted === 'true' || apiKey.deletedAt) &&
                   apiKey.isActive &&
@@ -336,6 +358,13 @@
       @cancel="showDeleteModal = false"
       @confirm="handleDeleteConfirm"
     />
+
+    <!-- Configuration Guide Modal -->
+    <ConfigurationGuideModal
+      :api-key="selectedApiKey"
+      :show="showConfigModal"
+      @close="showConfigModal = false"
+    />
   </div>
 </template>
 
@@ -346,6 +375,7 @@ import { useAuthStore } from '@/stores/auth'
 import { showToast } from '@/utils/toast'
 import CreateApiKeyModal from './CreateApiKeyModal.vue'
 import ViewApiKeyModal from './ViewApiKeyModal.vue'
+import ConfigurationGuideModal from './ConfigurationGuideModal.vue'
 import ConfirmModal from '@/components/common/ConfirmModal.vue'
 
 const userStore = useUserStore()
@@ -362,6 +392,7 @@ const allowUserDeleteApiKeys = computed(() => userStore.config?.allowUserDeleteA
 const showCreateModal = ref(false)
 const showViewModal = ref(false)
 const showDeleteModal = ref(false)
+const showConfigModal = ref(false)
 const selectedApiKey = ref(null)
 
 // Computed property to sort API keys by creation time (descending - newest first)
@@ -415,6 +446,11 @@ const showApiKey = (apiKey) => {
   showViewModal.value = true
 }
 
+const showConfigGuide = (apiKey) => {
+  selectedApiKey.value = apiKey
+  showConfigModal.value = true
+}
+
 const deleteApiKey = (apiKey) => {
   selectedApiKey.value = apiKey
   showDeleteModal.value = true
@@ -437,9 +473,17 @@ const handleDeleteConfirm = async () => {
   }
 }
 
-const handleApiKeyCreated = async () => {
+const handleApiKeyCreated = async (newApiKey) => {
   showCreateModal.value = false
   await loadApiKeys()
+
+  // 如果提供了新创建的 API Key，自动显示配置指南
+  if (newApiKey) {
+    setTimeout(() => {
+      selectedApiKey.value = newApiKey
+      showConfigModal.value = true
+    }, 500) // 短暂延迟以确保列表已刷新
+  }
 }
 
 onMounted(async () => {

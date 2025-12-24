@@ -245,8 +245,9 @@ const copyToClipboard = async (text) => {
 }
 
 const handleClose = () => {
+  const createdKey = newApiKey.value
   resetForm()
-  emit('created')
+  emit('created', createdKey)
   emit('close')
 }
 
