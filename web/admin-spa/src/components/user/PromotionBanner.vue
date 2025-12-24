@@ -131,21 +131,23 @@ const currentTime = ref(Date.now())
 const promotionTiers = [
   {
     id: 1,
-    label: '充50¥得80$',
-    discount: '60%优惠',
-    description: '降低门槛'
+    label: '充20¥得30$',
+    discount: '50%赠送'
   },
   {
     id: 2,
-    label: '充100¥得150$',
-    discount: '50%优惠',
-    description: '加大力度'
+    label: '充50¥得80$',
+    discount: '60%赠送'
   },
   {
     id: 3,
+    label: '充100¥得150$',
+    discount: '50%赠送'
+  },
+  {
+    id: 4,
     label: '充200¥得300$',
-    discount: '50%优惠',
-    description: '鼓励多充'
+    discount: '50%赠送'
   }
 ]
 
