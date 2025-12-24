@@ -176,7 +176,7 @@
               创建 API Key
             </button>
             <button
-              v-if="balanceInfo && (balanceInfo.availableBalance || 0) < 1"
+              v-if="balanceInfo"
               class="inline-flex items-center gap-2 rounded-xl border border-emerald-500 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition-all hover:bg-emerald-100 dark:border-emerald-400 dark:bg-emerald-950/50 dark:text-emerald-300"
               @click="handleTabChange('recharge')"
             >

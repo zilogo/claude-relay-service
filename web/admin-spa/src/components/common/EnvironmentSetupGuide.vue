@@ -50,38 +50,11 @@
     <div v-if="activeClient === 'claudecode'" class="space-y-4">
       <!-- Windows 配置 -->
       <div v-if="activePlatform === 'windows'" class="space-y-4">
-        <!-- PowerShell 临时设置 -->
-        <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-          <h3 class="font-medium text-gray-800 dark:text-gray-200 mb-3 flex items-center">
-            <i class="fas fa-terminal mr-2 text-blue-500" />
-            PowerShell 快速配置（当前会话）
-          </h3>
-          <div class="space-y-3">
-            <div class="relative">
-              <div class="bg-gray-900 rounded-lg p-3 font-mono text-sm overflow-x-auto">
-                <div class="text-gray-300">$env:ANTHROPIC_BASE_URL = "{{ baseUrl }}"</div>
-                <div class="text-gray-300">$env:ANTHROPIC_AUTH_TOKEN = "{{ apiKey || '你的API密钥' }}"</div>
-              </div>
-              <button
-                @click="copyToClipboard('powershell-temp')"
-                class="absolute top-2 right-2 px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded transition-colors"
-              >
-                <i class="fas fa-copy mr-1" />
-                复制
-              </button>
-            </div>
-            <p class="text-xs text-gray-600 dark:text-gray-400">
-              <i class="fas fa-info-circle mr-1" />
-              此配置仅对当前 PowerShell 窗口有效
-            </p>
-          </div>
-        </div>
-
         <!-- PowerShell 永久设置 -->
         <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <h3 class="font-medium text-gray-800 dark:text-gray-200 mb-3 flex items-center">
             <i class="fas fa-save mr-2 text-green-500" />
-            PowerShell 永久配置（用户级）
+            PowerShell 环境变量配置
           </h3>
           <div class="space-y-3">
             <div class="relative">
@@ -104,42 +77,40 @@
             </p>
           </div>
         </div>
-      </div>
 
-      <!-- macOS/Linux 配置 -->
-      <div v-else class="space-y-4">
-        <!-- 临时设置 -->
+        <!-- 查看已设置的环境变量 -->
         <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <h3 class="font-medium text-gray-800 dark:text-gray-200 mb-3 flex items-center">
-            <i class="fas fa-terminal mr-2 text-blue-500" />
-            Terminal 快速配置（当前会话）
+            <i class="fas fa-check-circle mr-2 text-blue-500" />
+            验证配置
           </h3>
           <div class="space-y-3">
+            <p class="text-sm text-gray-600 dark:text-gray-400">查看已设置的环境变量：</p>
             <div class="relative">
               <div class="bg-gray-900 rounded-lg p-3 font-mono text-sm overflow-x-auto">
-                <div class="text-gray-300">export ANTHROPIC_BASE_URL="{{ baseUrl }}"</div>
-                <div class="text-gray-300">export ANTHROPIC_AUTH_TOKEN="{{ apiKey || '你的API密钥' }}"</div>
+                <div class="text-green-400 mb-2"># 查看用户级环境变量</div>
+                <div class="text-gray-300">[System.Environment]::GetEnvironmentVariable("ANTHROPIC_BASE_URL", [System.EnvironmentVariableTarget]::User)</div>
+                <div class="text-gray-300">[System.Environment]::GetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", [System.EnvironmentVariableTarget]::User)</div>
               </div>
               <button
-                @click="copyToClipboard('unix-temp')"
+                @click="copyToClipboard('powershell-verify')"
                 class="absolute top-2 right-2 px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded transition-colors"
               >
                 <i class="fas fa-copy mr-1" />
                 复制
               </button>
             </div>
-            <p class="text-xs text-gray-600 dark:text-gray-400">
-              <i class="fas fa-info-circle mr-1" />
-              此配置仅对当前 Terminal 窗口有效
-            </p>
           </div>
         </div>
+      </div>
 
+      <!-- macOS/Linux 配置 -->
+      <div v-else class="space-y-4">
         <!-- 永久设置 -->
         <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           <h3 class="font-medium text-gray-800 dark:text-gray-200 mb-3 flex items-center">
             <i class="fas fa-save mr-2 text-green-500" />
-            Shell 永久配置
+            Shell 环境变量配置
           </h3>
           <div class="space-y-3">
             <div class="relative">
@@ -163,22 +134,50 @@
             </p>
           </div>
         </div>
+
+        <!-- 验证配置 -->
+        <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+          <h3 class="font-medium text-gray-800 dark:text-gray-200 mb-3 flex items-center">
+            <i class="fas fa-check-circle mr-2 text-blue-500" />
+            验证配置
+          </h3>
+          <div class="space-y-3">
+            <p class="text-sm text-gray-600 dark:text-gray-400">重新打开终端后，运行以下命令验证：</p>
+            <div class="relative">
+              <div class="bg-gray-900 rounded-lg p-3 font-mono text-sm overflow-x-auto">
+                <div class="text-gray-300">echo $ANTHROPIC_BASE_URL</div>
+                <div class="text-gray-300">echo $ANTHROPIC_AUTH_TOKEN</div>
+              </div>
+              <button
+                @click="copyToClipboard('unix-verify')"
+                class="absolute top-2 right-2 px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded transition-colors"
+              >
+                <i class="fas fa-copy mr-1" />
+                复制
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Codex 配置 -->
     <div v-else-if="activeClient === 'codex'" class="space-y-4">
+      <!-- 配置文件设置 -->
       <div class="rounded-lg border border-yellow-200 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-950/30 p-4">
         <h3 class="font-medium text-yellow-800 dark:text-yellow-300 mb-3 flex items-center">
           <i class="fas fa-cog mr-2" />
-          Codex 配置文件
+          Codex 配置步骤
         </h3>
 
         <!-- config.toml -->
         <div class="space-y-4">
           <div>
-            <p class="text-sm text-yellow-700 dark:text-yellow-300 mb-2">
-              1. 编辑 <code class="bg-yellow-100 dark:bg-yellow-900 px-1 rounded">{{ codexConfigPath }}/config.toml</code>
+            <p class="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-2">
+              步骤 1：创建配置文件
+            </p>
+            <p class="text-xs text-yellow-700 dark:text-yellow-400 mb-2">
+              路径: <code class="bg-yellow-100 dark:bg-yellow-900 px-1 rounded">{{ codexConfigPath }}/config.toml</code>
             </p>
             <div class="relative">
               <div class="bg-gray-900 rounded-lg p-3 font-mono text-xs overflow-x-auto">
@@ -196,8 +195,11 @@
 
           <!-- auth.json -->
           <div>
-            <p class="text-sm text-yellow-700 dark:text-yellow-300 mb-2">
-              2. 编辑 <code class="bg-yellow-100 dark:bg-yellow-900 px-1 rounded">{{ codexConfigPath }}/auth.json</code>
+            <p class="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-2">
+              步骤 2：设置认证文件
+            </p>
+            <p class="text-xs text-yellow-700 dark:text-yellow-400 mb-2">
+              路径: <code class="bg-yellow-100 dark:bg-yellow-900 px-1 rounded">{{ codexConfigPath }}/auth.json</code>
             </p>
             <div class="relative">
               <div class="bg-gray-900 rounded-lg p-3 font-mono text-xs overflow-x-auto">
@@ -213,52 +215,59 @@
                 复制
               </button>
             </div>
-          </div>
-
-          <!-- 环境变量 -->
-          <div>
-            <p class="text-sm text-yellow-700 dark:text-yellow-300 mb-2">
-              3. 设置环境变量 CRS_OAI_KEY
+            <p class="text-xs text-orange-600 dark:text-orange-400 mt-1">
+              <i class="fas fa-info-circle mr-1" />
+              必须设置为 null，API Key 通过环境变量提供
             </p>
-            <div class="relative">
-              <div class="bg-gray-900 rounded-lg p-3 font-mono text-xs overflow-x-auto">
-                <div class="text-gray-300">{{ codexEnvCommand }}</div>
-              </div>
-              <button
-                @click="copyToClipboard('codex-env')"
-                class="absolute top-2 right-2 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded transition-colors"
-              >
-                <i class="fas fa-copy mr-1" />
-                复制
-              </button>
-            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 验证配置 -->
-    <div class="mt-6 rounded-lg border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/30 p-4">
-      <h3 class="font-medium text-blue-800 dark:text-blue-300 mb-3 flex items-center">
-        <i class="fas fa-check-circle mr-2" />
-        验证配置
-      </h3>
-      <div class="space-y-3">
-        <p class="text-sm text-blue-700 dark:text-blue-300">
-          配置完成后，运行以下命令验证：
-        </p>
-        <div class="bg-gray-900 rounded-lg p-3 font-mono text-sm">
-          <div v-if="activeClient === 'claudecode'" class="text-gray-300">
-            {{ activePlatform === 'windows' ? 'echo $env:ANTHROPIC_AUTH_TOKEN' : 'echo $ANTHROPIC_AUTH_TOKEN' }}
+      <!-- 环境变量设置 -->
+      <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+        <h3 class="font-medium text-gray-800 dark:text-gray-200 mb-3 flex items-center">
+          <i class="fas fa-save mr-2 text-green-500" />
+          步骤 3：设置环境变量
+        </h3>
+
+        <!-- Windows -->
+        <div v-if="activePlatform === 'windows'" class="space-y-3">
+          <div class="relative">
+            <div class="bg-gray-900 rounded-lg p-3 font-mono text-sm overflow-x-auto">
+              <div class="text-green-400 mb-2"># PowerShell 中设置永久环境变量</div>
+              <div class="text-gray-300">[System.Environment]::SetEnvironmentVariable("CRS_OAI_KEY", "{{ apiKey || 'cr_xxxxxxxxxx' }}", [System.EnvironmentVariableTarget]::User)</div>
+            </div>
+            <button
+              @click="copyToClipboard('codex-env-perm')"
+              class="absolute top-2 right-2 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded transition-colors"
+            >
+              <i class="fas fa-copy mr-1" />
+              复制
+            </button>
           </div>
-          <div v-else class="text-gray-300">
-            {{ activePlatform === 'windows' ? 'echo %CRS_OAI_KEY%' : 'echo $CRS_OAI_KEY' }}
+          <p class="text-xs text-orange-600 dark:text-orange-400">
+            <i class="fas fa-exclamation-triangle mr-1" />
+            设置后需要重新打开 PowerShell 窗口才能生效
+          </p>
+        </div>
+
+        <!-- macOS/Linux -->
+        <div v-else class="space-y-3">
+          <div class="relative">
+            <div class="bg-gray-900 rounded-lg p-3 font-mono text-sm overflow-x-auto">
+              <div class="text-green-400 mb-2"># {{ activePlatform === 'macos' ? '添加到 ~/.zshrc' : '添加到 ~/.bashrc' }}</div>
+              <div class="text-gray-300">echo 'export CRS_OAI_KEY="{{ apiKey || 'cr_xxxxxxxxxx' }}"' >> ~/{{ shellConfigFile }}</div>
+              <div class="text-gray-300">source ~/{{ shellConfigFile }}</div>
+            </div>
+            <button
+              @click="copyToClipboard('codex-env-perm')"
+              class="absolute top-2 right-2 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded transition-colors"
+            >
+              <i class="fas fa-copy mr-1" />
+              复制
+            </button>
           </div>
         </div>
-        <p class="text-xs text-blue-600 dark:text-blue-400">
-          <i class="fas fa-info-circle mr-1" />
-          如果显示你的 API 密钥，说明配置成功
-        </p>
       </div>
     </div>
 
@@ -343,13 +352,6 @@ const codexConfigToml = computed(() => [
   'env_key = "CRS_OAI_KEY"'
 ])
 
-const codexEnvCommand = computed(() => {
-  const key = props.apiKey || 'cr_xxxxxxxxxx'
-  if (activePlatform.value === 'windows') {
-    return `set CRS_OAI_KEY=${key}`
-  }
-  return `export CRS_OAI_KEY=${key}`
-})
 
 // 复制到剪贴板
 const copyToClipboard = async (type) => {
@@ -357,17 +359,17 @@ const copyToClipboard = async (type) => {
   const key = props.apiKey || '你的API密钥'
 
   switch (type) {
-    case 'powershell-temp':
-      text = `$env:ANTHROPIC_BASE_URL = "${baseUrl.value}"\n$env:ANTHROPIC_AUTH_TOKEN = "${key}"`
-      break
     case 'powershell-perm':
       text = `[System.Environment]::SetEnvironmentVariable("ANTHROPIC_BASE_URL", "${baseUrl.value}", [System.EnvironmentVariableTarget]::User)\n[System.Environment]::SetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", "${key}", [System.EnvironmentVariableTarget]::User)`
       break
-    case 'unix-temp':
-      text = `export ANTHROPIC_BASE_URL="${baseUrl.value}"\nexport ANTHROPIC_AUTH_TOKEN="${key}"`
+    case 'powershell-verify':
+      text = `[System.Environment]::GetEnvironmentVariable("ANTHROPIC_BASE_URL", [System.EnvironmentVariableTarget]::User)\n[System.Environment]::GetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", [System.EnvironmentVariableTarget]::User)`
       break
     case 'unix-perm':
       text = `echo 'export ANTHROPIC_BASE_URL="${baseUrl.value}"' >> ~/${shellConfigFile.value}\necho 'export ANTHROPIC_AUTH_TOKEN="${key}"' >> ~/${shellConfigFile.value}\nsource ~/${shellConfigFile.value}`
+      break
+    case 'unix-verify':
+      text = `echo $ANTHROPIC_BASE_URL\necho $ANTHROPIC_AUTH_TOKEN`
       break
     case 'codex-config':
       text = codexConfigToml.value.join('\n')
@@ -375,8 +377,12 @@ const copyToClipboard = async (type) => {
     case 'codex-auth':
       text = '{\n  "OPENAI_API_KEY": null\n}'
       break
-    case 'codex-env':
-      text = codexEnvCommand.value
+    case 'codex-env-perm':
+      if (activePlatform.value === 'windows') {
+        text = `[System.Environment]::SetEnvironmentVariable("CRS_OAI_KEY", "${key}", [System.EnvironmentVariableTarget]::User)`
+      } else {
+        text = `echo 'export CRS_OAI_KEY="${key}"' >> ~/${shellConfigFile.value}\nsource ~/${shellConfigFile.value}`
+      }
       break
   }
 
