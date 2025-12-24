@@ -42,7 +42,7 @@
                   </button>
                   <!-- 倒计时显示 -->
                   <div
-                    v-if="remainingMinutes > 0"
+                    v-if="remainingSeconds > 0"
                     class="flex items-center gap-1.5 rounded-lg bg-red-500/90 px-3 py-2 text-sm font-bold text-white shadow-md dark:bg-red-600/90"
                   >
                     <svg
@@ -58,7 +58,7 @@
                         stroke-width="2"
                       />
                     </svg>
-                    <span>剩余 {{ remainingMinutes }} 分钟</span>
+                    <span>剩余 {{ formattedTime }}</span>
                   </div>
                 </div>
               </div>
@@ -101,7 +101,9 @@
                   />
                 </svg>
                 <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  限时福利：仅限注册后30分钟内有效（需联系管理员后台充值）
+                  限时福利：仅限注册后{{
+                    PROMOTION_DURATION_MINUTES
+                  }}分钟内有效（需联系管理员后台充值）
                 </span>
               </div>
             </div>
@@ -167,17 +169,30 @@ const minutesSinceRegistration = computed(() => {
   }
 })
 
-// 计算剩余分钟数
-const remainingMinutes = computed(() => {
-  if (minutesSinceRegistration.value === null) {
+// 计算剩余秒数
+const remainingSeconds = computed(() => {
+  if (!props.userCreatedAt) {
     return 0
   }
 
-  const remaining = Math.max(
-    0,
-    Math.ceil(PROMOTION_DURATION_MINUTES - minutesSinceRegistration.value)
-  )
-  return remaining
+  try {
+    const registrationTime = new Date(props.userCreatedAt).getTime()
+    const elapsed = currentTime.value - registrationTime
+    const totalSeconds = PROMOTION_DURATION_MINUTES * 60
+    const elapsedSeconds = Math.floor(elapsed / 1000)
+    const remaining = Math.max(0, totalSeconds - elapsedSeconds)
+    return remaining
+  } catch (error) {
+    console.error('Failed to parse userCreatedAt:', error)
+    return 0
+  }
+})
+
+// 格式化时间显示（分钟:秒）
+const formattedTime = computed(() => {
+  const minutes = Math.floor(remainingSeconds.value / 60)
+  const seconds = remainingSeconds.value % 60
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`
 })
 
 // 判断是否应该显示横幅（仅在注册后30分钟内显示）
@@ -200,10 +215,10 @@ const shouldShowBanner = computed(() => {
 let timer = null
 
 onMounted(() => {
-  // 每分钟更新一次当前时间，以更新剩余时间显示
+  // 每秒更新一次当前时间，以更新剩余时间显示
   timer = setInterval(() => {
     currentTime.value = Date.now()
-  }, 60000) // 60秒
+  }, 1000) // 1秒
 })
 
 onUnmounted(() => {
