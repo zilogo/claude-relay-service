@@ -163,70 +163,62 @@
 
     <!-- Codex 配置 -->
     <div v-else-if="activeClient === 'codex'" class="space-y-4">
-      <!-- 配置文件设置 -->
+      <!-- 步骤 1：创建配置文件 -->
       <div class="rounded-lg border border-yellow-200 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-950/30 p-4">
         <h3 class="font-medium text-yellow-800 dark:text-yellow-300 mb-3 flex items-center">
-          <i class="fas fa-cog mr-2" />
-          Codex 配置步骤
+          <i class="fas fa-file-code mr-2" />
+          步骤 1：创建配置文件
         </h3>
-
-        <!-- config.toml -->
-        <div class="space-y-4">
-          <div>
-            <p class="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-2">
-              步骤 1：创建配置文件
-            </p>
-            <p class="text-xs text-yellow-700 dark:text-yellow-400 mb-2">
-              路径: <code class="bg-yellow-100 dark:bg-yellow-900 px-1 rounded">{{ codexConfigPath }}/config.toml</code>
-            </p>
-            <div class="relative">
-              <div class="bg-gray-900 rounded-lg p-3 font-mono text-xs overflow-x-auto">
-                <div v-for="line in codexConfigToml" :key="line" class="text-gray-300">{{ line }}</div>
-              </div>
-              <button
-                @click="copyToClipboard('codex-config')"
-                class="absolute top-2 right-2 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded transition-colors"
-              >
-                <i class="fas fa-copy mr-1" />
-                复制
-              </button>
-            </div>
+        <p class="text-xs text-yellow-700 dark:text-yellow-400 mb-2">
+          路径: <code class="bg-yellow-100 dark:bg-yellow-900 px-1 rounded">{{ codexConfigPath }}/config.toml</code>
+        </p>
+        <div class="relative">
+          <div class="bg-gray-900 rounded-lg p-3 font-mono text-xs overflow-x-auto">
+            <div v-for="line in codexConfigToml" :key="line" class="text-gray-300">{{ line }}</div>
           </div>
-
-          <!-- auth.json -->
-          <div>
-            <p class="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-2">
-              步骤 2：设置认证文件
-            </p>
-            <p class="text-xs text-yellow-700 dark:text-yellow-400 mb-2">
-              路径: <code class="bg-yellow-100 dark:bg-yellow-900 px-1 rounded">{{ codexConfigPath }}/auth.json</code>
-            </p>
-            <div class="relative">
-              <div class="bg-gray-900 rounded-lg p-3 font-mono text-xs overflow-x-auto">
-                <div class="text-gray-300">{</div>
-                <div class="text-gray-300">  "OPENAI_API_KEY": null</div>
-                <div class="text-gray-300">}</div>
-              </div>
-              <button
-                @click="copyToClipboard('codex-auth')"
-                class="absolute top-2 right-2 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded transition-colors"
-              >
-                <i class="fas fa-copy mr-1" />
-                复制
-              </button>
-            </div>
-            <p class="text-xs text-orange-600 dark:text-orange-400 mt-1">
-              <i class="fas fa-info-circle mr-1" />
-              必须设置为 null，API Key 通过环境变量提供
-            </p>
-          </div>
+          <button
+            @click="copyToClipboard('codex-config')"
+            class="absolute top-2 right-2 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded transition-colors"
+          >
+            <i class="fas fa-copy mr-1" />
+            复制
+          </button>
         </div>
       </div>
 
-      <!-- 环境变量设置 -->
-      <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-        <h3 class="font-medium text-gray-800 dark:text-gray-200 mb-3 flex items-center">
-          <i class="fas fa-save mr-2 text-green-500" />
+      <!-- 步骤 2：设置认证文件 -->
+      <div class="rounded-lg border border-yellow-200 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-950/30 p-4">
+        <h3 class="font-medium text-yellow-800 dark:text-yellow-300 mb-3 flex items-center">
+          <i class="fas fa-key mr-2" />
+          步骤 2：设置认证文件
+        </h3>
+        <p class="text-xs text-yellow-700 dark:text-yellow-400 mb-2">
+          路径: <code class="bg-yellow-100 dark:bg-yellow-900 px-1 rounded">{{ codexConfigPath }}/auth.json</code>
+        </p>
+        <div class="relative">
+          <div class="bg-gray-900 rounded-lg p-3 font-mono text-xs overflow-x-auto">
+            <div class="text-gray-300">{</div>
+            <div class="text-gray-300">  "OPENAI_API_KEY": null</div>
+            <div class="text-gray-300">}</div>
+          </div>
+          <button
+            @click="copyToClipboard('codex-auth')"
+            class="absolute top-2 right-2 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded transition-colors"
+          >
+            <i class="fas fa-copy mr-1" />
+            复制
+          </button>
+        </div>
+        <p class="text-xs text-orange-600 dark:text-orange-400 mt-1">
+          <i class="fas fa-info-circle mr-1" />
+          必须设置为 null，API Key 通过环境变量提供
+        </p>
+      </div>
+
+      <!-- 步骤 3：设置环境变量 -->
+      <div class="rounded-lg border border-yellow-200 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-950/30 p-4">
+        <h3 class="font-medium text-yellow-800 dark:text-yellow-300 mb-3 flex items-center">
+          <i class="fas fa-terminal mr-2" />
           步骤 3：设置环境变量
         </h3>
 
