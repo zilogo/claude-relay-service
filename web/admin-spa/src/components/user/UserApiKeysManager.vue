@@ -250,8 +250,8 @@
 
               <button
                 v-if="!(apiKey.isDeleted === 'true' || apiKey.deletedAt) && apiKey.isActive"
-                class="rounded-xl bg-green-100 p-2 text-green-600 transition-all hover:scale-110 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-400 dark:hover:bg-green-900"
-                title="配置指南"
+                class="inline-flex items-center gap-2 rounded-xl bg-green-100 px-3 py-2 text-green-600 transition-all hover:scale-105 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-400 dark:hover:bg-green-900"
+                title="API Key 快速配置指南"
                 @click="showConfigGuide(apiKey)"
               >
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -268,6 +268,7 @@
                     stroke-width="2"
                   />
                 </svg>
+                <span class="whitespace-nowrap text-sm font-medium">API Key 快速配置指南</span>
               </button>
 
               <button
