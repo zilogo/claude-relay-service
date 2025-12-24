@@ -795,6 +795,42 @@ class UserService {
 
       logger.info(`📝 Registered local user: ${username} (${user.id})`)
 
+      // 🎁 新用户注册赠送测试金
+      if (config.signupBonus && config.signupBonus.enabled) {
+        try {
+          const bonusAmount = parseFloat(config.signupBonus.amountUsd) || 2.0
+          const bonusRemark = config.signupBonus.remark || '新用户注册测试金'
+
+          await this.rechargeBalance(
+            user.id,
+            bonusAmount,
+            { id: 'system', name: 'signup-bonus' },
+            bonusRemark,
+            {
+              recordType: 'manual', // 使用手动充值类型
+              source: 'signup_bonus',
+              countTowardTotalRecharge: true, // 计入总充值
+              updateLastRecharge: true, // 更新最后充值时间
+              skipReferralProcessing: true, // 跳过邀请返利处理
+              metadata: {
+                reason: 'new_user_signup',
+                autoGranted: true
+              }
+            }
+          )
+
+          logger.info(
+            `🎁 Granted signup bonus $${bonusAmount} to new user: ${username} (${user.id})`
+          )
+        } catch (bonusError) {
+          logger.error(
+            `❌ Failed to grant signup bonus to user ${username} (${user.id}):`,
+            bonusError
+          )
+          // 不抛出错误，允许用户注册继续
+        }
+      }
+
       // 返回用户信息（不包含密码哈希）
       const { passwordHash: _passwordHash, ...userWithoutPassword } = user
       return userWithoutPassword

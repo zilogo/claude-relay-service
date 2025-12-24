@@ -228,6 +228,13 @@ const config = {
     allowUserDeleteApiKeys: process.env.ALLOW_USER_DELETE_API_KEYS === 'true' // 默认不允许用户删除自己的API Keys
   },
 
+  // 🎁 新用户注册赠送配置
+  signupBonus: {
+    enabled: process.env.SIGNUP_BONUS_ENABLED === 'true',
+    amountUsd: getFloatEnv(2.0, 'SIGNUP_BONUS_AMOUNT_USD'), // 默认赠送 2 美元
+    remark: process.env.SIGNUP_BONUS_REMARK || '新用户注册测试金'
+  },
+
   // 🔑 本地认证配置
   localAuth: {
     enabled: process.env.LOCAL_AUTH_ENABLED === 'true',
