@@ -342,6 +342,72 @@ router.post('/users/:userId/recharge', authenticateAdmin, async (req, res) => {
   }
 })
 
+// 💸 扣减用户余额（管理员功能）
+router.post('/users/:userId/deduct', authenticateAdmin, async (req, res) => {
+  try {
+    const userService = require('../services/userService')
+    const { userId } = req.params
+    const { amount, remark } = req.body
+
+    // 验证金额
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      return res.status(400).json({
+        error: 'Invalid amount',
+        message: '扣减金额必须大于0'
+      })
+    }
+
+    // 执行扣减
+    const result = await userService.deductBalance(
+      userId,
+      parseFloat(amount),
+      { id: req.admin.id, name: req.admin.username },
+      remark || '',
+      {
+        recordType: 'manual_deduction',
+        source: 'admin-panel'
+      }
+    )
+
+    logger.info(
+      `💸 Admin ${req.admin.username} deducted $${parseFloat(amount).toFixed(2)} from user: ${userId}`
+    )
+
+    res.json({
+      success: true,
+      data: result
+    })
+  } catch (error) {
+    logger.error('❌ Deduction error:', error)
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        error: 'User not found',
+        message: error.message
+      })
+    }
+
+    if (error.message.includes('Insufficient balance')) {
+      return res.status(400).json({
+        error: 'Insufficient balance',
+        message: error.message
+      })
+    }
+
+    if (error.message.includes('Invalid deduct amount')) {
+      return res.status(400).json({
+        error: 'Invalid amount',
+        message: error.message
+      })
+    }
+
+    res.status(500).json({
+      error: 'Deduction error',
+      message: 'Internal server error during deduction'
+    })
+  }
+})
+
 // 💰 获取用户余额信息（管理员功能）
 router.get('/users/:userId/balance', authenticateAdmin, async (req, res) => {
   try {
@@ -1155,14 +1221,8 @@ router.post('/api-keys/reveal', authenticateAdmin, async (req, res) => {
         keyId: revealResult.key.id,
         keyName: revealResult.key.name,
         owner: {
-          userId:
-            revealResult.key.owner?.userId ||
-            revealResult.key.userId ||
-            '',
-          username:
-            revealResult.key.owner?.username ||
-            revealResult.key.userUsername ||
-            ''
+          userId: revealResult.key.owner?.userId || revealResult.key.userId || '',
+          username: revealResult.key.owner?.username || revealResult.key.userUsername || ''
         },
         permissions: revealResult.key.permissions,
         tags: revealResult.key.tags || [],
@@ -6827,7 +6887,7 @@ router.get('/api-keys-usage-trend', authenticateAdmin, async (req, res) => {
 router.get('/api-key-calls-metrics', authenticateAdmin, async (req, res) => {
   try {
     const retentionMinutes = Math.max(config.system?.apiKeyMinuteRetentionMinutes || 1440, 30)
-    let { rangeMinutes = '60', limit = '5' } = req.query
+    const { rangeMinutes = '60', limit = '5' } = req.query
 
     let range = parseInt(rangeMinutes, 10)
     if (!Number.isFinite(range) || range < 1) {
@@ -6880,8 +6940,7 @@ router.get('/api-key-calls-metrics', authenticateAdmin, async (req, res) => {
       name: nameMap.get(entry.id) || entry.id,
       requests: entry.requests,
       tokens: entry.tokens,
-      percentage:
-        totalRequests > 0 ? Math.round((entry.requests / totalRequests) * 10000) / 100 : 0
+      percentage: totalRequests > 0 ? Math.round((entry.requests / totalRequests) * 10000) / 100 : 0
     }))
 
     return res.json({

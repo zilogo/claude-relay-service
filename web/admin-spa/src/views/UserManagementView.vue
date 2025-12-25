@@ -466,6 +466,22 @@
                 </svg>
               </button>
 
+              <!-- Deduct Balance -->
+              <button
+                class="inline-flex items-center rounded border border-transparent p-1 text-gray-400 hover:text-red-600"
+                title="Deduct Balance"
+                @click="openDeductModal(user)"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+              </button>
+
               <!-- Change Role -->
               <button
                 class="inline-flex items-center rounded border border-transparent p-1 text-gray-400 hover:text-purple-600"
@@ -932,6 +948,178 @@
         </div>
       </div>
     </div>
+
+    <!-- Deduction Modal -->
+    <div
+      v-if="showDeductModal"
+      aria-labelledby="modal-title"
+      aria-modal="true"
+      class="fixed inset-0 z-10 overflow-y-auto"
+      role="dialog"
+    >
+      <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+        <!-- Background overlay -->
+        <div
+          aria-hidden="true"
+          class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity dark:bg-gray-900 dark:bg-opacity-75"
+          @click="showDeductModal = false"
+        ></div>
+
+        <!-- Modal panel -->
+        <div
+          class="inline-block transform overflow-hidden rounded-lg bg-white text-left align-bottom shadow-xl transition-all dark:bg-gray-800 sm:my-8 sm:w-full sm:max-w-md sm:align-middle"
+        >
+          <div class="bg-white px-4 pb-4 pt-5 dark:bg-gray-800 sm:p-6 sm:pb-4">
+            <div class="sm:flex sm:items-start">
+              <div
+                class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900 sm:mx-0 sm:h-10 sm:w-10"
+              >
+                <svg
+                  class="h-6 w-6 text-red-600 dark:text-red-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+              </div>
+              <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
+                <h3
+                  id="modal-title"
+                  class="text-lg font-medium leading-6 text-gray-900 dark:text-white"
+                >
+                  扣减余额
+                </h3>
+                <div class="mt-2">
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    从用户 <span class="font-semibold">{{ selectedUser?.username }}</span> 扣减余额
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 space-y-4">
+              <!-- Current Balance -->
+              <div class="rounded-lg bg-gray-50 p-4 dark:bg-gray-700">
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">当前余额</span>
+                  <span class="font-medium text-gray-900 dark:text-white">
+                    ${{ (deductForm.currentBalance || 0).toFixed(4) }}
+                  </span>
+                </div>
+                <div class="mt-2 flex justify-between">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">已消费</span>
+                  <span class="font-medium text-gray-900 dark:text-white">
+                    ${{ (deductForm.totalCost || 0).toFixed(4) }}
+                  </span>
+                </div>
+                <div
+                  class="mt-2 flex justify-between border-t border-gray-200 pt-2 dark:border-gray-600"
+                >
+                  <span class="text-sm font-medium text-gray-600 dark:text-gray-400">可用余额</span>
+                  <span
+                    class="font-bold"
+                    :class="
+                      (deductForm.availableBalance || 0) > 0 ? 'text-emerald-600' : 'text-red-600'
+                    "
+                  >
+                    ${{ (deductForm.availableBalance || 0).toFixed(4) }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Amount Input -->
+              <div>
+                <label
+                  class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  for="deduct-amount"
+                >
+                  扣减金额 (USD)
+                </label>
+                <div class="relative mt-1 rounded-md shadow-sm">
+                  <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <span class="text-gray-500 dark:text-gray-400 sm:text-sm">$</span>
+                  </div>
+                  <input
+                    id="deduct-amount"
+                    v-model.number="deductForm.amount"
+                    class="block w-full rounded-md border-gray-300 pl-7 pr-12 focus:border-red-500 focus:ring-red-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+                    min="0.01"
+                    :max="deductForm.currentBalance"
+                    placeholder="0.00"
+                    step="0.01"
+                    type="number"
+                  />
+                </div>
+                <p v-if="deductForm.amount > deductForm.currentBalance" class="mt-1 text-sm text-red-600">
+                  扣减金额不能超过当前余额
+                </p>
+              </div>
+
+              <!-- Remark Input -->
+              <div>
+                <label
+                  class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  for="deduct-remark"
+                >
+                  备注（可选）
+                </label>
+                <input
+                  id="deduct-remark"
+                  v-model="deductForm.remark"
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+                  placeholder="例如：退款、调整余额"
+                  type="text"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-gray-50 px-4 py-3 dark:bg-gray-700 sm:flex sm:flex-row-reverse sm:px-6">
+            <button
+              class="inline-flex w-full justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:ml-3 sm:w-auto sm:text-sm"
+              :disabled="!deductForm.amount || deductForm.amount <= 0 || deductForm.amount > deductForm.currentBalance || deductLoading"
+              type="button"
+              @click="handleDeduction"
+            >
+              <svg
+                v-if="deductLoading"
+                class="-ml-1 mr-2 h-4 w-4 animate-spin text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  fill="currentColor"
+                ></path>
+              </svg>
+              确认扣减
+            </button>
+            <button
+              class="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 sm:ml-3 sm:mt-0 sm:w-auto sm:text-sm"
+              type="button"
+              @click="showDeductModal = false"
+            >
+              取消
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -965,10 +1153,19 @@ const showRoleModal = ref(false)
 const showRechargeModal = ref(false)
 const showReferralModal = ref(false)
 const rechargeLoading = ref(false)
+const showDeductModal = ref(false)
+const deductLoading = ref(false)
 const referralModalLoading = ref(false)
 const selectedUser = ref(null)
 const referralModalUser = ref(null)
 const rechargeForm = ref({
+  currentBalance: 0,
+  totalCost: 0,
+  availableBalance: 0,
+  amount: null,
+  remark: ''
+})
+const deductForm = ref({
   currentBalance: 0,
   totalCost: 0,
   availableBalance: 0,
@@ -1349,6 +1546,66 @@ const handleRecharge = async () => {
     showToast(error.response?.data?.message || '充值失败', 'error')
   } finally {
     rechargeLoading.value = false
+  }
+}
+
+const openDeductModal = async (user) => {
+  selectedUser.value = user
+  deductForm.value = {
+    currentBalance: 0,
+    totalCost: 0,
+    availableBalance: 0,
+    amount: null,
+    remark: ''
+  }
+
+  try {
+    // 获取用户余额信息
+    const response = await apiClient.get(`/users/${user.id}/balance`)
+    if (response.success) {
+      deductForm.value.currentBalance = response.data.balance || 0
+      deductForm.value.totalCost = response.data.totalCost || 0
+      deductForm.value.availableBalance = response.data.availableBalance || 0
+    }
+  } catch (error) {
+    console.error('Failed to fetch user balance:', error)
+  }
+
+  showDeductModal.value = true
+}
+
+const handleDeduction = async () => {
+  if (!deductForm.value.amount || deductForm.value.amount <= 0) {
+    showToast('请输入有效的扣减金额', 'error')
+    return
+  }
+
+  if (deductForm.value.amount > deductForm.value.currentBalance) {
+    showToast('扣减金额不能超过当前余额', 'error')
+    return
+  }
+
+  deductLoading.value = true
+  try {
+    const response = await apiClient.post(`/admin/users/${selectedUser.value.id}/deduct`, {
+      amount: deductForm.value.amount,
+      remark: deductForm.value.remark || ''
+    })
+
+    if (response.success) {
+      showToast(
+        `扣减成功！余额: $${response.data.balanceBefore.toFixed(2)} → $${response.data.balanceAfter.toFixed(2)}`,
+        'success'
+      )
+      showDeductModal.value = false
+      // 刷新用户列表
+      await loadUsers()
+    }
+  } catch (error) {
+    console.error('Failed to deduct:', error)
+    showToast(error.response?.data?.message || '扣减失败', 'error')
+  } finally {
+    deductLoading.value = false
   }
 }
 

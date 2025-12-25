@@ -1477,6 +1477,100 @@ class UserService {
     }
   }
 
+  async deductBalance(userId, amount, operator = {}, remark = '', options = {}) {
+    try {
+      // 验证金额
+      const deductAmount = parseFloat(amount)
+      if (isNaN(deductAmount) || deductAmount <= 0) {
+        throw new Error('Invalid deduct amount: must be a positive number')
+      }
+
+      // 获取用户（不计算 usage，避免循环依赖）
+      const user = await this.getUserById(userId, false)
+      if (!user) {
+        throw new Error('User not found')
+      }
+
+      // 计算新余额
+      const balanceBefore = parseFloat(user.balance) || 0
+
+      // 检查余额是否足够
+      if (balanceBefore < deductAmount) {
+        throw new Error(
+          `Insufficient balance: current balance ${balanceBefore.toFixed(2)}, requested deduction ${deductAmount.toFixed(2)}`
+        )
+      }
+
+      const balanceAfter = balanceBefore - deductAmount
+
+      const recordType = options.recordType || 'manual_deduction'
+      const recordSource = options.source || 'admin'
+
+      // 生成扣减记录ID
+      const recordId = `ded_${crypto.randomBytes(8).toString('hex')}`
+      const now = new Date().toISOString()
+
+      // 创建扣减记录
+      const deductionRecord = {
+        id: recordId,
+        userId,
+        username: user.username,
+        amount: -deductAmount, // 负数表示扣减
+        balanceBefore,
+        balanceAfter,
+        type: recordType,
+        source: recordSource,
+        operatorId: operator.id || '',
+        operatorName: operator.name || 'system',
+        remark: remark || '',
+        createdAt: now
+      }
+
+      // 更新用户余额
+      user.balance = balanceAfter
+      user.updatedAt = now
+
+      // 使用 Redis 事务保证原子性
+      const client = redis.getClientSafe()
+      const multi = client.multi()
+
+      // 保存用户信息
+      multi.set(`${this.userPrefix}${userId}`, JSON.stringify(user))
+
+      // 保存扣减记录（使用与充值记录相同的key模式，方便统一查询）
+      multi.set(`recharge_record:${recordId}`, JSON.stringify(deductionRecord))
+
+      // 添加到用户充值记录列表（扣减也记录在同一个列表中，便于完整的交易历史）
+      multi.lpush(`user_recharge_records:${userId}`, recordId)
+
+      // 添加到全局充值记录列表
+      multi.lpush('recharge_records:all', recordId)
+
+      await multi.exec()
+
+      logger.success(
+        `💸 User ${user.username} (${userId}) balance deducted $${deductAmount.toFixed(2)} by ${operator.name || 'system'}, balance: $${balanceBefore.toFixed(2)} -> $${balanceAfter.toFixed(2)} [${recordType}]`
+      )
+
+      const result = {
+        recordId,
+        userId,
+        username: user.username,
+        amount: -deductAmount,
+        balanceBefore,
+        balanceAfter,
+        balance: balanceAfter,
+        operatorName: operator.name || 'system',
+        createdAt: now
+      }
+
+      return result
+    } catch (error) {
+      logger.error('❌ Error deducting balance:', error)
+      throw error
+    }
+  }
+
   async handleReferralReward(user, rechargeAmount, recordType = 'payment') {
     try {
       const referralService = require('./referralService')
