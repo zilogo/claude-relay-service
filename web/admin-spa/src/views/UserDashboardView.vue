@@ -145,6 +145,7 @@
     <PromotionBanner
       :user-created-at="userStore.user?.createdAt"
       @contact-admin="showContactUsModal = true"
+      @recharge="handlePromotionRecharge"
     />
 
     <!-- 主内容 -->
@@ -778,6 +779,11 @@ const handleTabChange = (tab) => {
   if (tab === 'overview') {
     loadApiKeysStats()
   }
+}
+
+const handlePromotionRecharge = () => {
+  // 切换到充值记录页面
+  handleTabChange('recharge')
 }
 
 const handleLogout = async () => {
