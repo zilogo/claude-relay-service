@@ -1506,7 +1506,7 @@ const openRechargeModal = async (user) => {
 
   try {
     // 获取用户余额信息
-    const response = await apiClient.get(`/users/${user.id}/balance`)
+    const response = await apiClient.get(`/admin/users/${user.id}/balance`)
     if (response.success) {
       rechargeForm.value.currentBalance = response.data.balance || 0
       rechargeForm.value.totalCost = response.data.totalCost || 0
@@ -1561,7 +1561,7 @@ const openDeductModal = async (user) => {
 
   try {
     // 获取用户余额信息
-    const response = await apiClient.get(`/users/${user.id}/balance`)
+    const response = await apiClient.get(`/admin/users/${user.id}/balance`)
     if (response.success) {
       deductForm.value.currentBalance = response.data.balance || 0
       deductForm.value.totalCost = response.data.totalCost || 0
