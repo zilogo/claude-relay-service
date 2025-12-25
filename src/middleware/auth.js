@@ -699,6 +699,18 @@ const authenticateAdmin = async (req, res, next) => {
       })
     }
 
+    // 🔒 安全修复：验证会话必须字段（防止伪造会话绕过认证）
+    if (!adminSession.username || !adminSession.loginTime) {
+      logger.security(
+        `🔒 Corrupted admin session from ${req.ip || 'unknown'} - missing required fields (username: ${!!adminSession.username}, loginTime: ${!!adminSession.loginTime})`
+      )
+      await redis.deleteSession(token) // 清理无效/伪造的会话
+      return res.status(401).json({
+        error: 'Invalid session',
+        message: 'Session data corrupted or incomplete'
+      })
+    }
+
     // 检查会话活跃性（可选：检查最后活动时间）
     const now = new Date()
     const lastActivity = new Date(adminSession.lastActivity || adminSession.loginTime)
