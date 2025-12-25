@@ -445,6 +445,18 @@ router.post('/register', async (req, res) => {
       }
     }
 
+    // 初始化新用户优惠活动
+    const promotionService = require('../services/promotionService')
+    if (promotionService.isEnabled() && promotionService.autoStartForNewUsers) {
+      try {
+        await promotionService.initUserPromotion(user.id, user.username)
+        logger.info(`🎁 Promotion activated for new user: ${user.username}`)
+      } catch (promotionError) {
+        // 优惠初始化失败不影响注册
+        logger.error('❌ Failed to init promotion for new user:', promotionError)
+      }
+    }
+
     logger.info(`📝 New user registered: ${username} from IP: ${clientIp}`)
 
     res.status(201).json({
@@ -2009,6 +2021,213 @@ router.post('/:userId/reset-password', authenticateUserOrAdmin, requireAdmin, as
     res.status(500).json({
       error: 'Reset password error',
       message: 'Failed to reset user password'
+    })
+  }
+})
+
+// 🎁 获取用户优惠状态
+router.get('/promotion/status', authenticateUser, async (req, res) => {
+  try {
+    const promotionService = require('../services/promotionService')
+    const userId = req.user.id
+
+    const promotion = await promotionService.getUserPromotion(userId)
+
+    if (!promotion) {
+      return res.json({
+        success: true,
+        data: {
+          available: false,
+          message: 'No promotion available'
+        }
+      })
+    }
+
+    res.json({
+      success: true,
+      data: {
+        available: promotion.isAvailable,
+        currentTier: promotion.currentTier,
+        currentTierData: promotion.currentTierData,
+        currentBonus: promotion.currentBonus,
+        remainingSeconds: promotion.remainingSeconds,
+        hasUsed: promotion.hasUsed,
+        isExpired: promotion.isExpired,
+        startTime: promotion.startTime,
+        expiresAt: promotion.expiresAt
+      }
+    })
+  } catch (error) {
+    logger.error('❌ Get promotion status error:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get promotion status',
+      message: error.message
+    })
+  }
+})
+
+// 🎁 优惠充值接口
+router.post('/promotion/recharge', authenticateUser, async (req, res) => {
+  try {
+    const promotionService = require('../services/promotionService')
+    const userService = require('../services/userService')
+    const { amount, remark } = req.body
+    const userId = req.user.id
+
+    // 验证金额
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid amount',
+        message: 'Recharge amount must be a positive number'
+      })
+    }
+
+    const rechargeAmount = parseFloat(amount)
+
+    // 检查并应用优惠
+    const promotionResult = await promotionService.applyPromotion(userId, rechargeAmount)
+
+    if (!promotionResult.applied) {
+      // 优惠不可用，执行正常充值
+      const result = await userService.rechargeBalance(
+        userId,
+        rechargeAmount,
+        { id: userId, name: req.user.username },
+        remark || '用户充值',
+        {
+          recordType: 'payment',
+          source: 'user-recharge'
+        }
+      )
+
+      return res.json({
+        success: true,
+        data: {
+          ...result,
+          promotion: {
+            applied: false,
+            message: promotionResult.message
+          }
+        }
+      })
+    }
+
+    // 应用优惠充值（充值总额包含赠送）
+    const result = await userService.rechargeBalance(
+      userId,
+      promotionResult.total,
+      { id: 'system', name: 'Promotion System' },
+      remark || `限时优惠充值 - ${promotionResult.bonusRate}%赠送`,
+      {
+        recordType: 'promotion',
+        source: 'promotion-system',
+        metadata: {
+          originalAmount: rechargeAmount,
+          bonus: promotionResult.bonus,
+          tier: promotionResult.tier,
+          bonusRate: promotionResult.bonusRate
+        }
+      }
+    )
+
+    logger.info(
+      `💰 Promotion recharge for user ${req.user.username}: ` +
+      `Amount: $${rechargeAmount}, Bonus: $${promotionResult.bonus.toFixed(2)}, ` +
+      `Total: $${promotionResult.total.toFixed(2)}`
+    )
+
+    res.json({
+      success: true,
+      data: {
+        ...result,
+        promotion: {
+          applied: true,
+          bonus: promotionResult.bonus,
+          bonusRate: promotionResult.bonusRate,
+          tier: promotionResult.tier,
+          tierData: promotionResult.tierData,
+          message: promotionResult.message
+        }
+      }
+    })
+  } catch (error) {
+    logger.error('❌ Promotion recharge error:', error)
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+        message: error.message
+      })
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Recharge error',
+      message: 'Failed to process promotion recharge'
+    })
+  }
+})
+
+// 🎁 获取优惠统计（管理员）
+router.get('/promotion/stats', authenticateUserOrAdmin, requireAdmin, async (req, res) => {
+  try {
+    const promotionService = require('../services/promotionService')
+    const stats = await promotionService.getPromotionStats()
+
+    res.json({
+      success: true,
+      data: stats
+    })
+  } catch (error) {
+    logger.error('❌ Get promotion stats error:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get promotion statistics',
+      message: error.message
+    })
+  }
+})
+
+// 🎁 为用户激活优惠（管理员）
+router.post('/promotion/activate/:userId', authenticateUserOrAdmin, requireAdmin, async (req, res) => {
+  try {
+    const promotionService = require('../services/promotionService')
+    const userService = require('../services/userService')
+    const { userId } = req.params
+
+    // 获取用户信息
+    const user = await userService.getUserById(userId, false)
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+        message: 'The specified user does not exist'
+      })
+    }
+
+    // 激活优惠
+    const result = await promotionService.activatePromotionForUser(
+      userId,
+      user.username,
+      req.admin.id
+    )
+
+    if (result.success) {
+      logger.info(
+        `🎁 Admin ${req.admin.username} activated promotion for user ${user.username} (${userId})`
+      )
+    }
+
+    res.json(result)
+  } catch (error) {
+    logger.error('❌ Activate promotion error:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Failed to activate promotion',
+      message: error.message
     })
   }
 })
