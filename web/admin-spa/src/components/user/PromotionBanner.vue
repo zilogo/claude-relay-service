@@ -38,8 +38,23 @@
                         stroke-width="2"
                       />
                     </svg>
-                    立即充值领取{{ currentTierData.bonus }}%赠送
+                    立即充值（享{{ currentTierData.bonus }}%赠送）
                   </button>
+                </div>
+              </div>
+
+              <!-- 充值提醒 -->
+              <div class="mb-3 flex items-center justify-center">
+                <div class="inline-flex items-center gap-2 rounded-lg bg-yellow-100/90 px-4 py-2.5 shadow-sm border border-yellow-300/50 dark:bg-yellow-900/40 dark:border-yellow-700/50">
+                  <svg class="h-5 w-5 text-yellow-600 dark:text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                  </svg>
+                  <span class="text-sm font-semibold text-yellow-800 dark:text-yellow-200">
+                    ⚠️ 充值后请联系客服后台赠送优惠额度
+                  </span>
+                  <svg class="h-5 w-5 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
                 </div>
               </div>
 
@@ -126,9 +141,14 @@
                     d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  🚨 早充越划算！优惠每{{ tierDuration }}小时递减 - 过期后恢复原价，不再享受赠送
-                </span>
+                <div class="flex flex-col gap-1">
+                  <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    🚨 早充越划算！优惠每{{ tierDuration }}小时递减 - 过期后恢复原价，不再享受赠送
+                  </span>
+                  <span class="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    💡 温馨提示：充值成功后请联系客服申请赠送优惠额度
+                  </span>
+                </div>
               </div>
             </div>
           </div>
