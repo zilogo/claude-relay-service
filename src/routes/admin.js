@@ -362,9 +362,9 @@ router.post('/users/:userId/deduct', authenticateAdmin, async (req, res) => {
       userId,
       parseFloat(amount),
       { id: req.admin.id, name: req.admin.username },
-      remark || '',
+      remark || '管理员手动扣费',
       {
-        recordType: 'manual_deduction',
+        recordType: 'manual',
         source: 'admin-panel'
       }
     )

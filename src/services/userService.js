@@ -1502,8 +1502,10 @@ class UserService {
       }
 
       const balanceAfter = balanceBefore - deductAmount
+      const totalRechargeBefore = parseFloat(user.totalRecharge) || 0
+      const totalRechargeAfter = Math.max(0, totalRechargeBefore - deductAmount) // 确保不会变成负数
 
-      const recordType = options.recordType || 'manual_deduction'
+      const recordType = options.recordType || 'manual'
       const recordSource = options.source || 'admin'
 
       // 生成扣减记录ID
@@ -1522,12 +1524,13 @@ class UserService {
         source: recordSource,
         operatorId: operator.id || '',
         operatorName: operator.name || 'system',
-        remark: remark || '',
+        remark: remark || '管理员手动扣费',
         createdAt: now
       }
 
-      // 更新用户余额
+      // 更新用户余额和累计充值
       user.balance = balanceAfter
+      user.totalRecharge = totalRechargeAfter
       user.updatedAt = now
 
       // 使用 Redis 事务保证原子性
@@ -1560,6 +1563,7 @@ class UserService {
         balanceBefore,
         balanceAfter,
         balance: balanceAfter,
+        totalRecharge: totalRechargeAfter,
         operatorName: operator.name || 'system',
         createdAt: now
       }

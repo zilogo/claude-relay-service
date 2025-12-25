@@ -1073,7 +1073,7 @@
                   id="deduct-remark"
                   v-model="deductForm.remark"
                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                  placeholder="例如：退款、调整余额"
+                  placeholder="默认：管理员手动扣费"
                   type="text"
                 />
               </div>
