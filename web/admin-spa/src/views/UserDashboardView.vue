@@ -44,7 +44,7 @@
 
               <!-- Tab 按钮 -->
               <button
-                class="relative z-10 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
+                class="relative z-10 flex-1 rounded-xl px-4 py-2 text-center text-sm font-semibold transition-colors"
                 :class="
                   activeTab === 'overview'
                     ? 'text-[#D97757]'
@@ -55,7 +55,7 @@
                 总览
               </button>
               <button
-                class="relative z-10 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
+                class="relative z-10 flex-1 rounded-xl px-4 py-2 text-center text-sm font-semibold transition-colors"
                 :class="
                   activeTab === 'api-keys'
                     ? 'text-[#D97757]'
@@ -66,7 +66,7 @@
                 API Keys
               </button>
               <button
-                class="relative z-10 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
+                class="relative z-10 flex-1 rounded-xl px-4 py-2 text-center text-sm font-semibold transition-colors"
                 :class="
                   activeTab === 'usage'
                     ? 'text-[#D97757]'
@@ -77,7 +77,7 @@
                 使用统计
               </button>
               <button
-                class="relative z-10 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
+                class="relative z-10 flex-1 rounded-xl px-4 py-2 text-center text-sm font-semibold transition-colors"
                 :class="
                   activeTab === 'recharge'
                     ? 'text-[#D97757]'
@@ -88,7 +88,7 @@
                 充值记录
               </button>
               <button
-                class="relative z-10 rounded-xl px-4 py-2 text-sm font-semibold transition-colors"
+                class="relative z-10 flex-1 rounded-xl px-4 py-2 text-center text-sm font-semibold transition-colors"
                 :class="
                   activeTab === 'tutorial'
                     ? 'text-[#D97757]'
