@@ -186,14 +186,6 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 
-const props = defineProps({
-  userCreatedAt: {
-    type: String,
-    default: null,
-    required: false
-  }
-})
-
 const emit = defineEmits(['recharge', 'status-change'])
 const userStore = useUserStore()
 
@@ -249,10 +241,14 @@ const defaultNormalizedTiers = normalizeTiers(defaultTierTemplates)
 const promotionTiers = ref(defaultNormalizedTiers)
 const promotionStatus = ref(null)
 const promotionRecords = ref([])
-const currentTime = ref(Date.now())
 const serverRemainingSeconds = ref(0)
+const serverRegisteredHours = ref(null)
+const serverTotalPromotionHours = ref(null)
 
 const totalPromotionHours = computed(() => {
+  if (typeof serverTotalPromotionHours.value === 'number') {
+    return serverTotalPromotionHours.value
+  }
   const tiers = promotionTiers.value
   if (!tiers.length) {
     return DEFAULT_TOTAL_PROMOTION_HOURS
@@ -261,21 +257,23 @@ const totalPromotionHours = computed(() => {
 })
 
 const hoursSinceRegistration = computed(() => {
-  if (!props.userCreatedAt) {
-    return 0
+  if (typeof serverRegisteredHours.value === 'number') {
+    return serverRegisteredHours.value
   }
-
-  try {
-    const registrationTime = new Date(props.userCreatedAt).getTime()
-    return (currentTime.value - registrationTime) / 1000 / 3600
-  } catch (error) {
-    console.error('Failed to parse userCreatedAt:', error)
-    return 0
+  if (typeof promotionStatus.value?.registeredHours === 'number') {
+    return promotionStatus.value.registeredHours
   }
+  if (typeof promotionStatus.value?.hoursElapsed === 'number') {
+    return promotionStatus.value.hoursElapsed
+  }
+  return null
 })
 
 const fallbackTier = computed(() => {
   const hours = hoursSinceRegistration.value
+  if (typeof hours !== 'number') {
+    return -1
+  }
   const totalHours = totalPromotionHours.value
 
   if (hours >= totalHours) {
@@ -309,21 +307,7 @@ const currentTierData = computed(() => {
   return promotionTiers.value[currentTier.value] || null
 })
 
-const fallbackRemainingSeconds = computed(() => {
-  if (!props.userCreatedAt || currentTier.value === -1 || !currentTierData.value) {
-    return 0
-  }
-
-  try {
-    const registrationTime = new Date(props.userCreatedAt).getTime()
-    const elapsed = currentTime.value - registrationTime
-    const currentTierEndTime = currentTierData.value.hours * 3600 * 1000
-    return Math.max(0, Math.floor((currentTierEndTime - elapsed) / 1000))
-  } catch (error) {
-    console.error('Failed to calculate remaining time:', error)
-    return 0
-  }
-})
+const fallbackRemainingSeconds = computed(() => 0)
 
 const remainingSeconds = computed(() => {
   if (promotionStatus.value) {
@@ -350,34 +334,27 @@ const formattedTime = computed(() => {
   return `${minutes.toString().padStart(2, '0')}:${restSeconds.toString().padStart(2, '0')}`
 })
 
+const isWithinPromotionWindow = computed(() => {
+  const hours = hoursSinceRegistration.value
+  if (typeof hours !== 'number') {
+    return true
+  }
+  return hours < totalPromotionHours.value
+})
+
 const shouldShowBanner = computed(() => {
-  // 如果强制隐藏，不显示
   if (promotionStatus.value?.forceHide) {
     return false
   }
 
-  // 如果有注册时间且超过72小时，不显示
-  if (props.userCreatedAt && hoursSinceRegistration.value >= totalPromotionHours.value) {
-    return false
-  }
-
-  // 如果有促销状态
   if (promotionStatus.value) {
-    // 如果已使用且在72小时内，显示
     if (promotionStatus.value.hasUsed) {
-      return props.userCreatedAt ? hoursSinceRegistration.value < totalPromotionHours.value : true
+      return isWithinPromotionWindow.value
     }
-    // 如果未过期，显示
     return !promotionStatus.value.isExpired
   }
 
-  // 如果没有注册时间，默认显示
-  if (!props.userCreatedAt) {
-    return true
-  }
-
-  // 默认判断是否在72小时内
-  return hoursSinceRegistration.value < totalPromotionHours.value
+  return isWithinPromotionWindow.value
 })
 
 const statusHeadline = computed(() => {
@@ -524,13 +501,25 @@ const loadPromotionStatus = async () => {
   try {
     const status = await userStore.getPromotionStatus()
     promotionStatus.value = status
-    serverRemainingSeconds.value = status?.remainingSeconds || 0
+    serverRemainingSeconds.value =
+      typeof status?.remainingSeconds === 'number' ? status.remainingSeconds : 0
+    serverRegisteredHours.value =
+      typeof status?.registeredHours === 'number'
+        ? status.registeredHours
+        : typeof status?.hoursElapsed === 'number'
+          ? status.hoursElapsed
+          : null
+    serverTotalPromotionHours.value =
+      typeof status?.totalDurationHours === 'number' ? status.totalDurationHours : null
     applyPromotionTiers(status)
     emit('status-change', status)
   } catch (error) {
     console.error('Failed to load promotion status:', error)
     promotionStatus.value = null
     promotionTiers.value = defaultNormalizedTiers
+    serverRemainingSeconds.value = 0
+    serverRegisteredHours.value = null
+    serverTotalPromotionHours.value = null
     emit('status-change', null)
   }
 }
@@ -557,7 +546,6 @@ onMounted(() => {
   reloadPromotion()
 
   timer = setInterval(() => {
-    currentTime.value = Date.now()
     if (serverRemainingSeconds.value > 0) {
       serverRemainingSeconds.value = Math.max(0, serverRemainingSeconds.value - 1)
     }

@@ -143,7 +143,6 @@
 
     <!-- 活动横幅 -->
     <PromotionBanner
-      :user-created-at="userStore.user?.createdAt"
       @contact-admin="showContactUsModal = true"
       @recharge="handlePromotionRecharge"
       @status-change="handlePromotionStatusChange"
