@@ -176,10 +176,21 @@
               </svg>
               创建 API Key
             </button>
+          </div>
+        </div>
+
+        <!-- 核心统计卡片 - 3大卡片 -->
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <!-- 可用余额卡片 - 最重要，加大尺寸 -->
+          <div
+            class="group relative cursor-pointer overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-50 to-green-50 p-8 transition-all hover:-translate-y-1 hover:shadow-2xl dark:from-emerald-900/30 dark:to-green-900/30"
+            @click="handleTabChange('recharge')"
+          >
+            <!-- 添加右上角充值按钮 -->
             <button
               v-if="balanceInfo"
-              class="inline-flex items-center gap-2 rounded-xl border border-emerald-500 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition-all hover:bg-emerald-100 dark:border-emerald-400 dark:bg-emerald-950/50 dark:text-emerald-300"
-              @click="handleTabChange('recharge')"
+              class="absolute right-4 top-4 z-20 inline-flex items-center gap-2 rounded-xl border border-emerald-500 bg-white/80 px-3 py-1.5 text-sm font-semibold text-emerald-700 backdrop-blur-sm transition-all hover:bg-emerald-50 dark:border-emerald-400 dark:bg-gray-800/80 dark:text-emerald-300 dark:hover:bg-emerald-900/30"
+              @click.stop="handleTabChange('recharge')"
             >
               <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -191,16 +202,6 @@
               </svg>
               立即充值
             </button>
-          </div>
-        </div>
-
-        <!-- 核心统计卡片 - 3大卡片 -->
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <!-- 可用余额卡片 - 最重要，加大尺寸 -->
-          <div
-            class="group relative cursor-pointer overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-50 to-green-50 p-8 transition-all hover:-translate-y-1 hover:shadow-2xl dark:from-emerald-900/30 dark:to-green-900/30"
-            @click="handleTabChange('recharge')"
-          >
             <div
               class="absolute -bottom-12 -right-12 h-40 w-40 rounded-full bg-emerald-500/10 blur-3xl transition-all group-hover:bg-emerald-500/20"
             ></div>
@@ -317,17 +318,17 @@
             </div>
           </div>
 
-          <!-- 总成本卡片 -->
+          <!-- 活动增额卡片 -->
           <div
-            class="group relative cursor-pointer overflow-hidden rounded-3xl bg-gradient-to-br from-amber-50 to-orange-50 p-8 transition-all hover:-translate-y-1 hover:shadow-2xl dark:from-amber-900/30 dark:to-orange-900/30"
-            @click="handleTabChange('usage')"
+            class="group relative cursor-pointer overflow-hidden rounded-3xl bg-gradient-to-br from-purple-50 to-pink-50 p-8 transition-all hover:-translate-y-1 hover:shadow-2xl dark:from-purple-900/30 dark:to-pink-900/30"
+            @click="handleTabChange('recharge')"
           >
             <div
-              class="absolute -bottom-12 -right-12 h-40 w-40 rounded-full bg-amber-500/10 blur-3xl transition-all group-hover:bg-amber-500/20"
+              class="absolute -bottom-12 -right-12 h-40 w-40 rounded-full bg-purple-500/10 blur-3xl transition-all group-hover:bg-purple-500/20"
             ></div>
             <div class="relative">
               <div
-                class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-lg shadow-amber-500/30"
+                class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg shadow-purple-500/30"
               >
                 <svg
                   class="h-8 w-8 text-white"
@@ -336,7 +337,7 @@
                   viewBox="0 0 24 24"
                 >
                   <path
-                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                    d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     stroke-width="2"
@@ -344,14 +345,14 @@
                 </svg>
               </div>
               <div>
-                <p class="text-sm font-semibold text-amber-900 dark:text-amber-100">累计消费</p>
-                <p class="mt-3 text-4xl font-bold text-amber-900 dark:text-amber-50">
-                  ${{ (userProfile?.totalUsage?.totalCost || 0).toFixed(4) }}
+                <p class="text-sm font-semibold text-purple-900 dark:text-purple-100">活动增额</p>
+                <p class="mt-3 text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400">
+                  ${{ (balanceInfo?.manualRechargeTotal || 0).toFixed(2) }}
                 </p>
                 <div class="mt-4 flex items-center justify-between text-sm">
-                  <span class="text-amber-700 dark:text-amber-300">查看消费明细</span>
+                  <span class="text-purple-700 dark:text-purple-300">手动充值累计</span>
                   <svg
-                    class="h-5 w-5 text-amber-500 transition-transform group-hover:translate-x-1"
+                    class="h-5 w-5 text-purple-500 transition-transform group-hover:translate-x-1"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"

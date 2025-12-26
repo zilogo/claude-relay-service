@@ -1295,6 +1295,40 @@ class UserService {
   // ============================================
 
   /**
+   * 获取用户手动充值的累计额度
+   * @param {string} userId - 用户ID
+   * @returns {number} 手动充值累计额度
+   */
+  async getManualRechargeTotal(userId) {
+    try {
+      const client = redis.getClientSafe()
+      // 获取用户充值记录ID列表
+      const recordIds = await client.lrange(`user_recharge_records:${userId}`, 0, -1)
+
+      if (!recordIds || recordIds.length === 0) {
+        return 0
+      }
+
+      let manualTotal = 0
+      for (const recordId of recordIds) {
+        const recordData = await client.get(`recharge_record:${recordId}`)
+        if (recordData) {
+          const record = JSON.parse(recordData)
+          // 只统计手动充值类型且金额大于0的记录
+          if (record.type === 'manual' && record.amount > 0) {
+            manualTotal += parseFloat(record.amount) || 0
+          }
+        }
+      }
+
+      return manualTotal
+    } catch (error) {
+      logger.error('❌ Error getting manual recharge total:', error)
+      return 0
+    }
+  }
+
+  /**
    * 获取用户余额信息
    * @param {string} userId - 用户ID
    * @returns {object} 余额信息
@@ -1311,11 +1345,15 @@ class UserService {
       const totalCost = user.totalUsage?.totalCost || 0
       const availableBalance = balance - totalCost
 
+      // 获取手动充值累计额度（活动增额）
+      const manualRechargeTotal = await this.getManualRechargeTotal(userId)
+
       return {
         balance,
         totalRecharge,
         totalCost,
         availableBalance,
+        manualRechargeTotal,  // 新增字段：手动充值累计（活动增额）
         lastRechargeAt: user.lastRechargeAt || null
       }
     } catch (error) {
