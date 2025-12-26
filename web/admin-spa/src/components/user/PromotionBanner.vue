@@ -56,29 +56,6 @@
                 </div>
               </div>
 
-              <!-- 自动发放提醒 -->
-              <div class="mb-3 flex items-center justify-center">
-                <div
-                  class="inline-flex flex-wrap items-center gap-2 rounded-lg border border-emerald-200/60 bg-emerald-50/90 px-4 py-2.5 text-sm font-semibold text-emerald-800 shadow-sm dark:border-emerald-600/40 dark:bg-emerald-900/40 dark:text-emerald-100"
-                >
-                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  <span>充值成功后系统自动发放赠额，无需联系客服</span>
-                  <button
-                    class="rounded-full border border-emerald-500/60 px-2 py-0.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-500/10 dark:border-emerald-400/60 dark:text-emerald-200"
-                    @click="reloadPromotion"
-                  >
-                    刷新状态
-                  </button>
-                </div>
-              </div>
-
               <!-- 重点提醒 -->
               <div v-if="!promotionStatus?.hasUsed" class="mb-4 grid gap-3 lg:grid-cols-2">
                 <div
@@ -115,8 +92,8 @@
                     {{ currentTierData?.bonus || promotionStatus?.currentBonus || 0 }}%
                   </p>
                   <p class="text-sm text-amber-800 dark:text-amber-100">
-                    {{ currentTierData?.windowLabel || '限时档位' }} · 充 100 送
-                    {{ currentTierData ? Math.round((currentTierData.bonus / 100) * 100) : 30 }}
+                    {{ currentTierData?.windowLabel || '限时档位' }} · 额外赠送
+                    {{ currentTierData?.bonus || 30 }}%
                   </p>
                   <p class="mt-3 text-xs text-amber-700 dark:text-amber-100/80">
                     下一档将在 {{ formattedTime }} 后开启，赠额比例将下降。
@@ -214,99 +191,6 @@
                   </div>
                 </div>
               </div>
-
-              <!-- 活动说明 -->
-              <div
-                v-if="!promotionStatus?.hasUsed"
-                class="mb-4 rounded-2xl bg-white/30 p-4 backdrop-blur-sm shadow-lg dark:bg-white/10"
-              >
-                <div class="flex items-center justify-between">
-                  <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">活动说明</p>
-                  <span class="text-xs text-gray-500">仅一次机会 · 超过 72 小时自动结束</span>
-                </div>
-                <div class="mt-3 space-y-2">
-                  <div
-                    v-for="(tier, index) in promotionTiers"
-                    :key="`timeline-${tier.id}`"
-                    class="flex flex-wrap items-center justify-between rounded-xl bg-white/70 px-3 py-2 text-sm shadow-sm dark:bg-gray-900/30"
-                  >
-                    <div>
-                      <p class="font-semibold text-gray-900 dark:text-white">{{ tier.windowLabel }}</p>
-                      <p class="text-xs text-gray-500 dark:text-gray-300">{{ tier.label }}</p>
-                    </div>
-                    <div class="text-right">
-                      <span
-                        :class="getTierStatusMeta(index).classes"
-                        class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold"
-                      >
-                        {{ getTierStatusMeta(index).text }}
-                      </span>
-                      <p class="text-xs text-gray-500">{{ tier.example }}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 最近赠送记录 -->
-              <div
-                v-if="!promotionStatus?.hasUsed && promotionRecords.length"
-                class="mb-4 rounded-xl bg-white/40 p-4 backdrop-blur-sm shadow-lg dark:bg-white/15"
-              >
-                <div class="flex items-center justify-between">
-                  <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                    最新赠送记录
-                  </p>
-                  <span class="text-xs text-gray-500">最近 {{ promotionRecords.length }} 条</span>
-                </div>
-                <div class="mt-3 space-y-2">
-                  <div
-                    v-for="record in promotionRecords"
-                    :key="record.id"
-                    class="flex items-center justify-between rounded-lg bg-white/80 px-3 py-2 shadow-sm dark:bg-gray-900/30"
-                  >
-                    <div>
-                      <p class="text-sm font-semibold text-gray-900 dark:text-white">
-                        +${{ formatBonus(record.bonus) }}
-                      </p>
-                      <p class="text-xs text-gray-500 dark:text-gray-400">
-                        {{ formatRecordTime(record.createdAt) }} · 档位
-                        {{ renderTierLabel(record.tier, record.tierWindow || record.metadata?.tierWindow) }}
-                      </p>
-                    </div>
-                    <div class="text-right">
-                      <span :class="getRecordStatusClass(record.status)" class="text-xs font-semibold">
-                        {{ record.status === 'failed' ? '失败' : '已到账' }}
-                      </span>
-                      <p class="text-xs text-gray-500" v-if="record.bonusRate">
-                        +{{ record.bonusRate }}%
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <!-- 底部提醒 -->
-              <div
-                v-if="!promotionStatus?.hasUsed"
-                class="flex items-center justify-center gap-2 rounded-lg bg-white/30 p-3 text-center backdrop-blur-sm dark:bg-white/10"
-              >
-                <svg
-                  class="h-5 w-5 flex-shrink-0 text-red-600 dark:text-red-400"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <div class="flex flex-col gap-1">
-                  <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    🚨 早充越划算！优惠在 {{ totalPromotionHours }} 小时内阶梯递减，结束后恢复原价
-                  </span>
-                  <span class="text-xs font-medium text-gray-700 dark:text-gray-300">
-                    💡 温馨提示：活动期间充值成功即刻自动发放赠额
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -333,10 +217,10 @@ const userStore = useUserStore()
 const DEFAULT_TOTAL_PROMOTION_HOURS = 72
 
 const defaultTierTemplates = [
-  { id: 1, startHour: 0, endHour: 24, bonus: 30, minAmount: 100, label: '充100得130', timeLabel: '0-24小时', example: '充100送30', emoji: '💰💰💰' },
-  { id: 2, startHour: 24, endHour: 36, bonus: 20, minAmount: 100, label: '充100得120', timeLabel: '24-36小时', example: '充100送20', emoji: '💰💰' },
-  { id: 3, startHour: 36, endHour: 48, bonus: 10, minAmount: 100, label: '充100得110', timeLabel: '36-48小时', example: '充100送10', emoji: '💰' },
-  { id: 4, startHour: 48, endHour: 72, bonus: 5, minAmount: 100, label: '充100得105', timeLabel: '48-72小时', example: '充100送5', emoji: '' }
+  { id: 1, startHour: 0, endHour: 24, bonus: 30, minAmount: 100, label: '额外赠送30%', timeLabel: '0-24小时', example: '充100送30', emoji: '💰💰💰' },
+  { id: 2, startHour: 24, endHour: 36, bonus: 20, minAmount: 100, label: '额外赠送20%', timeLabel: '24-36小时', example: '充100送20', emoji: '💰💰' },
+  { id: 3, startHour: 36, endHour: 48, bonus: 10, minAmount: 100, label: '额外赠送10%', timeLabel: '36-48小时', example: '充100送10', emoji: '💰' },
+  { id: 4, startHour: 48, endHour: 72, bonus: 5, minAmount: 100, label: '额外赠送5%', timeLabel: '48-72小时', example: '充100送5', emoji: '' }
 ]
 
 const normalizeTiers = (tiers = []) => {
@@ -364,7 +248,7 @@ const normalizeTiers = (tiers = []) => {
       hours: endHour,
       bonus,
       minAmount: tier.minAmount || 100,
-      label: tier.label || `充100得${100 + exampleBonus}`,
+      label: tier.label || `额外赠送${bonus}%`,
       timeLabel: tier.timeLabel || tier.windowLabel || `${startHour}-${endHour}小时`,
       windowLabel: tier.windowLabel || `${startHour}-${endHour}小时`,
       example: tier.example || `充100送${exampleBonus}`,
@@ -483,19 +367,32 @@ const formattedTime = computed(() => {
 })
 
 const shouldShowBanner = computed(() => {
+  // 如果强制隐藏，不显示
   if (promotionStatus.value?.forceHide) {
     return false
   }
 
+  // 如果有注册时间且超过72小时，不显示
+  if (props.userCreatedAt && hoursSinceRegistration.value >= totalPromotionHours.value) {
+    return false
+  }
+
+  // 如果有促销状态
   if (promotionStatus.value) {
+    // 如果已使用且在72小时内，显示
     if (promotionStatus.value.hasUsed) {
-      return true
+      return props.userCreatedAt ? hoursSinceRegistration.value < totalPromotionHours.value : true
     }
+    // 如果未过期，显示
     return !promotionStatus.value.isExpired
   }
+
+  // 如果没有注册时间，默认显示
   if (!props.userCreatedAt) {
     return true
   }
+
+  // 默认判断是否在72小时内
   return hoursSinceRegistration.value < totalPromotionHours.value
 })
 
