@@ -85,8 +85,8 @@
                       只有一次机会
                     </span>
                   </div>
-                  <div class="flex items-start justify-between">
-                    <div class="flex-1">
+                  <div class="relative">
+                    <div class="pr-24">
                       <p class="mt-2 text-3xl font-bold">
                         {{ currentTierData?.bonus || promotionStatus?.currentBonus || 0 }}%
                       </p>
@@ -100,10 +100,10 @@
                     </div>
                     <!-- 倒计时显示 -->
                     <div
-                      class="ml-4 flex items-center gap-2 rounded-lg bg-red-500/90 px-3 py-2 text-white shadow-md dark:bg-red-600/90"
+                      class="absolute bottom-0 right-0 flex items-center gap-2 rounded-lg bg-red-500/90 px-4 py-3 text-white shadow-lg dark:bg-red-600/90"
                     >
                       <svg
-                        class="h-4 w-4 animate-pulse"
+                        class="h-5 w-5 animate-pulse"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -116,8 +116,8 @@
                         />
                       </svg>
                       <div class="text-center">
-                        <div class="text-xs">⏰ 还剩</div>
-                        <div class="text-sm font-bold">{{ formattedTime }}</div>
+                        <div class="text-xs font-semibold">⏰ 还剩</div>
+                        <div class="text-base font-bold">{{ formattedTime }}</div>
                       </div>
                     </div>
                   </div>
@@ -231,10 +231,11 @@ const normalizeTiers = (tiers = []) => {
       hours: endHour,
       bonus,
       minAmount: tier.minAmount || 100,
-      label: tier.label || `额外赠送${bonus}%`,
+      // 强制使用新格式，忽略服务器的label值
+      label: `额外赠送${bonus}%`,
       timeLabel: tier.timeLabel || tier.windowLabel || `${startHour}-${endHour}小时`,
       windowLabel: tier.windowLabel || `${startHour}-${endHour}小时`,
-      example: tier.example || `额外赠送${bonus}%`,
+      example: `额外赠送${bonus}%`,
       emoji: tier.emoji || defaultTierTemplates[index]?.emoji || '💰'
     })
 
