@@ -57,7 +57,7 @@ class PromotionService {
   }
 
   getTotalDurationHours() {
-    return this.durationHours || (this.tiers[this.tiers.length - 1]?.hours || 72)
+    return this.durationHours || this.tiers[this.tiers.length - 1]?.hours || 72
   }
 
   getTierSummaries() {
@@ -99,7 +99,7 @@ class PromotionService {
   /**
    * 初始化用户优惠（注册时调用）
    */
-  async initUserPromotion(userId, username = '') {
+  async initUserPromotion(userId, username = '', userCreatedAt = null) {
     try {
       if (!this.enabled) {
         logger.info('❌ Promotion feature is disabled')
@@ -115,14 +115,21 @@ class PromotionService {
         return JSON.parse(existing)
       }
 
+      // 使用传入的 userCreatedAt，如果没有则使用当前时间（向后兼容）
+      const startTime = userCreatedAt
+        ? new Date(userCreatedAt).toISOString()
+        : new Date().toISOString()
+
+      const startTimeMs = new Date(startTime).getTime()
+
       const promotionData = {
         userId,
         username,
-        startTime: new Date().toISOString(),
+        startTime,
         hasUsed: false,
         usedAt: null,
         tierUsed: null,
-        expiresAt: new Date(Date.now() + this.durationHours * 3600 * 1000).toISOString(),
+        expiresAt: new Date(startTimeMs + this.durationHours * 3600 * 1000).toISOString(),
         createdAt: new Date().toISOString()
       }
 
@@ -169,10 +176,12 @@ class PromotionService {
       let remainingSeconds = 0
       let nextTierEndsAt = null
 
-      if (!promotion.hasUsed && hours < totalDurationHours) {
+      // 无论是否使用过，都计算并显示当前档位
+      if (hours < totalDurationHours) {
         // 根据经过的时间确定当前档位
         for (let i = 0; i < tierSummaries.length; i++) {
-          if (hours < tierSummaries[i].endHour) {
+          // 添加 startHour 检查，使逻辑更严谨
+          if (hours >= tierSummaries[i].startHour && hours < tierSummaries[i].endHour) {
             currentTier = i
             currentTierData = tierSummaries[i]
             currentBonus = tierSummaries[i].bonus
@@ -489,8 +498,11 @@ class PromotionService {
 
       // 计算转化率
       if (stats.promotionActivated && stats.promotionActivated > 0) {
-        const usedCount = (stats.tier1Used || 0) + (stats.tier2Used || 0) +
-                         (stats.tier3Used || 0) + (stats.tier4Used || 0)
+        const usedCount =
+          (stats.tier1Used || 0) +
+          (stats.tier2Used || 0) +
+          (stats.tier3Used || 0) +
+          (stats.tier4Used || 0)
         stats.conversionRate = ((usedCount / stats.promotionActivated) * 100).toFixed(2) + '%'
       } else {
         stats.conversionRate = '0%'
@@ -498,8 +510,11 @@ class PromotionService {
 
       // 计算平均充值金额
       if (stats.totalRechargeAmount && stats.totalRechargeAmount > 0) {
-        const totalUsed = (stats.tier1Used || 0) + (stats.tier2Used || 0) +
-                         (stats.tier3Used || 0) + (stats.tier4Used || 0)
+        const totalUsed =
+          (stats.tier1Used || 0) +
+          (stats.tier2Used || 0) +
+          (stats.tier3Used || 0) +
+          (stats.tier4Used || 0)
         if (totalUsed > 0) {
           stats.avgRechargeAmount = (stats.totalRechargeAmount / totalUsed).toFixed(2)
         }
@@ -547,7 +562,7 @@ class PromotionService {
           if (data) {
             const promotion = JSON.parse(data)
             const expiresAt = new Date(promotion.expiresAt).getTime()
-            const dayAfterExpiry = expiresAt + (24 * 3600 * 1000)
+            const dayAfterExpiry = expiresAt + 24 * 3600 * 1000
 
             if (Date.now() > dayAfterExpiry) {
               await client.del(key)
