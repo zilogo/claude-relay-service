@@ -79,10 +79,6 @@ services:
       - WEB_DESCRIPTION=${WEB_DESCRIPTION:-AI TokenCloud Service}
       - WEB_LOGO_URL=${WEB_LOGO_URL:-/assets/logo.png}
 
-      # 🏠 Frontpage 配置
-      - FRONTPAGE_ENABLED=${FRONTPAGE_ENABLED:-false}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-
       # 🛠️ 开发配置
       - DEBUG=${DEBUG:-false}
       - DEBUG_HTTP_TRAFFIC=${DEBUG_HTTP_TRAFFIC:-false}

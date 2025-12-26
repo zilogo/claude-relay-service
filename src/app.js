@@ -262,80 +262,6 @@ class Application {
         logger.warn('⚠️ Admin SPA dist directory not found, skipping /admin-next route')
       }
 
-      // 🏠 Frontpage 入口页面静态文件服务
-      const frontpageEnabled = config.frontpage?.enabled === true
-      const frontpagePath = path.join(__dirname, '..', 'web', 'frontpage')
-      const frontpageExists =
-        fs.existsSync(frontpagePath) && fs.existsSync(path.join(frontpagePath, 'index.html'))
-
-      const runtimeConfigEnv = process.env.FRONTPAGE_RUNTIME_CONFIG
-      let parsedRuntimeConfig = null
-      let runtimeConfigError = null
-      if (runtimeConfigEnv) {
-        try {
-          parsedRuntimeConfig = JSON.parse(runtimeConfigEnv)
-        } catch (error) {
-          runtimeConfigError = error
-          logger.warn(`⚠️ Failed to parse FRONTPAGE_RUNTIME_CONFIG: ${error.message}`)
-        }
-      }
-
-      if (frontpageEnabled && frontpageExists) {
-        // 版本化静态资源（长期缓存）
-        this.app.use(
-          '/assets',
-          express.static(path.join(frontpagePath, 'assets'), {
-            maxAge: '1y',
-            immutable: true
-          })
-        )
-
-        // 媒体资源（中期缓存）
-        this.app.use(
-          '/img',
-          express.static(path.join(frontpagePath, 'img'), {
-            maxAge: '7d'
-          })
-        )
-        this.app.use(
-          '/mp4',
-          express.static(path.join(frontpagePath, 'mp4'), {
-            maxAge: '7d'
-          })
-        )
-
-        const frontpageConfigPath = path.join(frontpagePath, 'config')
-        if (runtimeConfigEnv) {
-          this.app.get('/config/runtime-config.json', (req, res) => {
-            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
-            if (runtimeConfigError || !parsedRuntimeConfig) {
-              return res.status(500).json({
-                error: 'InvalidRuntimeConfig',
-                message: runtimeConfigError?.message || 'FRONTPAGE_RUNTIME_CONFIG is not valid JSON'
-              })
-            }
-            res.json(parsedRuntimeConfig)
-          })
-        }
-
-        if (fs.existsSync(frontpageConfigPath)) {
-          this.app.use(
-            '/config',
-            express.static(frontpageConfigPath, {
-              setHeaders: (res) => {
-                res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
-              }
-            })
-          )
-        }
-
-        logger.info('✅ Frontpage static files mounted at /assets, /img, /mp4, /config')
-      } else if (!frontpageEnabled) {
-        logger.info('ℹ️ Frontpage disabled via FRONTPAGE_ENABLED=false')
-      } else {
-        logger.warn('⚠️ Frontpage dist directory not found, skipping frontpage static routes')
-      }
-
       // 🛣️ 路由
       this.app.use('/api', apiRoutes)
       this.app.use('/api', unifiedRoutes) // 统一智能路由（支持 /v1/chat/completions 等）
@@ -359,15 +285,9 @@ class Application {
       this.app.use('/payment', paymentRoutes) // 支付路由
       this.app.use('/hooks/dingtalk', dingtalkBotRoutes)
 
-      // 🏠 根路径服务 Frontpage 首页
+      // 🏠 根路径服务
       this.app.get('/', (req, res) => {
-        if (frontpageEnabled && frontpageExists) {
-          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
-          res.sendFile(path.join(frontpagePath, 'index.html'))
-        } else {
-          // 回退：重定向到管理界面
-          res.redirect('/admin-next/')
-        }
+        res.redirect('/admin-next/')
       })
 
       // 🏥 增强的健康检查端点

@@ -16,28 +16,6 @@ COPY web/admin-spa/ ./
 # 🏗️ 构建前端
 RUN npm run build
 
-# 🏠 Frontpage 构建阶段
-FROM node:18-alpine AS frontpage-builder
-
-# 📁 设置工作目录
-WORKDIR /app/web/frontpage-source
-
-# 📦 复制 frontpage 依赖文件（需要先 checkout submodule）
-COPY web/frontpage-source/package*.json ./
-
-# 🔽 安装依赖（需要包含 dev 依赖以使用 Vite）
-RUN npm ci --include=dev
-
-# 📋 复制 frontpage 源代码
-COPY web/frontpage-source/ ./
-
-# 🔧 设置构建时环境变量
-ARG TRY_NOW_URL=/admin-next/user-login
-ENV TRY_NOW_URL=${TRY_NOW_URL}
-
-# 🏗️ 构建 frontpage
-RUN npm run build
-
 # 🐳 主应用阶段
 FROM node:18-alpine
 
@@ -68,11 +46,6 @@ COPY . .
 
 # 📦 从构建阶段复制前端产物
 COPY --from=frontend-builder /app/web/admin-spa/dist /app/web/admin-spa/dist
-
-# 📦 从构建阶段复制 frontpage 产物
-COPY --from=frontpage-builder /app/web/frontpage-source/dist /app/web/frontpage
-COPY --from=frontpage-builder /app/web/frontpage-source/public/img /app/web/frontpage/img
-COPY --from=frontpage-builder /app/web/frontpage-source/public/mp4 /app/web/frontpage/mp4
 
 # 🔧 复制并设置启动脚本权限
 COPY docker-entrypoint.sh /usr/local/bin/

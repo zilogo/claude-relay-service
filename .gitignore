@@ -250,8 +250,4 @@ web/apiStats/
 # Admin SPA build files
 web/admin-spa/dist/
 
-# Frontpage build files
-web/frontpage/
-!web/frontpage/.gitkeep
-
 .playwright-mcp/

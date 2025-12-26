@@ -47,8 +47,6 @@ graph TD
     B2 --> B2D["支付路由"];
 
     C --> C1["admin-spa/ Vue 3 SPA"];
-    C --> C2["frontpage-source/ 入口页面"];
-
     C1 --> C1A["views/ 页面组件 (15+)"];
     C1 --> C1B["components/ 可复用组件 (60+)"];
     C1 --> C1C["stores/ Pinia 状态管理"];
@@ -821,7 +819,7 @@ npm run monitor  # 增强监控脚本
 | `scripts/` | 运维脚本集合 | - | Node.js | [scripts/CLAUDE.md](scripts/CLAUDE.md) |
 | `cli/` | 命令行工具 | `index.js` | Node.js | [cli/CLAUDE.md](cli/CLAUDE.md) |
 | `config/` | 配置管理 | `config.js` | Node.js | - |
-| `web/frontpage-source/` | 入口页面源码 | - | Vue 3 | - |
+| *(外部服务)* frontpage | 独立部署的 Landing Page（Nginx 代理） | - | Vue 3 | 外部仓库 |
 
 ---
 
