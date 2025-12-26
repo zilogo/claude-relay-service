@@ -2028,15 +2028,41 @@ router.get('/promotion/status', authenticateUser, async (req, res) => {
       registeredHours = (now - userCreatedAt) / (3600 * 1000)
     }
 
-    const promotion = await promotionService.getUserPromotion(userId)
+    let promotion = await promotionService.getUserPromotion(userId)
     const forceHide = registeredHours >= totalDurationHours
 
+    // 如果没有 promotion 数据，自动创建（使用用户注册时间）
+    if (!promotion && userCreatedAt && registeredHours < totalDurationHours) {
+      try {
+        logger.info(`🎁 Auto-creating promotion for legacy user ${user.username} (${userId})`)
+        promotion = await promotionService.initUserPromotion(userId, user.username, userCreatedAt)
+      } catch (error) {
+        logger.error('Failed to auto-create promotion:', error)
+        // 如果创建失败，返回无推广状态
+        return res.json({
+          success: true,
+          data: {
+            available: false,
+            message: 'No promotion available',
+            forceHide,
+            registeredHours,
+            totalDurationHours,
+            currentTier: -1,
+            currentTierIndex: -1,
+            nextTierEndsAt: null,
+            tiers: tierSummaries
+          }
+        })
+      }
+    }
+
+    // 如果仍然没有 promotion 或超时，返回无推广
     if (!promotion) {
       return res.json({
         success: true,
         data: {
           available: false,
-          message: 'No promotion available',
+          message: forceHide ? 'Promotion period ended' : 'No promotion available',
           forceHide,
           registeredHours,
           totalDurationHours,
@@ -2069,9 +2095,10 @@ router.get('/promotion/status', authenticateUser, async (req, res) => {
         forceHide,
         totalDurationHours,
         nextTierEndsAt: promotion.nextTierEndsAt,
-        currentTierIndex: typeof promotion.currentTierIndex === 'number'
-          ? promotion.currentTierIndex
-          : promotion.currentTier,
+        currentTierIndex:
+          typeof promotion.currentTierIndex === 'number'
+            ? promotion.currentTierIndex
+            : promotion.currentTier,
         tiers: promotion.tiers || tierSummaries
       }
     })
@@ -2194,7 +2221,7 @@ router.post('/promotion/recharge', authenticateUser, async (req, res) => {
     logger.info(
       `💰 Promotion recharge for user ${req.user.username}: ` +
         `Amount: $${rechargeAmount}, Bonus: $${promotionResult.bonus.toFixed(2)}, ` +
-        `Total: $${promotionResult.total.toFixed(2)}, Tier: ${promotionResult.tier + 1}`
+        `Tier ${promotionResult.tier + 1}`
     )
 
     res.json({
@@ -2273,10 +2300,14 @@ router.get('/promotion/stats', authenticateUserOrAdmin, requireAdmin, async (req
 })
 
 // 🎁 为用户激活优惠（管理员）
-router.post('/promotion/activate/:userId', authenticateUserOrAdmin, requireAdmin, async (req, res) => {
-  try {
-    const promotionService = require('../services/promotionService')
-    const { userId } = req.params
+router.post(
+  '/promotion/activate/:userId',
+  authenticateUserOrAdmin,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const promotionService = require('../services/promotionService')
+      const { userId } = req.params
 
       // 获取用户信息
       const user = await userService.getUserById(userId, false)
