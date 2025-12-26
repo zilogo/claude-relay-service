@@ -525,10 +525,10 @@ class PaymentService {
       const bonusRecharge = await userService.rechargeBalance(
         order.userId,
         promotionResult.bonus,
-        { id: 'system', name: 'Promotion System' },
+        { id: 'promo-bonus', name: '活动赠额' },
         `${provider}支付赠额 - 订单${order.id}`,
         {
-          recordType: 'promotion',
+          recordType: 'manual',
           source: provider || 'payment',
           countTowardTotalRecharge: false,
           updateLastRecharge: false,
@@ -536,7 +536,8 @@ class PaymentService {
             orderId: order.id,
             tier: promotionResult.tier,
             bonusRate: promotionResult.bonusRate,
-            promotionType: 'bonus'
+            promotionType: 'bonus',
+            promotionBonus: true
           }
         }
       )

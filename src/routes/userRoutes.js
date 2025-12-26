@@ -2031,14 +2031,26 @@ router.get('/promotion/status', authenticateUser, async (req, res) => {
     const promotionService = require('../services/promotionService')
     const userId = req.user.id
 
+    const user = await userService.getUserById(userId, false)
+    const userCreatedAt = user?.createdAt ? new Date(user.createdAt).getTime() : null
+    const now = Date.now()
+    const durationHours = promotionService.durationHours || 72
+    let registeredHours = 0
+
+    if (userCreatedAt) {
+      registeredHours = (now - userCreatedAt) / (3600 * 1000)
+    }
+
     const promotion = await promotionService.getUserPromotion(userId)
+    const forceHide = registeredHours >= durationHours
 
     if (!promotion) {
       return res.json({
         success: true,
         data: {
           available: false,
-          message: 'No promotion available'
+          message: 'No promotion available',
+          forceHide
         }
       })
     }
@@ -2059,7 +2071,9 @@ router.get('/promotion/status', authenticateUser, async (req, res) => {
         tierUsed: promotion.tierUsed,
         amountRecharged: promotion.amountRecharged || 0,
         bonusReceived: promotion.bonusReceived || 0,
-        metadata: promotion.metadata || null
+        metadata: promotion.metadata || null,
+        registeredHours,
+        forceHide
       }
     })
   } catch (error) {
@@ -2076,7 +2090,6 @@ router.get('/promotion/status', authenticateUser, async (req, res) => {
 router.post('/promotion/recharge', authenticateUser, async (req, res) => {
   try {
     const promotionService = require('../services/promotionService')
-    const userService = require('../services/userService')
     const { amount, remark } = req.body
     const userId = req.user.id
 
@@ -2142,10 +2155,10 @@ router.post('/promotion/recharge', authenticateUser, async (req, res) => {
     const bonusRecharge = await userService.rechargeBalance(
       userId,
       promotionResult.bonus,
-      { id: 'system', name: 'Promotion System' },
+      { id: 'promo-bonus', name: '活动赠额' },
       remark || `限时优惠赠额 - ${promotionResult.bonusRate}%`,
       {
-        recordType: 'promotion',
+        recordType: 'manual',
         source: 'promotion-system',
         countTowardTotalRecharge: false,
         updateLastRecharge: false,
@@ -2153,19 +2166,26 @@ router.post('/promotion/recharge', authenticateUser, async (req, res) => {
           originalAmount: rechargeAmount,
           tier: promotionResult.tier,
           bonusRate: promotionResult.bonusRate,
-          promotionType: 'bonus'
+          promotionType: 'bonus',
+          promotionBonus: true
         }
       }
     )
 
-    await promotionService.markPromotionUsed(userId, promotionResult.tier, rechargeAmount, promotionResult.bonus, {
-      source: 'manual-recharge',
-      remark: remark || '',
-      operatorId: req.user.id,
-      operatorName: req.user.username,
-      baseRecordId: baseRecharge.recordId,
-      bonusRecordId: bonusRecharge.recordId
-    })
+    await promotionService.markPromotionUsed(
+      userId,
+      promotionResult.tier,
+      rechargeAmount,
+      promotionResult.bonus,
+      {
+        source: 'manual-recharge',
+        remark: remark || '',
+        operatorId: req.user.id,
+        operatorName: req.user.username,
+        baseRecordId: baseRecharge.recordId,
+        bonusRecordId: bonusRecharge.recordId
+      }
+    )
 
     logger.info(
       `💰 Promotion recharge for user ${req.user.username}: ` +
@@ -2252,7 +2272,6 @@ router.get('/promotion/stats', authenticateUserOrAdmin, requireAdmin, async (req
 router.post('/promotion/activate/:userId', authenticateUserOrAdmin, requireAdmin, async (req, res) => {
   try {
     const promotionService = require('../services/promotionService')
-    const userService = require('../services/userService')
     const { userId } = req.params
 
     // 获取用户信息
