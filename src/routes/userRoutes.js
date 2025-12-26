@@ -2049,7 +2049,9 @@ router.get('/promotion/status', authenticateUser, async (req, res) => {
     if (!promotion && userCreatedAt && registeredHours < totalDurationHours) {
       try {
         logger.info(`🎁 Auto-creating promotion for legacy user ${user.username} (${userId})`)
-        promotion = await promotionService.initUserPromotion(userId, user.username, userCreatedAt)
+        await promotionService.initUserPromotion(userId, user.username, userCreatedAt)
+        // 重新获取完整的 promotion 数据（包含计算字段）
+        promotion = await promotionService.getUserPromotion(userId)
       } catch (error) {
         logger.error('Failed to auto-create promotion:', error)
         // 如果创建失败，返回无推广状态
