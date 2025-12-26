@@ -31,13 +31,13 @@
 
             <!-- Tab 导航（带滑动指示器） -->
             <div
-              class="relative hidden items-center rounded-2xl bg-gray-100/50 p-1.5 dark:bg-gray-700/50 lg:flex"
+              class="relative hidden items-center gap-2 rounded-2xl bg-gray-100/50 p-1.5 dark:bg-gray-700/50 lg:flex"
             >
               <!-- 滑动指示器 -->
               <div
                 class="absolute left-1.5 top-1.5 h-[calc(100%-12px)] rounded-xl bg-white shadow-md transition-all duration-300 dark:bg-gray-600"
                 :style="{
-                  width: `calc(${100 / 5}% - 6px)`,
+                  width: `calc((100% - 32px) / 5)`,
                   transform: `translateX(calc(${tabIndicatorPosition}% + ${tabIndicatorOffset}px))`
                 }"
               ></div>
@@ -793,10 +793,10 @@ const tabIndicatorPosition = computed(() => {
 const tabIndicatorOffset = computed(() => {
   const offsets = {
     overview: 0,
-    'api-keys': 6,
-    usage: 12,
-    recharge: 18,
-    tutorial: 24
+    'api-keys': 8,
+    usage: 16,
+    recharge: 24,
+    tutorial: 32
   }
   return offsets[activeTab.value] || 0
 })
