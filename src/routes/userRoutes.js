@@ -2020,7 +2020,8 @@ router.get('/promotion/status', authenticateUser, async (req, res) => {
     const user = await userService.getUserById(userId, false)
     const userCreatedAt = user?.createdAt ? new Date(user.createdAt).getTime() : null
     const now = Date.now()
-    const durationHours = promotionService.durationHours || 72
+    const tierSummaries = promotionService.getTierSummaries()
+    const totalDurationHours = promotionService.getTotalDurationHours()
     let registeredHours = 0
 
     if (userCreatedAt) {
@@ -2028,7 +2029,7 @@ router.get('/promotion/status', authenticateUser, async (req, res) => {
     }
 
     const promotion = await promotionService.getUserPromotion(userId)
-    const forceHide = registeredHours >= durationHours
+    const forceHide = registeredHours >= totalDurationHours
 
     if (!promotion) {
       return res.json({
@@ -2036,7 +2037,13 @@ router.get('/promotion/status', authenticateUser, async (req, res) => {
         data: {
           available: false,
           message: 'No promotion available',
-          forceHide
+          forceHide,
+          registeredHours,
+          totalDurationHours,
+          currentTier: -1,
+          currentTierIndex: -1,
+          nextTierEndsAt: null,
+          tiers: tierSummaries
         }
       })
     }
@@ -2059,7 +2066,13 @@ router.get('/promotion/status', authenticateUser, async (req, res) => {
         bonusReceived: promotion.bonusReceived || 0,
         metadata: promotion.metadata || null,
         registeredHours,
-        forceHide
+        forceHide,
+        totalDurationHours,
+        nextTierEndsAt: promotion.nextTierEndsAt,
+        currentTierIndex: typeof promotion.currentTierIndex === 'number'
+          ? promotion.currentTierIndex
+          : promotion.currentTier,
+        tiers: promotion.tiers || tierSummaries
       }
     })
   } catch (error) {
@@ -2120,6 +2133,8 @@ router.post('/promotion/recharge', authenticateUser, async (req, res) => {
       })
     }
 
+    const tierWindowLabel = promotionResult.tierWindow?.label || null
+
     // 先记录实际充值，再记录赠额
     const baseRecharge = await userService.rechargeBalance(
       userId,
@@ -2133,7 +2148,8 @@ router.post('/promotion/recharge', authenticateUser, async (req, res) => {
           promotionEligible: true,
           tier: promotionResult.tier,
           bonusRate: promotionResult.bonusRate,
-          promotionType: 'base'
+          promotionType: 'base',
+          tierWindow: tierWindowLabel
         }
       }
     )
@@ -2153,7 +2169,8 @@ router.post('/promotion/recharge', authenticateUser, async (req, res) => {
           tier: promotionResult.tier,
           bonusRate: promotionResult.bonusRate,
           promotionType: 'bonus',
-          promotionBonus: true
+          promotionBonus: true,
+          tierWindow: tierWindowLabel
         }
       }
     )
@@ -2169,7 +2186,8 @@ router.post('/promotion/recharge', authenticateUser, async (req, res) => {
         operatorId: req.user.id,
         operatorName: req.user.username,
         baseRecordId: baseRecharge.recordId,
-        bonusRecordId: bonusRecharge.recordId
+        bonusRecordId: bonusRecharge.recordId,
+        tierWindow: tierWindowLabel
       }
     )
 

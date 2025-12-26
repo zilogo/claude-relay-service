@@ -49,7 +49,44 @@ class PromotionService {
     // 配置
     this.enabled = process.env.PROMOTION_ENABLED !== 'false' // 默认启用
     this.autoStartForNewUsers = process.env.PROMOTION_AUTO_START_NEW_USER !== 'false' // 默认启用
-    this.durationHours = parseInt(process.env.PROMOTION_DURATION_HOURS) || 72
+    const fallbackDuration = this.tiers[this.tiers.length - 1]?.hours || 72
+    this.durationHours = parseInt(process.env.PROMOTION_DURATION_HOURS) || fallbackDuration
+    if (this.durationHours < fallbackDuration) {
+      this.durationHours = fallbackDuration
+    }
+  }
+
+  getTotalDurationHours() {
+    return this.durationHours || (this.tiers[this.tiers.length - 1]?.hours || 72)
+  }
+
+  getTierSummaries() {
+    let previousEnd = 0
+    return this.tiers.map((tier, index) => {
+      const startHour = index === 0 ? 0 : previousEnd
+      const endHour = tier.hours
+      const exampleBonus = Math.round((tier.bonus / 100) * 100)
+      const summary = {
+        index,
+        id: tier.id || index + 1,
+        bonus: tier.bonus,
+        minAmount: tier.minAmount,
+        label: tier.label || `充100得${100 + exampleBonus}`,
+        timeLabel: tier.timeLabel || `${startHour}-${endHour}小时`,
+        windowLabel: `${startHour}-${endHour}小时`,
+        startHour,
+        endHour,
+        example: `充100送${exampleBonus}`
+      }
+
+      previousEnd = endHour
+      return summary
+    })
+  }
+
+  getTierSummary(index) {
+    const tiers = this.getTierSummaries()
+    return tiers[index] || null
   }
 
   /**
@@ -122,24 +159,28 @@ class PromotionService {
       const startTime = new Date(promotion.startTime).getTime()
       const elapsed = now - startTime
       const hours = elapsed / (1000 * 3600)
+      const tierSummaries = this.getTierSummaries()
+      const totalDurationHours = this.getTotalDurationHours()
 
       // 确定当前档位
       let currentTier = -1
       let currentTierData = null
       let currentBonus = 0
       let remainingSeconds = 0
+      let nextTierEndsAt = null
 
-      if (!promotion.hasUsed && hours < this.durationHours) {
+      if (!promotion.hasUsed && hours < totalDurationHours) {
         // 根据经过的时间确定当前档位
-        for (let i = 0; i < this.tiers.length; i++) {
-          if (hours < this.tiers[i].hours) {
+        for (let i = 0; i < tierSummaries.length; i++) {
+          if (hours < tierSummaries[i].endHour) {
             currentTier = i
-            currentTierData = this.tiers[i]
-            currentBonus = this.tiers[i].bonus
+            currentTierData = tierSummaries[i]
+            currentBonus = tierSummaries[i].bonus
 
             // 计算当前档位剩余秒数
-            const tierEndTime = startTime + this.tiers[i].hours * 3600 * 1000
+            const tierEndTime = startTime + tierSummaries[i].endHour * 3600 * 1000
             remainingSeconds = Math.max(0, Math.floor((tierEndTime - now) / 1000))
+            nextTierEndsAt = new Date(tierEndTime).toISOString()
             break
           }
         }
@@ -151,10 +192,14 @@ class PromotionService {
         currentTierData,
         currentBonus,
         remainingSeconds,
-        remainingHours: Math.max(0, this.durationHours - hours),
+        remainingHours: Math.max(0, totalDurationHours - hours),
         hoursElapsed: hours,
-        isExpired: hours >= this.durationHours,
-        isAvailable: !promotion.hasUsed && hours < this.durationHours
+        isExpired: hours >= totalDurationHours,
+        isAvailable: !promotion.hasUsed && hours < totalDurationHours,
+        currentTierIndex: currentTier,
+        nextTierEndsAt,
+        tiers: tierSummaries,
+        totalDurationHours
       }
     } catch (error) {
       logger.error('❌ Error getting user promotion:', error)
@@ -252,6 +297,13 @@ class PromotionService {
     }
 
     const bonus = this.calculateBonus(amount, promotion.currentBonus)
+    const tierWindow = promotion.currentTierData
+      ? {
+          startHour: promotion.currentTierData.startHour,
+          endHour: promotion.currentTierData.endHour,
+          label: promotion.currentTierData.windowLabel
+        }
+      : null
 
     return {
       amount,
@@ -261,6 +313,7 @@ class PromotionService {
       tier: promotion.currentTier,
       tierData: promotion.currentTierData,
       bonusRate: promotion.currentBonus,
+      tierWindow,
       message: `Eligible for ${promotion.currentBonus}% bonus`
     }
   }
@@ -281,7 +334,14 @@ class PromotionService {
         promotion.amountRecharged = amount
         promotion.bonusReceived = bonus
         promotion.totalReceived = amount + bonus
-        promotion.metadata = metadata
+        const tierInfo = this.getTierSummary(tier)
+        const tierWindowLabel = tierInfo?.windowLabel || null
+        const metadataWithTier = {
+          ...metadata,
+          bonusRate: metadata.bonusRate ?? tierInfo?.bonus,
+          tierWindow: metadata.tierWindow || tierWindowLabel
+        }
+        promotion.metadata = metadataWithTier
 
         // 更新数据，保持原有的TTL
         const ttl = await redis.getClientSafe().ttl(key)
@@ -299,12 +359,13 @@ class PromotionService {
         const tierData = this.tiers[tier] || null
         await this.recordPromotionEvent(userId, {
           tier,
-          bonusRate: tierData?.bonus || metadata.bonusRate,
+          bonusRate: tierData?.bonus || metadataWithTier.bonusRate,
           amount,
           bonus,
-          status: metadata.status || 'completed',
-          source: metadata.source || 'system',
-          metadata
+          status: metadataWithTier.status || 'completed',
+          source: metadataWithTier.source || 'system',
+          tierWindow: metadataWithTier.tierWindow,
+          metadata: metadataWithTier
         })
 
         logger.info(`✅ Marked promotion as used for user ${userId}`)
@@ -330,6 +391,7 @@ class PromotionService {
         status: event.status || 'completed',
         source: event.source || 'system',
         message: event.message || '',
+        tierWindow: event.tierWindow || event.metadata?.tierWindow || null,
         metadata: event.metadata || {},
         createdAt: event.createdAt || new Date().toISOString()
       }
