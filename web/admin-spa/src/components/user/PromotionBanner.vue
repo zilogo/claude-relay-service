@@ -79,6 +79,51 @@
                 </div>
               </div>
 
+              <!-- 重点提醒 -->
+              <div v-if="!promotionStatus?.hasUsed" class="mb-4 grid gap-3 lg:grid-cols-2">
+                <div
+                  class="rounded-2xl bg-white/40 p-4 backdrop-blur-sm shadow-lg dark:bg-white/15"
+                >
+                  <p class="text-xs font-semibold uppercase tracking-widest text-orange-600">
+                    新注册用户 · 首充优惠
+                  </p>
+                  <p class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                    充得越多 · 送得越多 · 仅此一次
+                  </p>
+                  <ul class="mt-3 space-y-1 text-sm text-gray-700 dark:text-gray-200">
+                    <li class="flex items-center gap-2">
+                      <span class="text-orange-500">•</span> 注册 72 小时内完成首充立即锁定赠额
+                    </li>
+                    <li class="flex items-center gap-2">
+                      <span class="text-orange-500">•</span> 4 个档位递减，当前档位结束后自动降级
+                    </li>
+                    <li class="flex items-center gap-2">
+                      <span class="text-orange-500">•</span> 系统自动发放至账户余额，无需联系客服
+                    </li>
+                  </ul>
+                </div>
+                <div
+                  class="rounded-2xl border border-white/40 bg-amber-50/80 p-4 text-sm font-semibold text-amber-900 shadow-inner dark:border-amber-100/10 dark:bg-amber-900/40 dark:text-amber-100"
+                >
+                  <div class="flex items-center justify-between">
+                    <p>当前优惠</p>
+                    <span class="rounded-full bg-amber-100 px-3 py-1 text-xs text-amber-700 dark:bg-amber-800/60 dark:text-amber-100">
+                      只有一次机会
+                    </span>
+                  </div>
+                  <p class="mt-2 text-3xl font-bold">
+                    {{ currentTierData?.bonus || promotionStatus?.currentBonus || 0 }}%
+                  </p>
+                  <p class="text-sm text-amber-800 dark:text-amber-100">
+                    {{ currentTierData?.windowLabel || '限时档位' }} · 充 100 送
+                    {{ currentTierData ? Math.round((currentTierData.bonus / 100) * 100) : 30 }}
+                  </p>
+                  <p class="mt-3 text-xs text-amber-700 dark:text-amber-100/80">
+                    下一档将在 {{ formattedTime }} 后开启，赠额比例将下降。
+                  </p>
+                </div>
+              </div>
+
               <!-- 当前档位展示（高亮） -->
               <div
                 v-if="promotionStatus?.hasUsed"
@@ -99,8 +144,8 @@
               </div>
 
               <div
-                v-if="currentTierData"
-                class="mb-4 rounded-xl bg-white/40 p-4 shadow-lg backdrop-blur-sm dark:bg-white/20"
+                v-else-if="currentTierData"
+                class="mb-4 rounded-xl bg-white/40 p-4 backdrop-blur-sm shadow-lg dark:bg-white/20"
               >
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-3">
@@ -140,7 +185,10 @@
               </div>
 
               <!-- 优惠档位网格 -->
-              <div class="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <div
+                v-if="!promotionStatus?.hasUsed"
+                class="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4"
+              >
                 <div
                   v-for="(tier, index) in promotionTiers"
                   :key="tier.id"
@@ -167,9 +215,41 @@
                 </div>
               </div>
 
+              <!-- 活动说明 -->
+              <div
+                v-if="!promotionStatus?.hasUsed"
+                class="mb-4 rounded-2xl bg-white/30 p-4 backdrop-blur-sm shadow-lg dark:bg-white/10"
+              >
+                <div class="flex items-center justify-between">
+                  <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">活动说明</p>
+                  <span class="text-xs text-gray-500">仅一次机会 · 超过 72 小时自动结束</span>
+                </div>
+                <div class="mt-3 space-y-2">
+                  <div
+                    v-for="(tier, index) in promotionTiers"
+                    :key="`timeline-${tier.id}`"
+                    class="flex flex-wrap items-center justify-between rounded-xl bg-white/70 px-3 py-2 text-sm shadow-sm dark:bg-gray-900/30"
+                  >
+                    <div>
+                      <p class="font-semibold text-gray-900 dark:text-white">{{ tier.windowLabel }}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-300">{{ tier.label }}</p>
+                    </div>
+                    <div class="text-right">
+                      <span
+                        :class="getTierStatusMeta(index).classes"
+                        class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold"
+                      >
+                        {{ getTierStatusMeta(index).text }}
+                      </span>
+                      <p class="text-xs text-gray-500">{{ tier.example }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <!-- 最近赠送记录 -->
               <div
-                v-if="promotionRecords.length"
+                v-if="!promotionStatus?.hasUsed && promotionRecords.length"
                 class="mb-4 rounded-xl bg-white/40 p-4 backdrop-blur-sm shadow-lg dark:bg-white/15"
               >
                 <div class="flex items-center justify-between">
@@ -204,15 +284,9 @@
                   </div>
                 </div>
               </div>
-              <div
-                v-else-if="promotionStatus?.available && !promotionRecords.length"
-                class="mb-4 rounded-xl bg-white/30 p-3 text-sm text-gray-600 backdrop-blur-sm dark:bg-white/10 dark:text-gray-300"
-              >
-                尚未触发赠额，完成首充即可自动到账。
-              </div>
-
               <!-- 底部提醒 -->
               <div
+                v-if="!promotionStatus?.hasUsed"
                 class="flex items-center justify-center gap-2 rounded-lg bg-white/30 p-3 text-center backdrop-blur-sm dark:bg-white/10"
               >
                 <svg
@@ -251,7 +325,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['recharge'])
+const emit = defineEmits(['recharge', 'status-change'])
 const userStore = useUserStore()
 
 const DEFAULT_TOTAL_PROMOTION_HOURS = 72
@@ -431,9 +505,9 @@ const statusHeadline = computed(() => {
     return '限时优惠已结束'
   }
   if (promotionStatus.value?.available) {
-    return '限时充值优惠 - 优惠递减倒计时'
+    return '新用户首充限时优惠（仅一次）'
   }
-  return '新用户限时活动'
+  return '新用户首充优惠'
 })
 
 const statusSubtext = computed(() => {
@@ -522,6 +596,41 @@ const getRecordStatusClass = (status) => {
   return 'rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-100'
 }
 
+const getTierStatusMeta = (index) => {
+  if (promotionStatus.value?.hasUsed) {
+    return {
+      text: '已到账',
+      classes: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-100'
+    }
+  }
+
+  if (promotionStatus.value?.isExpired || promotionStatus.value?.forceHide) {
+    return {
+      text: '已结束',
+      classes: 'bg-gray-200 text-gray-600 dark:bg-gray-700/60 dark:text-gray-300'
+    }
+  }
+
+  if (index === currentTier.value) {
+    return {
+      text: '当前档位',
+      classes: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-100'
+    }
+  }
+
+  if (index < currentTier.value) {
+    return {
+      text: '已过期',
+      classes: 'bg-gray-100 text-gray-500 dark:bg-gray-800/40 dark:text-gray-300'
+    }
+  }
+
+  return {
+    text: '即将下降',
+    classes: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-100'
+  }
+}
+
 const applyPromotionTiers = (status) => {
   if (Array.isArray(status?.tiers) && status.tiers.length) {
     promotionTiers.value = normalizeTiers(status.tiers)
@@ -536,10 +645,12 @@ const loadPromotionStatus = async () => {
     promotionStatus.value = status
     serverRemainingSeconds.value = status?.remainingSeconds || 0
     applyPromotionTiers(status)
+    emit('status-change', status)
   } catch (error) {
     console.error('Failed to load promotion status:', error)
     promotionStatus.value = null
     promotionTiers.value = defaultNormalizedTiers
+    emit('status-change', null)
   }
 }
 

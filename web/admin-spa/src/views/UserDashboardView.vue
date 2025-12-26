@@ -146,6 +146,7 @@
       :user-created-at="userStore.user?.createdAt"
       @contact-admin="showContactUsModal = true"
       @recharge="handlePromotionRecharge"
+      @status-change="handlePromotionStatusChange"
     />
 
     <!-- 主内容 -->
@@ -320,8 +321,7 @@
 
           <!-- 活动增额卡片 -->
           <div
-            class="group relative cursor-pointer overflow-hidden rounded-3xl bg-gradient-to-br from-purple-50 to-pink-50 p-8 transition-all hover:-translate-y-1 hover:shadow-2xl dark:from-purple-900/30 dark:to-pink-900/30"
-            @click="handleTabChange('recharge')"
+            class="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-purple-50 to-pink-50 p-8 transition-all hover:-translate-y-1 hover:shadow-2xl dark:from-purple-900/30 dark:to-pink-900/30"
           >
             <div
               class="absolute -bottom-12 -right-12 h-40 w-40 rounded-full bg-purple-500/10 blur-3xl transition-all group-hover:bg-purple-500/20"
@@ -345,30 +345,78 @@
                 </svg>
               </div>
               <div>
-                <p class="text-sm font-semibold text-purple-900 dark:text-purple-100">
-                  手动充值 · 活动增额
-                </p>
-                <p
-                  class="mt-3 text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400"
-                >
-                  ${{ (balanceInfo?.manualRechargeTotal || 0).toFixed(2) }}
-                </p>
-                <div class="mt-4 flex items-center justify-between text-sm">
-                  <span class="text-purple-700 dark:text-purple-300">手动充值累计（含活动增额）</span>
-                  <svg
-                    class="h-5 w-5 text-purple-500 transition-transform group-hover:translate-x-1"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                <template v-if="promotionHasUsed">
+                  <p class="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                    活动赠额已到账
+                  </p>
+                  <p
+                    class="mt-3 text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400"
                   >
-                    <path
-                      d="M9 5l7 7-7 7"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                    />
-                  </svg>
-                </div>
+                    +${{ promotionBonusReceived.toFixed(2) }}
+                  </p>
+                  <p class="mt-2 text-sm text-purple-700 dark:text-purple-200">
+                    首充 ${{ promotionRechargeAmount.toFixed(2) }} · {{ promotionTierWindow }} · 仅此一次
+                  </p>
+                  <div class="mt-4 flex flex-wrap gap-2 text-sm">
+                    <button
+                      class="inline-flex items-center rounded-full bg-white/80 px-4 py-2 font-semibold text-purple-700 shadow-sm transition hover:bg-white"
+                      @click.stop="handleTabChange('recharge')"
+                    >
+                      查看充值记录
+                    </button>
+                    <span class="inline-flex items-center rounded-full bg-purple-100/80 px-3 py-1 text-xs font-semibold text-purple-700 dark:bg-purple-900/40 dark:text-purple-200">
+                      活动仅可领取一次
+                    </span>
+                  </div>
+                </template>
+                <template v-else-if="promotionTeaserVisible">
+                  <p class="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                    首充优惠倒计时
+                  </p>
+                  <p
+                    class="mt-3 text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400"
+                  >
+                    {{ promotionCurrentBonus }}%
+                  </p>
+                  <p class="mt-2 text-sm text-purple-700 dark:text-purple-200">
+                    {{ promotionCurrentTierLabel }} · 剩余 {{ promotionCountdown }}
+                  </p>
+                  <div class="mt-4 flex items-center justify-between text-sm">
+                    <span class="text-purple-700 dark:text-purple-300">仅限注册 72 小时内首充</span>
+                    <button
+                      class="inline-flex items-center rounded-full bg-purple-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-purple-500"
+                      @click.stop="handleTabChange('recharge')"
+                    >
+                      立即首充
+                    </button>
+                  </div>
+                </template>
+                <template v-else>
+                  <p class="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                    手动充值 · 活动增额
+                  </p>
+                  <p
+                    class="mt-3 text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400"
+                  >
+                    ${{ (balanceInfo?.manualRechargeTotal || 0).toFixed(2) }}
+                  </p>
+                  <div class="mt-4 flex items-center justify-between text-sm">
+                    <span class="text-purple-700 dark:text-purple-300">手动充值累计（含活动增额）</span>
+                    <svg
+                      class="h-5 w-5 text-purple-500 transition-transform group-hover:translate-x-1"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M9 5l7 7-7 7"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                      />
+                    </svg>
+                  </div>
+                </template>
               </div>
             </div>
           </div>
@@ -757,6 +805,7 @@ const apiKeysStats = ref({ active: 0, deleted: 0 })
 const balanceInfo = ref(null)
 const referralInfo = ref(null)
 const referralLoading = ref(false)
+const promotionStatusState = ref(null)
 
 const formatNumber = (num) => {
   if (num >= 1000000) {
@@ -776,6 +825,67 @@ const formatDate = (dateString) => {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+const formatSeconds = (seconds) => {
+  if (!seconds || Number.isNaN(seconds)) {
+    return '00:00'
+  }
+  const hrs = Math.floor(seconds / 3600)
+  const mins = Math.floor((seconds % 3600) / 60)
+  const secs = seconds % 60
+  if (hrs > 0) {
+    return `${hrs}h ${mins.toString().padStart(2, '0')}m`
+  }
+  return `${mins.toString().padStart(2, '0')}m ${secs.toString().padStart(2, '0')}s`
+}
+
+const promotionCountdown = computed(() => {
+  const seconds = promotionStatusState.value?.remainingSeconds
+  return formatSeconds(seconds || 0)
+})
+
+const promotionCurrentTierLabel = computed(() => {
+  return (
+    promotionStatusState.value?.currentTierData?.windowLabel ||
+    promotionStatusState.value?.currentTierData?.timeLabel ||
+    '限时档位'
+  )
+})
+
+const promotionCurrentBonus = computed(() => {
+  return (
+    promotionStatusState.value?.currentTierData?.bonus ||
+    promotionStatusState.value?.currentBonus ||
+    0
+  )
+})
+
+const promotionHasUsed = computed(() => Boolean(promotionStatusState.value?.hasUsed))
+
+const promotionTeaserVisible = computed(() => {
+  const status = promotionStatusState.value
+  if (!status) return false
+  if (status.forceHide) return false
+  if (status.hasUsed) return false
+  return status.available !== false
+})
+
+const promotionTierWindow = computed(() => {
+  return (
+    promotionStatusState.value?.metadata?.tierWindow ||
+    promotionStatusState.value?.currentTierData?.windowLabel ||
+    promotionStatusState.value?.currentTierData?.timeLabel ||
+    '限时档位'
+  )
+})
+
+const promotionBonusReceived = computed(() => promotionStatusState.value?.bonusReceived || 0)
+
+const promotionRechargeAmount = computed(() => promotionStatusState.value?.amountRecharged || 0)
+
+const handlePromotionStatusChange = (status) => {
+  promotionStatusState.value = status
 }
 
 const handleTabChange = (tab) => {
