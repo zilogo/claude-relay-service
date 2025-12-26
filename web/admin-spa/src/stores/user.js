@@ -11,7 +11,8 @@ export const useUserStore = defineStore('user', {
     isAuthenticated: false,
     sessionToken: null,
     loading: false,
-    config: null
+    config: null,
+    referralInfo: null
   }),
 
   getters: {
@@ -25,7 +26,14 @@ export const useUserStore = defineStore('user', {
     async login(credentials) {
       this.loading = true
       try {
-        const response = await axios.post(`${API_BASE}/login`, credentials)
+        // 根据认证方式选择不同的登录端点
+        const { authType = 'ldap', username, password } = credentials
+        const endpoint = authType === 'local' ? `${API_BASE}/login/local` : `${API_BASE}/login/ldap`
+
+        const response = await axios.post(endpoint, {
+          username,
+          password
+        })
 
         if (response.data.success) {
           this.user = response.data.user
@@ -163,10 +171,81 @@ export const useUserStore = defineStore('user', {
     // 📊 获取使用统计
     async getUserUsageStats(params = {}) {
       try {
-        const response = await axios.get(`${API_BASE}/usage-stats`, { params })
+        const response = await axios.get(`${API_BASE}/usage-stats`, {
+          params: {
+            includeModelUsage: true,
+            modelLimit: 6,
+            ...params
+          }
+        })
         return response.data.success ? response.data.stats : null
       } catch (error) {
         console.error('Failed to fetch usage stats:', error)
+        throw error
+      }
+    },
+
+    // 📈 获取使用趋势（用于图表）
+    async getUserUsageTrend(params = {}) {
+      try {
+        const response = await axios.get(`${API_BASE}/usage-trend`, { params })
+        return response.data.success ? response.data.trend : []
+      } catch (error) {
+        console.error('Failed to fetch usage trend:', error)
+        throw error
+      }
+    },
+
+    // 💰 获取用户余额信息
+    async getUserBalance() {
+      try {
+        const response = await axios.get(`${API_BASE}/balance`)
+        return response.data.success ? response.data.data : null
+      } catch (error) {
+        console.error('Failed to fetch balance:', error)
+        throw error
+      }
+    },
+
+    // 💰 获取用户充值记录
+    async getRechargeRecords(params = {}) {
+      try {
+        const response = await axios.get(`${API_BASE}/recharge-records`, { params })
+        return response.data.success ? response.data.data : { records: [], total: 0 }
+      } catch (error) {
+        console.error('Failed to fetch recharge records:', error)
+        throw error
+      }
+    },
+
+    // 🎁 获取邀请返利信息
+    async getReferralInfo() {
+      try {
+        const response = await axios.get(`${API_BASE}/referral`)
+        if (response.data.success) {
+          this.referralInfo = response.data.data
+          return response.data.data
+        }
+        return null
+      } catch (error) {
+        if (error.response?.status === 404) {
+          return null
+        }
+        console.error('Failed to fetch referral info:', error)
+        throw error
+      }
+    },
+
+    // 🎁 获取邀请详情列表
+    async getReferralInvitees(params = {}) {
+      try {
+        const response = await axios.get(`${API_BASE}/referral/invitees`, { params })
+        return response.data.success ? response.data.data : { records: [], total: 0 }
+      } catch (error) {
+        if (error.response?.status === 404) {
+          return { records: [], total: 0, page: 1, limit: 20, totalPages: 0 }
+        }
+        console.error('Failed to fetch referral invitees:', error)
         throw error
       }
     },
@@ -177,6 +256,7 @@ export const useUserStore = defineStore('user', {
       this.sessionToken = null
       this.isAuthenticated = false
       this.config = null
+      this.referralInfo = null
 
       localStorage.removeItem('userToken')
       localStorage.removeItem('userData')

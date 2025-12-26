@@ -24,107 +24,29 @@
         >
           <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
-              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
               stroke-linecap="round"
               stroke-linejoin="round"
               stroke-width="2"
             />
           </svg>
         </div>
-        <h1 class="mb-2 font-serif text-3xl font-bold text-gray-900 dark:text-white">用户登录</h1>
-        <p class="text-sm text-[#5f5f5f] dark:text-gray-400">登录您的账户以管理 API Keys</p>
+        <h1 class="mb-2 font-serif text-3xl font-bold text-gray-900 dark:text-white">重置密码</h1>
+        <p class="text-sm text-[#5f5f5f] dark:text-gray-400">请输入您的新密码</p>
       </div>
 
-      <!-- 登录卡片 -->
+      <!-- 重置密码卡片 -->
       <div
         class="rounded-3xl border border-[#d8d5ce] bg-white p-8 shadow-xl dark:border-gray-700 dark:bg-gray-800"
       >
-        <!-- 认证方式切换 Tab (Pill Style with Sliding Indicator) -->
-        <!-- 只在 LDAP 启用时显示 Tab 切换 -->
-        <div
-          v-if="isLdapEnabled"
-          class="relative mb-8 inline-flex w-full rounded-2xl bg-[#E6E2DA] p-1.5 dark:bg-gray-700/50"
-        >
-          <!-- 滑动指示器 -->
-          <div
-            class="absolute inset-y-1.5 left-1.5 w-[calc(50%-6px)] rounded-xl bg-white shadow-md transition-transform duration-300 dark:bg-gray-600"
-            :style="{
-              transform: authType === 'ldap' ? 'translateX(calc(100% + 12px))' : 'translateX(0)'
-            }"
-          ></div>
-          <!-- Tab 按钮 -->
-          <button
-            class="relative z-10 flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors"
-            :class="
-              authType === 'local'
-                ? 'text-[#D97757]'
-                : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
-            "
-            type="button"
-            @click="authType = 'local'"
-          >
-            本地登录
-          </button>
-          <button
-            class="relative z-10 flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors"
-            :class="
-              authType === 'ldap'
-                ? 'text-[#D97757]'
-                : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
-            "
-            type="button"
-            @click="authType = 'ldap'"
-          >
-            LDAP 登录
-          </button>
-        </div>
-
-        <form class="space-y-6" @submit.prevent="handleLogin">
-          <!-- 用户名输入 -->
-          <div>
-            <label
-              class="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-300"
-              for="username"
-            >
-              用户名
-            </label>
-            <div class="relative">
-              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-                <svg
-                  class="h-5 w-5 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                  />
-                </svg>
-              </div>
-              <input
-                id="username"
-                v-model="form.username"
-                autocomplete="username"
-                class="block w-full rounded-xl border-2 border-[#d8d5ce] bg-[#F5F2EB] py-3 pl-11 pr-4 text-gray-900 placeholder-gray-400 transition-all focus:border-[#D97757] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900/50 dark:text-white dark:placeholder-gray-500 dark:focus:border-[#D97757] dark:focus:bg-gray-900 dark:focus:ring-[#D97757]/20"
-                :disabled="loading"
-                name="username"
-                placeholder="请输入用户名"
-                required
-                type="text"
-              />
-            </div>
-          </div>
-
-          <!-- 密码输入 -->
+        <form v-if="!success" class="space-y-5" @submit.prevent="handleSubmit">
+          <!-- 新密码输入 -->
           <div>
             <label
               class="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-300"
               for="password"
             >
-              密码
+              新密码 <span class="text-red-500">*</span>
             </label>
             <div class="relative">
               <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
@@ -145,11 +67,50 @@
               <input
                 id="password"
                 v-model="form.password"
-                autocomplete="current-password"
+                autocomplete="new-password"
                 class="block w-full rounded-xl border-2 border-[#d8d5ce] bg-[#F5F2EB] py-3 pl-11 pr-4 text-gray-900 placeholder-gray-400 transition-all focus:border-[#D97757] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900/50 dark:text-white dark:placeholder-gray-500 dark:focus:border-[#D97757] dark:focus:bg-gray-900 dark:focus:ring-[#D97757]/20"
                 :disabled="loading"
                 name="password"
-                placeholder="请输入密码"
+                placeholder="请选择新密码（至少8位字符）"
+                required
+                type="password"
+              />
+              <PasswordStrengthMeter :password="form.password" />
+            </div>
+          </div>
+
+          <!-- 确认新密码输入 -->
+          <div>
+            <label
+              class="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-300"
+              for="confirmPassword"
+            >
+              确认新密码 <span class="text-red-500">*</span>
+            </label>
+            <div class="relative">
+              <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                <svg
+                  class="h-5 w-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+              </div>
+              <input
+                id="confirmPassword"
+                v-model="form.confirmPassword"
+                autocomplete="new-password"
+                class="block w-full rounded-xl border-2 border-[#d8d5ce] bg-[#F5F2EB] py-3 pl-11 pr-4 text-gray-900 placeholder-gray-400 transition-all focus:border-[#D97757] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#D97757]/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900/50 dark:text-white dark:placeholder-gray-500 dark:focus:border-[#D97757] dark:focus:bg-gray-900 dark:focus:ring-[#D97757]/20"
+                :disabled="loading"
+                name="confirmPassword"
+                placeholder="请确认新密码"
                 required
                 type="password"
               />
@@ -177,11 +138,11 @@
             <p class="text-sm font-medium text-red-700 dark:text-red-300">{{ error }}</p>
           </div>
 
-          <!-- 登录按钮 -->
-          <div>
+          <!-- 重置密码按钮 -->
+          <div class="pt-2">
             <button
               class="group relative flex w-full items-center justify-center overflow-hidden rounded-full bg-[#D97757] px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-[#D97757]/30 transition-all hover:scale-[1.02] hover:bg-[#c86847] hover:shadow-xl hover:shadow-[#D97757]/40 focus:outline-none focus:ring-2 focus:ring-[#D97757] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:shadow-[#D97757]/20 dark:hover:shadow-[#D97757]/30 dark:focus:ring-offset-gray-800"
-              :disabled="loading || !form.username || !form.password"
+              :disabled="loading || !isFormValid"
               type="submit"
             >
               <span v-if="loading" class="absolute inset-y-0 left-0 flex items-center pl-4">
@@ -206,93 +167,134 @@
                   ></path>
                 </svg>
               </span>
-              {{ loading ? '登录中...' : '登录' }}
+              {{ loading ? '重置中...' : '重置密码' }}
             </button>
           </div>
+        </form>
 
-          <!-- 快捷链接 -->
-          <div v-if="authType === 'local'" class="space-y-3 pt-2">
-            <div class="text-center">
-              <router-link
-                class="text-sm font-medium text-[#D97757] transition-colors hover:text-[#c86847] dark:text-[#E6A87C] dark:hover:text-[#D97757]"
-                to="/forgot-password"
-              >
-                忘记密码？
-              </router-link>
+        <!-- 成功提示 -->
+        <div
+          v-if="success"
+          class="flex items-start space-x-4 rounded-xl border-2 border-green-200 bg-green-50 p-6 dark:border-green-800/50 dark:bg-green-900/20"
+        >
+          <div class="flex-shrink-0">
+            <div
+              class="flex h-12 w-12 items-center justify-center rounded-2xl bg-green-500 dark:bg-green-600"
+            >
+              <svg class="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  clip-rule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  fill-rule="evenodd"
+                />
+              </svg>
             </div>
-            <div class="border-t border-[#d8d5ce] pt-4 text-left dark:border-gray-700">
+          </div>
+          <div class="flex-1">
+            <h3 class="text-base font-bold text-green-800 dark:text-green-300">密码重置成功</h3>
+            <p class="mt-2 text-sm text-green-700 dark:text-green-400">
+              您的密码已成功重置。现在您可以使用新密码登录了。
+            </p>
+            <div class="mt-4">
               <router-link
-                class="text-sm font-medium text-[#5f5f5f] transition-colors hover:text-[#D97757] dark:text-gray-400 dark:hover:text-[#E6A87C]"
-                to="/user-register"
+                class="inline-flex items-center rounded-full bg-[#D97757] px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:scale-105 hover:bg-[#c86847] hover:shadow-lg"
+                to="/user-login"
               >
-                创建账户
+                前往登录
               </router-link>
             </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useUserStore } from '@/stores/user'
-import { useAuthStore } from '@/stores/auth'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import axios from 'axios'
 import { useThemeStore } from '@/stores/theme'
 import { showToast } from '@/utils/toast'
 import ThemeToggle from '@/components/common/ThemeToggle.vue'
+import PasswordStrengthMeter from '@/components/user/PasswordStrengthMeter.vue'
+import { API_PREFIX } from '@/config/api'
 
-const router = useRouter()
-const userStore = useUserStore()
-const authStore = useAuthStore()
+const route = useRoute()
 const themeStore = useThemeStore()
 
 const loading = ref(false)
 const error = ref('')
-const authType = ref('local') // 默认本地登录
-
-// 检查 LDAP 是否启用
-const isLdapEnabled = computed(() => authStore.oemSettings?.ldapEnabled || false)
+const success = ref(false)
 
 const form = reactive({
-  username: '',
-  password: ''
+  password: '',
+  confirmPassword: ''
 })
 
-const handleLogin = async () => {
-  if (!form.username || !form.password) {
-    error.value = '请输入用户名和密码'
+const resetToken = computed(() => {
+  return route.params.token || ''
+})
+
+const isFormValid = computed(() => {
+  return (
+    form.password &&
+    form.confirmPassword &&
+    form.password === form.confirmPassword &&
+    form.password.length >= 8
+  )
+})
+
+const handleSubmit = async () => {
+  error.value = ''
+  success.value = false
+
+  // 验证密码匹配
+  if (form.password !== form.confirmPassword) {
+    error.value = '密码不匹配'
+    return
+  }
+
+  // 验证密码长度
+  if (form.password.length < 8) {
+    error.value = '密码至少需要8位字符'
+    return
+  }
+
+  if (!resetToken.value) {
+    error.value = '无效的重置令牌。请重新申请密码重置链接。'
     return
   }
 
   loading.value = true
-  error.value = ''
 
   try {
-    await userStore.login({
-      username: form.username,
-      password: form.password,
-      authType: authType.value
+    const response = await axios.post(`${API_PREFIX}/users/reset-password`, {
+      token: resetToken.value,
+      newPassword: form.password
     })
 
-    showToast('登录成功！', 'success')
-    router.push('/user-dashboard')
+    if (response.data.success) {
+      success.value = true
+      showToast('密码重置成功！请登录。', 'success')
+    }
   } catch (err) {
-    console.error('Login error:', err)
-    error.value = err.response?.data?.message || err.message || '登录失败'
+    console.error('Reset password error:', err)
+    error.value = err.response?.data?.message || err.message || '密码重置失败'
+    showToast(error.value, 'error')
   } finally {
     loading.value = false
   }
 }
 
-onMounted(async () => {
-  // 初始化主题（因为该页面不在 MainLayout 内）
+onMounted(() => {
+  // 初始化主题
   themeStore.initTheme()
 
-  // 加载 OEM 设置以获取 LDAP 配置
-  await authStore.loadOemSettings()
+  // 检查是否有重置token
+  if (!resetToken.value) {
+    error.value = '无效或缺失的重置令牌。请重新申请密码重置链接。'
+  }
 })
 </script>
 

@@ -6,8 +6,13 @@ import { APP_CONFIG } from '@/config/app'
 // 路由懒加载
 const LoginView = () => import('@/views/LoginView.vue')
 const UserLoginView = () => import('@/views/UserLoginView.vue')
+const UserRegisterView = () => import('@/views/UserRegisterView.vue')
+const ForgotPasswordView = () => import('@/views/ForgotPasswordView.vue')
+const ResetPasswordView = () => import('@/views/ResetPasswordView.vue')
+const EmailVerificationView = () => import('@/views/EmailVerificationView.vue')
 const UserDashboardView = () => import('@/views/UserDashboardView.vue')
 const UserManagementView = () => import('@/views/UserManagementView.vue')
+const RechargeRecordsView = () => import('@/views/RechargeRecordsView.vue')
 const MainLayout = () => import('@/components/layout/MainLayout.vue')
 const DashboardView = () => import('@/views/DashboardView.vue')
 const ApiKeysView = () => import('@/views/ApiKeysView.vue')
@@ -22,16 +27,16 @@ const routes = [
   {
     path: '/',
     redirect: () => {
-      // 智能重定向：避免循环
-      const currentPath = window.location.pathname
-      const basePath = APP_CONFIG.basePath.replace(/\/$/, '') // 移除末尾斜杠
+      // 智能重定向：检查 hash 中是否已有路由
+      const hash = window.location.hash
 
-      // 如果当前路径已经是 basePath 或 basePath/，重定向到 api-stats
-      if (currentPath === basePath || currentPath === basePath + '/') {
-        return '/api-stats'
+      // 如果 hash 中已经有路由（如 #/reset-password/...），则不重定向到默认页
+      if (hash && hash.length > 2 && hash.startsWith('#/') && hash !== '#/') {
+        const hashRoute = hash.substring(1)
+        return hashRoute
       }
 
-      // 否则保持默认重定向
+      // 否则默认重定向到 api-stats
       return '/api-stats'
     }
   },
@@ -50,6 +55,30 @@ const routes = [
     name: 'UserLogin',
     component: UserLoginView,
     meta: { requiresAuth: false, userAuth: true }
+  },
+  {
+    path: '/user-register',
+    name: 'UserRegister',
+    component: UserRegisterView,
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: ForgotPasswordView,
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/reset-password/:token',
+    name: 'ResetPassword',
+    component: ResetPasswordView,
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/verify-email/:token',
+    name: 'EmailVerification',
+    component: EmailVerificationView,
+    meta: { requiresAuth: false }
   },
   {
     path: '/user-dashboard',
@@ -156,6 +185,18 @@ const routes = [
         path: '',
         name: 'UserManagement',
         component: UserManagementView
+      }
+    ]
+  },
+  {
+    path: '/recharge-records',
+    component: MainLayout,
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'RechargeRecords',
+        component: RechargeRecordsView
       }
     ]
   },

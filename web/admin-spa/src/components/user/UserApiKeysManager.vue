@@ -1,39 +1,40 @@
 <template>
   <div class="space-y-6">
-    <div class="sm:flex sm:items-center">
-      <div class="sm:flex-auto">
-        <h1 class="text-2xl font-semibold text-gray-900">My API Keys</h1>
-        <p class="mt-2 text-sm text-gray-700">
-          Manage your API keys to access Claude Relay services
+    <!-- Header -->
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">我的 API Keys</h1>
+        <p class="mt-2 text-base text-gray-600 dark:text-gray-400">
+          管理您的 API 密钥以访问 {{ siteName }} 服务
         </p>
       </div>
-      <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-        <button
-          class="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-          :disabled="activeApiKeysCount >= maxApiKeys"
-          @click="showCreateModal = true"
-        >
-          <svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-            />
-          </svg>
-          Create API Key
-        </button>
-      </div>
+      <button
+        class="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#D97757] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-[#D97757]/30 transition-all hover:scale-105 hover:shadow-xl hover:shadow-[#D97757]/40 focus:outline-none focus:ring-2 focus:ring-[#D97757] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:shadow-[#D97757]/20 dark:hover:shadow-[#D97757]/30"
+        :disabled="activeApiKeysCount >= maxApiKeys"
+        @click="showCreateModal = true"
+      >
+        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+          />
+        </svg>
+        创建 API Key
+      </button>
     </div>
 
     <!-- API Keys 数量限制提示 -->
     <div
       v-if="activeApiKeysCount >= maxApiKeys"
-      class="rounded-md border border-yellow-200 bg-yellow-50 p-4"
+      class="flex items-start space-x-4 rounded-2xl border-2 border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 p-5 dark:border-amber-800/50 dark:from-amber-900/20 dark:to-yellow-900/20"
     >
-      <div class="flex">
-        <div class="flex-shrink-0">
-          <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+      <div class="flex-shrink-0">
+        <div
+          class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500 dark:bg-amber-600"
+        >
+          <svg class="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 20 20">
             <path
               clip-rule="evenodd"
               d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
@@ -41,132 +42,122 @@
             />
           </svg>
         </div>
-        <div class="ml-3">
-          <p class="text-sm text-yellow-700">
-            You have reached the maximum number of API keys ({{ maxApiKeys }}). Please delete an
-            existing key to create a new one.
-          </p>
-        </div>
+      </div>
+      <div class="flex-1">
+        <h3 class="text-sm font-bold text-amber-900 dark:text-amber-200">
+          已达到 API Key 数量上限
+        </h3>
+        <p class="mt-1 text-sm text-amber-800 dark:text-amber-300">
+          您已达到 API Key 的最大数量 ({{ maxApiKeys }})。请删除现有的 Key 以创建新的。
+        </p>
       </div>
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="py-12 text-center">
-      <svg
-        class="mx-auto h-8 w-8 animate-spin text-blue-600"
-        fill="none"
-        viewBox="0 0 24 24"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <circle
-          class="opacity-25"
-          cx="12"
-          cy="12"
-          r="10"
-          stroke="currentColor"
-          stroke-width="4"
-        ></circle>
-        <path
-          class="opacity-75"
-          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-          fill="currentColor"
-        ></path>
-      </svg>
-      <p class="mt-2 text-sm text-gray-500">Loading API keys...</p>
+    <div v-if="loading" class="flex flex-col items-center justify-center py-16">
+      <div class="relative">
+        <div class="h-20 w-20 rounded-full border-4 border-[#E6E2DA] dark:border-gray-700"></div>
+        <div
+          class="absolute top-0 h-20 w-20 animate-spin rounded-full border-4 border-transparent border-t-[#D97757]"
+        ></div>
+      </div>
+      <p class="mt-4 text-base font-medium text-gray-700 dark:text-gray-300">加载 API Keys 中...</p>
     </div>
 
     <!-- API Keys List -->
-    <div v-else-if="sortedApiKeys.length > 0" class="overflow-hidden bg-white shadow sm:rounded-md">
-      <ul class="divide-y divide-gray-200" role="list">
-        <li v-for="apiKey in sortedApiKeys" :key="apiKey.id" class="px-6 py-4">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <div
-                  :class="[
-                    'h-2 w-2 rounded-full',
-                    apiKey.isDeleted === 'true' || apiKey.deletedAt
-                      ? 'bg-gray-400'
-                      : apiKey.isActive
-                        ? 'bg-green-400'
-                        : 'bg-red-400'
-                  ]"
-                ></div>
-              </div>
-              <div class="ml-4">
-                <div class="flex items-center">
-                  <p class="text-sm font-medium text-gray-900">{{ apiKey.name }}</p>
-                  <span
-                    v-if="apiKey.isDeleted === 'true' || apiKey.deletedAt"
-                    class="ml-2 inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800"
-                  >
-                    Deleted
-                  </span>
-                  <span
-                    v-else-if="!apiKey.isActive"
-                    class="ml-2 inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800"
-                  >
-                    Deleted
-                  </span>
-                </div>
-                <div class="mt-1">
-                  <p class="text-sm text-gray-500">{{ apiKey.description || 'No description' }}</p>
-                  <div class="mt-1 flex items-center space-x-4 text-xs text-gray-400">
-                    <span>Created: {{ formatDate(apiKey.createdAt) }}</span>
-                    <span v-if="apiKey.isDeleted === 'true' || apiKey.deletedAt"
-                      >Deleted: {{ formatDate(apiKey.deletedAt) }}</span
-                    >
-                    <span v-else-if="apiKey.lastUsedAt"
-                      >Last used: {{ formatDate(apiKey.lastUsedAt) }}</span
-                    >
-                    <span v-else>Never used</span>
-                    <span
-                      v-if="apiKey.expiresAt && !(apiKey.isDeleted === 'true' || apiKey.deletedAt)"
-                      >Expires: {{ formatDate(apiKey.expiresAt) }}</span
-                    >
-                  </div>
-                </div>
+    <div v-else-if="sortedApiKeys.length > 0" class="grid grid-cols-1 gap-6">
+      <div
+        v-for="apiKey in sortedApiKeys"
+        :key="apiKey.id"
+        class="group relative overflow-hidden rounded-3xl border border-gray-200/50 bg-white/80 p-6 shadow-lg backdrop-blur-xl transition-all hover:-translate-y-1 hover:shadow-2xl dark:border-gray-700/50 dark:bg-gray-800/80"
+      >
+        <!-- 装饰性背景 -->
+        <div
+          class="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full opacity-20 transition-opacity group-hover:opacity-30"
+          :class="
+            apiKey.isDeleted === 'true' || apiKey.deletedAt
+              ? 'bg-gray-400'
+              : apiKey.isActive
+                ? 'bg-[#D97757]'
+                : 'bg-red-400'
+          "
+        ></div>
+
+        <div class="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <!-- Left Section: Key Info -->
+          <div class="flex flex-1 items-start gap-4">
+            <!-- Status Indicator -->
+            <div class="flex-shrink-0 pt-1">
+              <div
+                class="flex h-12 w-12 items-center justify-center rounded-2xl shadow-lg"
+                :class="
+                  apiKey.isDeleted === 'true' || apiKey.deletedAt
+                    ? 'bg-gradient-to-br from-gray-400 to-gray-500'
+                    : apiKey.isActive
+                      ? 'bg-[#D97757]'
+                      : 'bg-gradient-to-br from-red-500 to-rose-600'
+                "
+              >
+                <svg
+                  class="h-6 w-6 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M15 7a2 2 0 012 2m0 0a2 2 0 012 2m-2-2h-6m6 0v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9a2 2 0 012-2h6z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
               </div>
             </div>
-            <div class="flex items-center space-x-2">
-              <!-- Usage Stats -->
-              <div class="text-right text-xs text-gray-500">
-                <div>{{ formatNumber(apiKey.usage?.requests || 0) }} requests</div>
-                <div v-if="apiKey.usage?.totalCost">${{ apiKey.usage.totalCost.toFixed(4) }}</div>
+
+            <!-- Key Details -->
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ apiKey.name }}</h3>
+                <span
+                  v-if="apiKey.isDeleted === 'true' || apiKey.deletedAt"
+                  class="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                >
+                  已删除
+                </span>
+                <span
+                  v-else-if="apiKey.isActive"
+                  class="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-800 dark:bg-green-900 dark:text-green-200"
+                >
+                  活跃
+                </span>
+                <span
+                  v-else
+                  class="inline-flex items-center rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-800 dark:bg-red-900 dark:text-red-200"
+                >
+                  已停用
+                </span>
               </div>
 
-              <!-- Actions -->
-              <div class="flex items-center space-x-1">
-                <button
-                  class="inline-flex items-center rounded border border-transparent p-1 text-gray-400 hover:text-gray-600"
-                  title="View API Key"
-                  @click="showApiKey(apiKey)"
-                >
+              <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                {{ apiKey.description || '无描述' }}
+              </p>
+
+              <!-- Metadata -->
+              <div class="mt-3 flex flex-wrap gap-3 text-xs text-gray-500 dark:text-gray-400">
+                <span class="flex items-center gap-1">
                   <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                    />
-                    <path
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                       stroke-linecap="round"
                       stroke-linejoin="round"
                       stroke-width="2"
                     />
                   </svg>
-                </button>
-
-                <button
-                  v-if="
-                    !(apiKey.isDeleted === 'true' || apiKey.deletedAt) &&
-                    apiKey.isActive &&
-                    allowUserDeleteApiKeys
-                  "
-                  class="inline-flex items-center rounded border border-transparent p-1 text-red-400 hover:text-red-600"
-                  title="Delete API Key"
-                  @click="deleteApiKey(apiKey)"
+                  创建：{{ formatDate(apiKey.createdAt) }}
+                </span>
+                <span
+                  v-if="apiKey.isDeleted === 'true' || apiKey.deletedAt"
+                  class="flex items-center gap-1"
                 >
                   <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
@@ -176,47 +167,172 @@
                       stroke-width="2"
                     />
                   </svg>
-                </button>
+                  删除：{{ formatDate(apiKey.deletedAt) }}
+                </span>
+                <span v-else-if="apiKey.lastUsedAt" class="flex items-center gap-1">
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      d="M13 10V3L4 14h7v7l9-11h-7z"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                    />
+                  </svg>
+                  最后使用：{{ formatDate(apiKey.lastUsedAt) }}
+                </span>
+                <span v-else class="flex items-center gap-1">
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                    />
+                  </svg>
+                  从未使用
+                </span>
+                <span
+                  v-if="apiKey.expiresAt && !(apiKey.isDeleted === 'true' || apiKey.deletedAt)"
+                  class="flex items-center gap-1"
+                >
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                    />
+                  </svg>
+                  过期：{{ formatDate(apiKey.expiresAt) }}
+                </span>
               </div>
             </div>
           </div>
-        </li>
-      </ul>
+
+          <!-- Right Section: Stats & Actions -->
+          <div class="flex flex-row items-center gap-4 lg:flex-col lg:items-end">
+            <!-- Usage Stats -->
+            <div class="rounded-2xl bg-gray-50 px-4 py-3 text-center dark:bg-gray-700/50">
+              <p class="text-xs font-semibold text-gray-600 dark:text-gray-400">请求数</p>
+              <p class="mt-1 text-lg font-bold text-gray-900 dark:text-white">
+                {{ formatNumber(apiKey.usage?.requests || 0) }}
+              </p>
+              <p
+                v-if="apiKey.usage?.totalCost"
+                class="mt-1 text-xs text-gray-500 dark:text-gray-400"
+              >
+                ${{ apiKey.usage.totalCost.toFixed(4) }}
+              </p>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex gap-2">
+              <button
+                class="rounded-xl bg-blue-100 p-2 text-blue-600 transition-all hover:scale-110 hover:bg-blue-200 dark:bg-blue-900/50 dark:text-blue-400 dark:hover:bg-blue-900"
+                title="查看 API Key"
+                @click="showApiKey(apiKey)"
+              >
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                  <path
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+              </button>
+
+              <button
+                v-if="!(apiKey.isDeleted === 'true' || apiKey.deletedAt) && apiKey.isActive"
+                class="inline-flex items-center gap-2 rounded-xl bg-green-100 px-3 py-2 text-green-600 transition-all hover:scale-105 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-400 dark:hover:bg-green-900"
+                title="API Key 快速配置指南"
+                @click="showConfigGuide(apiKey)"
+              >
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                  <path
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+                <span class="whitespace-nowrap text-sm font-medium">API Key 快速配置指南</span>
+              </button>
+
+              <button
+                v-if="
+                  !(apiKey.isDeleted === 'true' || apiKey.deletedAt) &&
+                  apiKey.isActive &&
+                  allowUserDeleteApiKeys
+                "
+                class="rounded-xl bg-red-100 p-2 text-red-600 transition-all hover:scale-110 hover:bg-red-200 dark:bg-red-900/50 dark:text-red-400 dark:hover:bg-red-900"
+                title="删除 API Key"
+                @click="deleteApiKey(apiKey)"
+              >
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Empty State -->
-    <div v-else class="py-12 text-center">
-      <svg
-        class="mx-auto h-12 w-12 text-gray-400"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
+    <div v-else class="flex flex-col items-center justify-center py-20">
+      <div
+        class="mb-6 flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800"
       >
-        <path
-          d="M15 7a2 2 0 012 2m0 0a2 2 0 012 2m-2-2h-6m6 0v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9a2 2 0 012-2h6z"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-        />
-      </svg>
-      <h3 class="mt-2 text-sm font-medium text-gray-900">No API keys</h3>
-      <p class="mt-1 text-sm text-gray-500">Get started by creating your first API key.</p>
-      <div class="mt-6">
-        <button
-          class="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          @click="showCreateModal = true"
+        <svg
+          class="h-12 w-12 text-gray-400 dark:text-gray-500"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
         >
-          <svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-            />
-          </svg>
-          Create API Key
-        </button>
+          <path
+            d="M15 7a2 2 0 012 2m0 0a2 2 0 012 2m-2-2h-6m6 0v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9a2 2 0 012-2h6z"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+          />
+        </svg>
       </div>
+      <h3 class="text-xl font-bold text-gray-900 dark:text-white">还没有 API Keys</h3>
+      <p class="mt-2 text-base text-gray-600 dark:text-gray-400">
+        创建您的第一个 API Key 来开始使用服务
+      </p>
+      <button
+        class="mt-6 inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/30 transition-all hover:scale-105 hover:shadow-xl hover:shadow-blue-500/40 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        @click="showCreateModal = true"
+      >
+        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+          />
+        </svg>
+        创建 API Key
+      </button>
     </div>
 
     <!-- Create API Key Modal -->
@@ -236,12 +352,19 @@
     <!-- Confirm Delete Modal -->
     <ConfirmModal
       confirm-class="bg-red-600 hover:bg-red-700"
-      confirm-text="Delete"
-      :message="`Are you sure you want to delete '${selectedApiKey?.name}'? This action cannot be undone.`"
+      confirm-text="删除"
+      :message="`确定要删除 '${selectedApiKey?.name}' 吗？此操作无法撤销。`"
       :show="showDeleteModal"
-      title="Delete API Key"
+      title="删除 API Key"
       @cancel="showDeleteModal = false"
       @confirm="handleDeleteConfirm"
+    />
+
+    <!-- Configuration Guide Modal -->
+    <ConfigurationGuideModal
+      :api-key="selectedApiKey"
+      :show="showConfigModal"
+      @close="showConfigModal = false"
     />
   </div>
 </template>
@@ -249,12 +372,18 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
+import { useAuthStore } from '@/stores/auth'
 import { showToast } from '@/utils/toast'
 import CreateApiKeyModal from './CreateApiKeyModal.vue'
 import ViewApiKeyModal from './ViewApiKeyModal.vue'
+import ConfigurationGuideModal from './ConfigurationGuideModal.vue'
 import ConfirmModal from '@/components/common/ConfirmModal.vue'
 
 const userStore = useUserStore()
+const authStore = useAuthStore()
+
+// 获取站点名称配置
+const siteName = computed(() => authStore.oemSettings?.siteName || 'Claude Relay')
 
 const loading = ref(true)
 const apiKeys = ref([])
@@ -264,6 +393,7 @@ const allowUserDeleteApiKeys = computed(() => userStore.config?.allowUserDeleteA
 const showCreateModal = ref(false)
 const showViewModal = ref(false)
 const showDeleteModal = ref(false)
+const showConfigModal = ref(false)
 const selectedApiKey = ref(null)
 
 // Computed property to sort API keys by creation time (descending - newest first)
@@ -291,9 +421,9 @@ const formatNumber = (num) => {
 
 const formatDate = (dateString) => {
   if (!dateString) return null
-  return new Date(dateString).toLocaleDateString('en-US', {
+  return new Date(dateString).toLocaleDateString('zh-CN', {
     year: 'numeric',
-    month: 'short',
+    month: 'long',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
@@ -303,10 +433,10 @@ const formatDate = (dateString) => {
 const loadApiKeys = async () => {
   loading.value = true
   try {
-    apiKeys.value = await userStore.getUserApiKeys(true) // Include deleted keys
+    apiKeys.value = await userStore.getUserApiKeys(false) // 不包含已删除的 keys
   } catch (error) {
     console.error('Failed to load API keys:', error)
-    showToast('Failed to load API keys', 'error')
+    showToast('加载 API Keys 失败', 'error')
   } finally {
     loading.value = false
   }
@@ -315,6 +445,11 @@ const loadApiKeys = async () => {
 const showApiKey = (apiKey) => {
   selectedApiKey.value = apiKey
   showViewModal.value = true
+}
+
+const showConfigGuide = (apiKey) => {
+  selectedApiKey.value = apiKey
+  showConfigModal.value = true
 }
 
 const deleteApiKey = (apiKey) => {
@@ -327,24 +462,34 @@ const handleDeleteConfirm = async () => {
     const result = await userStore.deleteApiKey(selectedApiKey.value.id)
 
     if (result.success) {
-      showToast('API key deleted successfully', 'success')
+      showToast('API Key 删除成功', 'success')
       await loadApiKeys()
     }
   } catch (error) {
     console.error('Failed to delete API key:', error)
-    showToast('Failed to delete API key', 'error')
+    showToast('删除 API Key 失败', 'error')
   } finally {
     showDeleteModal.value = false
     selectedApiKey.value = null
   }
 }
 
-const handleApiKeyCreated = async () => {
+const handleApiKeyCreated = async (newApiKey) => {
   showCreateModal.value = false
   await loadApiKeys()
+
+  // 如果提供了新创建的 API Key，自动显示配置指南
+  if (newApiKey) {
+    setTimeout(() => {
+      selectedApiKey.value = newApiKey
+      showConfigModal.value = true
+    }, 500) // 短暂延迟以确保列表已刷新
+  }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // 加载 OEM 设置以获取站点名称配置
+  await authStore.loadOemSettings()
   loadApiKeys()
 })
 </script>

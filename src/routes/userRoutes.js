@@ -9,6 +9,94 @@ const inputValidator = require('../utils/inputValidator')
 const { RateLimiterRedis } = require('rate-limiter-flexible')
 const redis = require('../models/redis')
 const { authenticateUser, authenticateUserOrAdmin, requireAdmin } = require('../middleware/auth')
+const CostCalculator = require('../utils/costCalculator')
+const referralService = require('../services/referralService')
+
+function formatCsvValue(value) {
+  if (value === null || value === undefined) {
+    return '""'
+  }
+  const stringValue = String(value)
+  const escaped = stringValue.replace(/"/g, '""')
+  return `"${escaped}"`
+}
+
+function toNumberString(value, decimals) {
+  const num = Number(value)
+  if (!Number.isFinite(num)) {
+    return ''
+  }
+  return typeof decimals === 'number' ? num.toFixed(decimals) : String(num)
+}
+
+function buildUserExportCsv(users = []) {
+  const columns = [
+    { header: 'Username', value: (user) => user.username || '' },
+    { header: 'Display Name', value: (user) => user.displayName || '' },
+    { header: 'Email', value: (user) => user.email || '' },
+    { header: 'Role', value: (user) => user.role || '' },
+    { header: 'Status', value: (user) => (user.isActive ? 'Active' : 'Disabled') },
+    { header: 'Created At', value: (user) => user.createdAt || '' },
+    { header: 'Last Login At', value: (user) => user.lastLoginAt || '' },
+    {
+      header: 'API Key Count',
+      value: (user) => toNumberString(user.apiKeyCount ?? 0)
+    },
+    {
+      header: 'Requests',
+      value: (user) => toNumberString(user.totalUsage?.requests ?? 0)
+    },
+    {
+      header: 'Input Tokens',
+      value: (user) => toNumberString(user.totalUsage?.inputTokens ?? 0)
+    },
+    {
+      header: 'Output Tokens',
+      value: (user) => toNumberString(user.totalUsage?.outputTokens ?? 0)
+    },
+    {
+      header: 'Total Cost (USD)',
+      value: (user) => toNumberString(user.totalUsage?.totalCost ?? 0, 4)
+    },
+    {
+      header: 'Balance (USD)',
+      value: (user) => toNumberString(user.balance ?? 0, 4)
+    },
+    {
+      header: 'Total Recharge (USD)',
+      value: (user) => toNumberString(user.totalRecharge ?? 0, 4)
+    },
+    {
+      header: 'Available Balance (USD)',
+      value: (user) => toNumberString(user.availableBalance ?? user.balance ?? 0, 4)
+    },
+    { header: 'Last Recharge At', value: (user) => user.lastRechargeAt || '' },
+    {
+      header: 'Referral Invites',
+      value: (user) => toNumberString(user.referralStats?.totalInvites ?? 0)
+    },
+    {
+      header: 'Referral Qualified',
+      value: (user) => toNumberString(user.referralStats?.qualifiedInvites ?? 0)
+    },
+    {
+      header: 'Referral Rewards (USD)',
+      value: (user) => toNumberString(user.referralStats?.totalRewardUsd ?? 0, 2)
+    },
+    {
+      header: 'Email Verified',
+      value: (user) =>
+        typeof user.emailVerified === 'boolean' ? (user.emailVerified ? 'Yes' : 'No') : ''
+    }
+  ]
+
+  const header = columns.map((column) => formatCsvValue(column.header)).join(',')
+  const lines = users.map((user) =>
+    columns.map((column) => formatCsvValue(column.value(user))).join(',')
+  )
+
+  return [header, ...lines].join('\n')
+}
 
 // 🚦 配置登录速率限制
 // 只基于IP地址限制，避免攻击者恶意锁定特定账户
@@ -46,6 +134,84 @@ function initRateLimiters() {
     }
   }
   return { ipRateLimiter, strictIpRateLimiter }
+}
+
+// 🔒 账户锁定相关函数
+const ACCOUNT_LOCK_PREFIX = 'account_lock:'
+const ACCOUNT_LOCK_DURATION = 900 // 15分钟（秒）
+const MAX_LOGIN_ATTEMPTS = 5 // 最多失败5次
+
+// 检查账户是否被锁定
+async function checkAccountLock(username) {
+  try {
+    const lockKey = `${ACCOUNT_LOCK_PREFIX}${username}`
+    const lockData = await redis.get(lockKey)
+
+    if (!lockData) {
+      return { locked: false, attempts: 0 }
+    }
+
+    const data = JSON.parse(lockData)
+    const now = Date.now()
+
+    // 检查是否已过锁定期
+    if (data.lockedUntil && now < data.lockedUntil) {
+      return {
+        locked: true,
+        attempts: data.attempts,
+        remainingSeconds: Math.ceil((data.lockedUntil - now) / 1000)
+      }
+    }
+
+    // 锁定期已过，重置
+    await redis.del(lockKey)
+    return { locked: false, attempts: 0 }
+  } catch (error) {
+    logger.error('❌ Error checking account lock:', error)
+    // 出错时默认不锁定
+    return { locked: false, attempts: 0 }
+  }
+}
+
+// 记录登录失败
+async function recordLoginFailure(username) {
+  try {
+    const lockKey = `${ACCOUNT_LOCK_PREFIX}${username}`
+    const lockData = await redis.get(lockKey)
+
+    let attempts = 1
+    if (lockData) {
+      const data = JSON.parse(lockData)
+      attempts = (data.attempts || 0) + 1
+    }
+
+    const newData = {
+      attempts,
+      lastAttempt: Date.now()
+    }
+
+    // 如果失败次数达到上限，锁定账户
+    if (attempts >= MAX_LOGIN_ATTEMPTS) {
+      newData.lockedUntil = Date.now() + ACCOUNT_LOCK_DURATION * 1000
+      logger.security(`🔒 Account locked due to too many failed attempts: ${username}`)
+    }
+
+    await redis.set(lockKey, JSON.stringify(newData), 'EX', ACCOUNT_LOCK_DURATION)
+    return attempts
+  } catch (error) {
+    logger.error('❌ Error recording login failure:', error)
+    return 0
+  }
+}
+
+// 清除登录失败记录（成功登录后）
+async function clearLoginFailures(username) {
+  try {
+    const lockKey = `${ACCOUNT_LOCK_PREFIX}${username}`
+    await redis.del(lockKey)
+  } catch (error) {
+    logger.error('❌ Error clearing login failures:', error)
+  }
 }
 
 // 🔐 用户登录端点
@@ -160,6 +326,465 @@ router.post('/login', async (req, res) => {
   }
 })
 
+// 📝 用户注册端点
+router.post('/register', async (req, res) => {
+  try {
+    const { username, email, password, displayName, firstName, lastName } = req.body
+    const clientIp = req.ip || req.connection.remoteAddress || 'unknown'
+
+    const referralCodeInput =
+      req.body?.referralCode || req.body?.inviter || req.query?.referralCode || req.query?.inviter
+    const referralCode = typeof referralCodeInput === 'string' ? referralCodeInput.trim() : ''
+    let referrerUser = null
+
+    // 初始化速率限制器（如果尚未初始化）
+    const limiters = initRateLimiters()
+
+    // 检查IP速率限制
+    if (limiters.ipRateLimiter) {
+      try {
+        await limiters.ipRateLimiter.consume(clientIp)
+      } catch (rateLimiterRes) {
+        const retryAfter = Math.round(rateLimiterRes.msBeforeNext / 1000) || 900
+        logger.security(`🚫 Registration rate limit exceeded for IP: ${clientIp}`)
+        res.set('Retry-After', String(retryAfter))
+        return res.status(429).json({
+          error: 'Too many requests',
+          message: 'Too many registration attempts from this IP. Please try again later.'
+        })
+      }
+    }
+
+    // 验证必填字段
+    if (!username || !email || !password) {
+      return res.status(400).json({
+        error: 'Missing fields',
+        message: 'Username, email, and password are required'
+      })
+    }
+
+    // 验证输入格式
+    try {
+      inputValidator.validateUsername(username)
+      inputValidator.validateEmail(email)
+      inputValidator.validatePassword(password)
+      if (displayName) {
+        inputValidator.validateDisplayName(displayName)
+      }
+    } catch (validationError) {
+      return res.status(400).json({
+        error: 'Invalid input',
+        message: validationError.message
+      })
+    }
+
+    // 检查用户管理是否启用
+    if (!config.userManagement.enabled) {
+      return res.status(503).json({
+        error: 'Service unavailable',
+        message: 'User management is not enabled'
+      })
+    }
+
+    if (referralCode) {
+      if (!referralService.isEnabled()) {
+        return res.status(400).json({
+          error: 'Referral disabled',
+          message: 'Referral program is not enabled at the moment'
+        })
+      }
+
+      const referrerId = await referralService.findUserIdByCode(referralCode)
+      if (!referrerId) {
+        return res.status(400).json({
+          error: 'Invalid referral code',
+          message: '邀请链接无效或已失效'
+        })
+      }
+
+      referrerUser = await userService.getUserById(referrerId, false)
+      if (!referrerUser) {
+        return res.status(400).json({
+          error: 'Invalid referral code',
+          message: '邀请人信息不存在'
+        })
+      }
+
+      const maxInvitees = parseInt(config.referralProgram?.maxInviteesPerUser) || 0
+      if (maxInvitees > 0) {
+        const stats = await referralService.getUserStats(referrerUser.id)
+        if (stats.totalInvites >= maxInvitees) {
+          return res.status(400).json({
+            error: 'Referral limit reached',
+            message: '邀请人可用名额已用完，请联系管理员'
+          })
+        }
+      }
+    }
+
+    // 注册用户
+    const user = await userService.registerLocalUser({
+      username,
+      email,
+      password,
+      displayName,
+      firstName,
+      lastName
+    })
+
+    if (referrerUser) {
+      try {
+        await referralService.recordInvitation({
+          inviteeId: user.id,
+          inviteeUsername: user.username,
+          referrerId: referrerUser.id,
+          referrerUsername: referrerUser.username
+        })
+      } catch (referralError) {
+        logger.error('❌ Failed to record referral info:', referralError)
+      }
+    }
+
+    // 初始化新用户优惠活动
+    const promotionService = require('../services/promotionService')
+    if (promotionService.isEnabled() && promotionService.autoStartForNewUsers) {
+      try {
+        await promotionService.initUserPromotion(user.id, user.username)
+        logger.info(`🎁 Promotion activated for new user: ${user.username}`)
+      } catch (promotionError) {
+        // 优惠初始化失败不影响注册
+        logger.error('❌ Failed to init promotion for new user:', promotionError)
+      }
+    }
+
+    logger.info(`📝 New user registered: ${username} from IP: ${clientIp}`)
+
+    res.status(201).json({
+      success: true,
+      message: 'Registration successful',
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        displayName: user.displayName,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role
+      }
+    })
+  } catch (error) {
+    logger.error('❌ User registration error:', error)
+
+    // 返回友好的错误信息
+    if (error.message.includes('already exists')) {
+      return res.status(409).json({
+        error: 'Registration failed',
+        message: error.message
+      })
+    }
+
+    if (error.message.includes('not enabled') || error.message.includes('not allowed')) {
+      return res.status(403).json({
+        error: 'Registration failed',
+        message: error.message
+      })
+    }
+
+    res.status(500).json({
+      error: 'Registration error',
+      message: 'Internal server error during registration'
+    })
+  }
+})
+
+// 🔐 本地用户登录端点
+router.post('/login/local', async (req, res) => {
+  try {
+    const { username, password } = req.body
+    const clientIp = req.ip || req.connection.remoteAddress || 'unknown'
+
+    // 初始化速率限制器
+    const limiters = initRateLimiters()
+
+    // 检查IP速率限制
+    if (limiters.ipRateLimiter) {
+      try {
+        await limiters.ipRateLimiter.consume(clientIp)
+      } catch (rateLimiterRes) {
+        const retryAfter = Math.round(rateLimiterRes.msBeforeNext / 1000) || 900
+        logger.security(`🚫 Login rate limit exceeded for IP: ${clientIp}`)
+        res.set('Retry-After', String(retryAfter))
+        return res.status(429).json({
+          error: 'Too many requests',
+          message: 'Too many login attempts from this IP. Please try again later.'
+        })
+      }
+    }
+
+    if (limiters.strictIpRateLimiter) {
+      try {
+        await limiters.strictIpRateLimiter.consume(clientIp)
+      } catch (rateLimiterRes) {
+        const retryAfter = Math.round(rateLimiterRes.msBeforeNext / 1000) || 3600
+        logger.security(`🚫 Strict rate limit exceeded for IP: ${clientIp}`)
+        res.set('Retry-After', String(retryAfter))
+        return res.status(429).json({
+          error: 'Too many requests',
+          message: 'Too many login attempts detected. Access temporarily blocked.'
+        })
+      }
+    }
+
+    if (!username || !password) {
+      return res.status(400).json({
+        error: 'Missing credentials',
+        message: 'Username and password are required'
+      })
+    }
+
+    // 验证输入格式
+    let validatedUsername
+    try {
+      validatedUsername = inputValidator.validateUsername(username)
+      inputValidator.validatePassword(password)
+    } catch (validationError) {
+      return res.status(400).json({
+        error: 'Invalid input',
+        message: validationError.message
+      })
+    }
+
+    // 检查用户管理是否启用
+    if (!config.userManagement.enabled) {
+      return res.status(503).json({
+        error: 'Service unavailable',
+        message: 'User management is not enabled'
+      })
+    }
+
+    // 🔒 检查账户是否被锁定
+    const lockStatus = await checkAccountLock(validatedUsername)
+    if (lockStatus.locked) {
+      logger.security(
+        `🔒 Login attempt for locked account: ${validatedUsername} from IP: ${clientIp}`
+      )
+      return res.status(423).json({
+        error: 'Account locked',
+        message: `Too many failed login attempts. Please try again in ${lockStatus.remainingSeconds} seconds.`,
+        remainingSeconds: lockStatus.remainingSeconds
+      })
+    }
+
+    // 本地认证
+    const authResult = await userService.authenticateLocalUser(validatedUsername, password)
+
+    // ✅ 登录成功，清除失败记录
+    await clearLoginFailures(validatedUsername)
+
+    logger.info(`✅ Local user login successful: ${validatedUsername} from IP: ${clientIp}`)
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      user: {
+        id: authResult.user.id,
+        username: authResult.user.username,
+        email: authResult.user.email,
+        displayName: authResult.user.displayName,
+        firstName: authResult.user.firstName,
+        lastName: authResult.user.lastName,
+        role: authResult.user.role,
+        authType: authResult.user.authType
+      },
+      sessionToken: authResult.sessionToken
+    })
+  } catch (error) {
+    const clientIp = req.ip || req.connection.remoteAddress || 'unknown'
+    const { username } = req.body
+
+    // 记录登录失败
+    if (username) {
+      try {
+        const validatedUsername = inputValidator.validateUsername(username)
+        const attempts = await recordLoginFailure(validatedUsername)
+        logger.security(
+          `🚫 Failed local login attempt for ${validatedUsername} from IP: ${clientIp} (Attempt ${attempts}/${MAX_LOGIN_ATTEMPTS})`
+        )
+      } catch (err) {
+        // 用户名无效，不记录
+      }
+    }
+
+    logger.info(`🚫 Failed local login attempt from IP: ${clientIp}`)
+    logger.error('❌ Local user login error:', error)
+
+    // 返回通用错误信息，避免用户枚举
+    res.status(401).json({
+      error: 'Authentication failed',
+      message: 'Invalid username or password'
+    })
+  }
+})
+
+// 🔐 LDAP用户登录端点
+router.post('/login/ldap', async (req, res) => {
+  try {
+    const { username, password } = req.body
+    const clientIp = req.ip || req.connection.remoteAddress || 'unknown'
+
+    // 初始化速率限制器
+    const limiters = initRateLimiters()
+
+    // 检查IP速率限制
+    if (limiters.ipRateLimiter) {
+      try {
+        await limiters.ipRateLimiter.consume(clientIp)
+      } catch (rateLimiterRes) {
+        const retryAfter = Math.round(rateLimiterRes.msBeforeNext / 1000) || 900
+        logger.security(`🚫 Login rate limit exceeded for IP: ${clientIp}`)
+        res.set('Retry-After', String(retryAfter))
+        return res.status(429).json({
+          error: 'Too many requests',
+          message: 'Too many login attempts from this IP. Please try again later.'
+        })
+      }
+    }
+
+    if (limiters.strictIpRateLimiter) {
+      try {
+        await limiters.strictIpRateLimiter.consume(clientIp)
+      } catch (rateLimiterRes) {
+        const retryAfter = Math.round(rateLimiterRes.msBeforeNext / 1000) || 3600
+        logger.security(`🚫 Strict rate limit exceeded for IP: ${clientIp}`)
+        res.set('Retry-After', String(retryAfter))
+        return res.status(429).json({
+          error: 'Too many requests',
+          message: 'Too many login attempts detected. Access temporarily blocked.'
+        })
+      }
+    }
+
+    if (!username || !password) {
+      return res.status(400).json({
+        error: 'Missing credentials',
+        message: 'Username and password are required'
+      })
+    }
+
+    // 验证输入格式
+    let validatedUsername
+    try {
+      validatedUsername = inputValidator.validateUsername(username)
+      inputValidator.validatePassword(password)
+    } catch (validationError) {
+      return res.status(400).json({
+        error: 'Invalid input',
+        message: validationError.message
+      })
+    }
+
+    // 检查用户管理是否启用
+    if (!config.userManagement.enabled) {
+      return res.status(503).json({
+        error: 'Service unavailable',
+        message: 'User management is not enabled'
+      })
+    }
+
+    // 检查LDAP是否启用
+    if (!config.ldap || !config.ldap.enabled) {
+      return res.status(503).json({
+        error: 'Service unavailable',
+        message: 'LDAP authentication is not enabled'
+      })
+    }
+
+    // LDAP认证
+    const authResult = await ldapService.authenticateUserCredentials(validatedUsername, password)
+
+    if (!authResult.success) {
+      logger.info(
+        `🚫 Failed LDAP login attempt for user: ${validatedUsername} from IP: ${clientIp}`
+      )
+      return res.status(401).json({
+        error: 'Authentication failed',
+        message: authResult.message
+      })
+    }
+
+    logger.info(`✅ LDAP user login successful: ${validatedUsername} from IP: ${clientIp}`)
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      user: {
+        id: authResult.user.id,
+        username: authResult.user.username,
+        email: authResult.user.email,
+        displayName: authResult.user.displayName,
+        firstName: authResult.user.firstName,
+        lastName: authResult.user.lastName,
+        role: authResult.user.role
+      },
+      sessionToken: authResult.sessionToken
+    })
+  } catch (error) {
+    logger.error('❌ LDAP user login error:', error)
+    res.status(500).json({
+      error: 'Login error',
+      message: 'Internal server error during login'
+    })
+  }
+})
+
+// 🔄 修改密码端点
+router.post('/change-password', authenticateUser, async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({
+        error: 'Missing fields',
+        message: 'Old password and new password are required'
+      })
+    }
+
+    // 验证新密码格式
+    try {
+      inputValidator.validatePassword(newPassword)
+    } catch (validationError) {
+      return res.status(400).json({
+        error: 'Invalid input',
+        message: validationError.message
+      })
+    }
+
+    // 修改密码
+    await userService.updateUserPassword(req.user.id, oldPassword, newPassword)
+
+    logger.info(`🔄 User password changed: ${req.user.username}`)
+
+    res.json({
+      success: true,
+      message: 'Password changed successfully'
+    })
+  } catch (error) {
+    logger.error('❌ Change password error:', error)
+
+    if (error.message.includes('incorrect') || error.message.includes('Only local users')) {
+      return res.status(400).json({
+        error: 'Change password failed',
+        message: error.message
+      })
+    }
+
+    res.status(500).json({
+      error: 'Change password error',
+      message: 'Internal server error during password change'
+    })
+  }
+})
+
 // 🚪 用户登出端点
 router.post('/logout', authenticateUser, async (req, res) => {
   try {
@@ -176,6 +801,33 @@ router.post('/logout', authenticateUser, async (req, res) => {
     res.status(500).json({
       error: 'Logout error',
       message: 'Internal server error during logout'
+    })
+  }
+})
+
+// 🔍 检查密码强度（无需认证，供注册页面使用）
+router.post('/check-password-strength', (req, res) => {
+  try {
+    const { password } = req.body
+
+    if (!password || typeof password !== 'string') {
+      return res.status(400).json({
+        error: 'Invalid input',
+        message: 'Password is required'
+      })
+    }
+
+    const strengthInfo = inputValidator.calculatePasswordStrength(password)
+
+    res.json({
+      success: true,
+      strength: strengthInfo
+    })
+  } catch (error) {
+    logger.error('❌ Password strength check error:', error)
+    res.status(500).json({
+      error: 'Check error',
+      message: 'Failed to check password strength'
     })
   }
 })
@@ -221,6 +873,105 @@ router.get('/profile', authenticateUser, async (req, res) => {
   }
 })
 
+// 💰 获取当前用户余额信息
+router.get('/balance', authenticateUser, async (req, res) => {
+  try {
+    const balanceInfo = await userService.getBalanceInfo(req.user.id)
+
+    res.json({
+      success: true,
+      data: balanceInfo
+    })
+  } catch (error) {
+    logger.error('❌ Get balance error:', error)
+    res.status(500).json({
+      error: 'Balance error',
+      message: 'Failed to retrieve balance information'
+    })
+  }
+})
+
+// 💰 获取当前用户充值记录
+router.get('/recharge-records', authenticateUser, async (req, res) => {
+  try {
+    const { page = 1, limit, pageSize, type } = req.query
+
+    const parsedPage = parseInt(page, 10)
+    const perPageRaw = pageSize ?? limit ?? 20
+    const parsedLimit = parseInt(perPageRaw, 10)
+
+    const result = await userService.getRechargeRecords(req.user.id, {
+      page: Number.isNaN(parsedPage) ? 1 : parsedPage,
+      limit: Number.isNaN(parsedLimit) || parsedLimit <= 0 ? 20 : parsedLimit,
+      type: typeof type === 'string' ? type : undefined
+    })
+
+    res.json({
+      success: true,
+      data: result
+    })
+  } catch (error) {
+    logger.error('❌ Get recharge records error:', error)
+    res.status(500).json({
+      error: 'Recharge records error',
+      message: 'Failed to retrieve recharge records'
+    })
+  }
+})
+
+// 🎁 获取邀请返利信息
+router.get('/referral', authenticateUser, async (req, res) => {
+  try {
+    if (!referralService.isEnabled()) {
+      return res.status(404).json({
+        error: 'Referral disabled',
+        message: 'Referral program is not enabled'
+      })
+    }
+
+    const info = await referralService.getReferralInfo(req.user.id, { recentLimit: 5 })
+    res.json({
+      success: true,
+      data: info
+    })
+  } catch (error) {
+    logger.error('❌ Get referral info error:', error)
+    res.status(500).json({
+      error: 'Referral error',
+      message: 'Failed to retrieve referral information'
+    })
+  }
+})
+
+// 🎁 获取邀请列表
+router.get('/referral/invitees', authenticateUser, async (req, res) => {
+  try {
+    if (!referralService.isEnabled()) {
+      return res.status(404).json({
+        error: 'Referral disabled',
+        message: 'Referral program is not enabled'
+      })
+    }
+
+    const { page = 1, limit = 20 } = req.query
+    const result = await referralService.listInvitees(req.user.id, {
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10)
+    })
+
+    res.json({
+      success: true,
+      data: result
+    })
+  } catch (error) {
+    logger.error('❌ Get referral invitees error:', error)
+    res.status(500).json({
+      error: 'Referral error',
+      message: 'Failed to retrieve referral invitees'
+    })
+  }
+})
+
 // 🔑 获取用户的API Keys
 router.get('/api-keys', authenticateUser, async (req, res) => {
   try {
@@ -234,6 +985,8 @@ router.get('/api-keys', authenticateUser, async (req, res) => {
         requests: 0,
         inputTokens: 0,
         outputTokens: 0,
+        cacheCreateTokens: 0,
+        cacheReadTokens: 0,
         totalCost: 0
       }
 
@@ -242,6 +995,8 @@ router.get('/api-keys', authenticateUser, async (req, res) => {
           requests: key.usage.total.requests || 0,
           inputTokens: key.usage.total.inputTokens || 0,
           outputTokens: key.usage.total.outputTokens || 0,
+          cacheCreateTokens: key.usage.total.cacheCreateTokens || 0,
+          cacheReadTokens: key.usage.total.cacheReadTokens || 0,
           totalCost: key.totalCost || 0
         }
       }
@@ -413,6 +1168,14 @@ router.delete('/api-keys/:keyId', authenticateUser, async (req, res) => {
 router.get('/usage-stats', authenticateUser, async (req, res) => {
   try {
     const { period = 'week', model } = req.query
+    const includeModelUsage =
+      req.query.includeModelUsage === undefined
+        ? true
+        : req.query.includeModelUsage === 'true' ||
+          req.query.includeModelUsage === '1' ||
+          req.query.includeModelUsage === true
+    const { modelLimit } = req.query
+    const { modelMinTokens } = req.query
 
     // 获取用户的API Keys (including deleted ones for complete usage stats)
     const userApiKeys = await apiKeyService.getUserApiKeys(req.user.id, true)
@@ -433,7 +1196,13 @@ router.get('/usage-stats', authenticateUser, async (req, res) => {
     }
 
     // 获取使用统计
-    const stats = await apiKeyService.getAggregatedUsageStats(apiKeyIds, { period, model })
+    const stats = await apiKeyService.getAggregatedUsageStats(apiKeyIds, {
+      period,
+      model,
+      includeModelUsage,
+      modelLimit,
+      modelMinTokens
+    })
 
     res.json({
       success: true,
@@ -448,37 +1217,140 @@ router.get('/usage-stats', authenticateUser, async (req, res) => {
   }
 })
 
+// 📊 获取用户使用趋势（用于图表展示）
+router.get('/usage-trend', authenticateUser, async (req, res) => {
+  try {
+    const { days = 7 } = req.query
+    const daysCount = Math.min(parseInt(days) || 7, 90) // 最多90天
+
+    // 获取用户的所有 API Keys
+    const userApiKeys = await apiKeyService.getUserApiKeys(req.user.id, true)
+    const apiKeyIds = userApiKeys.map((key) => key.id)
+
+    if (apiKeyIds.length === 0) {
+      return res.json({
+        success: true,
+        trend: []
+      })
+    }
+
+    const client = redis.getClientSafe()
+    const trendData = []
+    const today = new Date()
+
+    // 获取过去N天的数据
+    for (let i = 0; i < daysCount; i++) {
+      const date = new Date(today)
+      date.setDate(date.getDate() - i)
+      const dateStr = redis.getDateStringInTimezone(date)
+
+      let dayInputTokens = 0
+      let dayOutputTokens = 0
+      let dayRequests = 0
+      let dayCacheCreateTokens = 0
+      let dayCacheReadTokens = 0
+      let dayCost = 0
+
+      // 遍历用户的每个 API Key，汇总当天数据
+      for (const keyId of apiKeyIds) {
+        // 获取该 Key 当天的使用数据
+        const dailyKey = `usage:daily:${keyId}:${dateStr}`
+        const data = await client.hgetall(dailyKey)
+
+        if (data && Object.keys(data).length > 0) {
+          const inputTokens = parseInt(data.inputTokens) || 0
+          const outputTokens = parseInt(data.outputTokens) || 0
+          const cacheCreateTokens = parseInt(data.cacheCreateTokens) || 0
+          const cacheReadTokens = parseInt(data.cacheReadTokens) || 0
+          const requests = parseInt(data.requests) || 0
+
+          dayInputTokens += inputTokens
+          dayOutputTokens += outputTokens
+          dayCacheCreateTokens += cacheCreateTokens
+          dayCacheReadTokens += cacheReadTokens
+          dayRequests += requests
+        }
+      }
+
+      // 计算成本（使用默认模型价格）
+      if (dayInputTokens > 0 || dayOutputTokens > 0) {
+        const usage = {
+          input_tokens: dayInputTokens,
+          output_tokens: dayOutputTokens,
+          cache_creation_input_tokens: dayCacheCreateTokens,
+          cache_read_input_tokens: dayCacheReadTokens
+        }
+        const costResult = CostCalculator.calculateCost(usage, 'unknown')
+        dayCost = costResult.costs.total
+      }
+
+      trendData.push({
+        date: dateStr,
+        inputTokens: dayInputTokens,
+        outputTokens: dayOutputTokens,
+        requests: dayRequests,
+        cacheCreateTokens: dayCacheCreateTokens,
+        cacheReadTokens: dayCacheReadTokens,
+        tokens: dayInputTokens + dayOutputTokens + dayCacheCreateTokens + dayCacheReadTokens,
+        cost: dayCost
+      })
+    }
+
+    // 按日期升序排列（最早的在前）
+    trendData.reverse()
+
+    res.json({
+      success: true,
+      trend: trendData
+    })
+  } catch (error) {
+    logger.error('❌ Get user usage trend error:', error)
+    res.status(500).json({
+      error: 'Usage trend error',
+      message: 'Failed to retrieve usage trend'
+    })
+  }
+})
+
 // === 管理员用户管理端点 ===
 
 // 📋 获取用户列表（管理员）
 router.get('/', authenticateUserOrAdmin, requireAdmin, async (req, res) => {
+  let paginationParams
   try {
-    const { page = 1, limit = 20, role, isActive, search } = req.query
+    paginationParams = inputValidator.validatePagination(req.query.page, req.query.limit)
+  } catch (validationError) {
+    return res.status(400).json({
+      error: 'Invalid pagination',
+      message: validationError.message
+    })
+  }
+
+  try {
+    const { role, isActive, search } = req.query
+    const searchQuery = typeof search === 'string' ? search.trim() : ''
 
     const options = {
-      page: parseInt(page),
-      limit: parseInt(limit),
+      ...paginationParams,
       role,
+      search: searchQuery,
       isActive: isActive === 'true' ? true : isActive === 'false' ? false : undefined
     }
 
     const result = await userService.getAllUsers(options)
 
-    // 如果有搜索条件，进行过滤
-    let filteredUsers = result.users
-    if (search) {
-      const searchLower = search.toLowerCase()
-      filteredUsers = result.users.filter(
-        (user) =>
-          user.username.toLowerCase().includes(searchLower) ||
-          user.displayName.toLowerCase().includes(searchLower) ||
-          user.email.toLowerCase().includes(searchLower)
+    if (referralService.isEnabled()) {
+      await Promise.all(
+        result.users.map(async (user) => {
+          user.referralStats = await referralService.getUserStats(user.id)
+          return user
+        })
       )
     }
 
     res.json({
       success: true,
-      users: filteredUsers,
+      users: result.users,
       pagination: {
         total: result.total,
         page: result.page,
@@ -491,6 +1363,89 @@ router.get('/', authenticateUserOrAdmin, requireAdmin, async (req, res) => {
     res.status(500).json({
       error: 'Users list error',
       message: 'Failed to retrieve users list'
+    })
+  }
+})
+
+// 📤 导出用户列表（管理员）
+router.get('/export', authenticateUserOrAdmin, requireAdmin, async (req, res) => {
+  try {
+    const { role, isActive, search } = req.query
+    const searchQuery = typeof search === 'string' ? search.trim() : ''
+    const options = {
+      role,
+      search: searchQuery,
+      isActive: isActive === 'true' ? true : isActive === 'false' ? false : undefined,
+      disablePagination: true
+    }
+
+    const result = await userService.getAllUsers(options)
+    const users = result.users || []
+
+    if (referralService.isEnabled()) {
+      await Promise.all(
+        users.map(async (user) => {
+          user.referralStats = await referralService.getUserStats(user.id)
+          return user
+        })
+      )
+    }
+
+    const csv = buildUserExportCsv(users)
+    const dateLabel =
+      typeof redis.getDateStringInTimezone === 'function'
+        ? redis.getDateStringInTimezone(new Date())
+        : new Date().toISOString().slice(0, 10)
+    const filename = `users-${dateLabel}.csv`
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+    logger.info(`📤 Admin exported ${users.length} users to CSV`)
+
+    return res.status(200).send(csv)
+  } catch (error) {
+    logger.error('❌ Export users CSV error:', error)
+    return res.status(500).json({
+      error: 'Export error',
+      message: error.message || 'Failed to export users CSV'
+    })
+  }
+})
+
+// 👤 获取特定用户邀请信息（管理员）
+router.get('/:userId/referrals', authenticateUserOrAdmin, requireAdmin, async (req, res) => {
+  if (!referralService.isEnabled()) {
+    return res.status(404).json({
+      error: 'Referral disabled',
+      message: 'Referral program is not enabled'
+    })
+  }
+
+  try {
+    const { userId } = req.params
+    const { page = 1, limit = 20 } = req.query
+    const [stats, invitees, code] = await Promise.all([
+      referralService.getUserStats(userId),
+      referralService.listInvitees(userId, {
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10)
+      }),
+      referralService.getOrCreateReferralCode(userId)
+    ])
+
+    res.json({
+      success: true,
+      data: {
+        code,
+        stats,
+        invitees
+      }
+    })
+  } catch (error) {
+    logger.error('❌ Get user referral details error:', error)
+    res.status(500).json({
+      error: 'Referral error',
+      message: 'Failed to retrieve referral details'
     })
   }
 })
@@ -510,6 +1465,11 @@ router.get('/:userId', authenticateUserOrAdmin, requireAdmin, async (req, res) =
 
     // 获取用户的API Keys（包括已删除的以保留统计数据）
     const apiKeys = await apiKeyService.getUserApiKeys(userId, true)
+
+    let referralInfo = null
+    if (referralService.isEnabled()) {
+      referralInfo = await referralService.getReferralInfo(userId, { recentLimit: 5 })
+    }
 
     res.json({
       success: true,
@@ -546,7 +1506,8 @@ router.get('/:userId', authenticateUserOrAdmin, requireAdmin, async (req, res) =
               : null
           }
         })
-      }
+      },
+      referral: referralInfo
     })
   } catch (error) {
     logger.error('❌ Get user details error:', error)
@@ -760,5 +1721,504 @@ router.get('/admin/ldap-test', authenticateUserOrAdmin, requireAdmin, async (req
     })
   }
 })
+
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body
+    const clientIp = req.ip || req.connection.remoteAddress || 'unknown'
+
+    // 初始化速率限制器
+    const limiters = initRateLimiters()
+
+    // 检查IP速率限制
+    if (limiters.ipRateLimiter) {
+      try {
+        await limiters.ipRateLimiter.consume(clientIp)
+      } catch (rateLimiterRes) {
+        const retryAfter = Math.round(rateLimiterRes.msBeforeNext / 1000) || 900
+        logger.security(`🚫 Password reset rate limit exceeded for IP: ${clientIp}`)
+        res.set('Retry-After', String(retryAfter))
+        return res.status(429).json({
+          error: 'Too many requests',
+          message: 'Too many password reset attempts. Please try again later.'
+        })
+      }
+    }
+
+    if (!email || !email.trim()) {
+      return res.status(400).json({
+        error: 'Missing email',
+        message: 'Email address is required'
+      })
+    }
+
+    // 验证邮箱格式
+    try {
+      inputValidator.validateEmail(email)
+    } catch (validationError) {
+      return res.status(400).json({
+        error: 'Invalid email',
+        message: validationError.message
+      })
+    }
+
+    // 生成重置Token并发送邮件
+    await userService.generatePasswordResetToken(email.trim())
+
+    logger.info(`📧 Password reset requested for: ${email} from IP: ${clientIp}`)
+
+    // 返回真实的发送状态（完全透明策略）
+    res.json({
+      success: true,
+      message: '密码重置邮件已发送，请检查您的邮箱'
+    })
+  } catch (error) {
+    logger.error('❌ Forgot password error:', error)
+
+    // 如果是速率限制错误，返回具体错误信息
+    if (error.message.includes('Too many')) {
+      return res.status(429).json({
+        success: false,
+        error: 'Too many requests',
+        message: error.message
+      })
+    }
+
+    // 用户不存在的错误
+    if (error.message.includes('该邮箱未注册') || error.message.includes('不是本地账户')) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+        message: error.message
+      })
+    }
+
+    // 邮件发送失败的错误
+    if (error.message.includes('邮件发送失败') || error.message.includes('Email service')) {
+      return res.status(500).json({
+        success: false,
+        error: 'Email sending failed',
+        message: '邮件发送失败，请联系管理员检查邮件服务配置'
+      })
+    }
+
+    // 密码重置功能未启用
+    if (error.message.includes('not enabled') || error.message.includes('disabled')) {
+      return res.status(503).json({
+        success: false,
+        error: 'Feature disabled',
+        message: '密码重置功能未启用，请联系管理员'
+      })
+    }
+
+    // 其他未知错误
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      message: '密码重置请求失败，请稍后重试或联系管理员'
+    })
+  }
+})
+
+// 🔓 重置密码
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body
+    const clientIp = req.ip || req.connection.remoteAddress || 'unknown'
+
+    if (!token || !newPassword) {
+      return res.status(400).json({
+        error: 'Missing fields',
+        message: 'Reset token and new password are required'
+      })
+    }
+
+    // 验证新密码格式
+    try {
+      inputValidator.validatePassword(newPassword)
+    } catch (validationError) {
+      return res.status(400).json({
+        error: 'Invalid password',
+        message: validationError.message
+      })
+    }
+
+    // 使用Token重置密码
+    await userService.resetPasswordWithToken(token, newPassword)
+
+    logger.info(`🔓 Password reset successful from IP: ${clientIp}`)
+
+    res.json({
+      success: true,
+      message: 'Password reset successfully. Please log in with your new password.'
+    })
+  } catch (error) {
+    logger.error('❌ Reset password error:', error)
+
+    if (
+      error.message.includes('Invalid') ||
+      error.message.includes('expired') ||
+      error.message.includes('not found')
+    ) {
+      return res.status(400).json({
+        error: 'Reset failed',
+        message: error.message
+      })
+    }
+
+    res.status(500).json({
+      error: 'Reset password error',
+      message: 'Failed to reset password. Please try again.'
+    })
+  }
+})
+
+// ✅ 验证邮箱
+router.post('/verify-email', async (req, res) => {
+  try {
+    const { token } = req.body
+    const clientIp = req.ip || req.connection.remoteAddress || 'unknown'
+
+    if (!token) {
+      return res.status(400).json({
+        error: 'Missing token',
+        message: 'Verification token is required'
+      })
+    }
+
+    // 验证邮箱
+    const result = await userService.verifyEmail(token)
+
+    logger.info(
+      `✅ Email verified successfully for user: ${result.user.username} from IP: ${clientIp}`
+    )
+
+    res.json({
+      success: true,
+      message: 'Email verified successfully',
+      user: result.user
+    })
+  } catch (error) {
+    logger.error('❌ Verify email error:', error)
+
+    if (
+      error.message.includes('Invalid') ||
+      error.message.includes('expired') ||
+      error.message.includes('not found')
+    ) {
+      return res.status(400).json({
+        error: 'Verification failed',
+        message: error.message
+      })
+    }
+
+    res.status(500).json({
+      error: 'Verification error',
+      message: 'Failed to verify email. Please try again.'
+    })
+  }
+})
+
+// 🔄 重新发送验证邮件
+router.post('/resend-verification', authenticateUser, async (req, res) => {
+  try {
+    const result = await userService.resendVerificationEmail(req.user.id)
+
+    if (result.skipped) {
+      return res.json({
+        success: true,
+        message: 'Email verification is not enabled'
+      })
+    }
+
+    logger.info(`🔄 Verification email resent for user: ${req.user.username}`)
+
+    res.json({
+      success: true,
+      message: 'Verification email sent successfully'
+    })
+  } catch (error) {
+    logger.error('❌ Resend verification error:', error)
+
+    if (error.message.includes('Too many')) {
+      return res.status(429).json({
+        error: 'Too many requests',
+        message: error.message
+      })
+    }
+
+    if (error.message.includes('already verified')) {
+      return res.json({
+        success: true,
+        message: 'Email is already verified'
+      })
+    }
+
+    res.status(500).json({
+      error: 'Resend error',
+      message: 'Failed to resend verification email'
+    })
+  }
+})
+
+// 🔓 管理员重置用户密码
+router.post('/:userId/reset-password', authenticateUserOrAdmin, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params
+    const { newPassword } = req.body
+
+    if (!newPassword) {
+      return res.status(400).json({
+        error: 'Missing password',
+        message: 'New password is required'
+      })
+    }
+
+    // 验证新密码格式
+    try {
+      inputValidator.validatePassword(newPassword)
+    } catch (validationError) {
+      return res.status(400).json({
+        error: 'Invalid password',
+        message: validationError.message
+      })
+    }
+
+    // 重置用户密码
+    await userService.resetUserPassword(userId, newPassword)
+
+    const adminUser = req.admin?.username || req.user?.username
+    logger.info(`🔓 Admin ${adminUser} reset password for user ID: ${userId}`)
+
+    res.json({
+      success: true,
+      message: 'User password reset successfully'
+    })
+  } catch (error) {
+    logger.error('❌ Admin reset password error:', error)
+
+    if (error.message.includes('not found') || error.message.includes('Only local users')) {
+      return res.status(400).json({
+        error: 'Reset failed',
+        message: error.message
+      })
+    }
+
+    res.status(500).json({
+      error: 'Reset password error',
+      message: 'Failed to reset user password'
+    })
+  }
+})
+
+// 🎁 获取用户优惠状态
+router.get('/promotion/status', authenticateUser, async (req, res) => {
+  try {
+    const promotionService = require('../services/promotionService')
+    const userId = req.user.id
+
+    const promotion = await promotionService.getUserPromotion(userId)
+
+    if (!promotion) {
+      return res.json({
+        success: true,
+        data: {
+          available: false,
+          message: 'No promotion available'
+        }
+      })
+    }
+
+    res.json({
+      success: true,
+      data: {
+        available: promotion.isAvailable,
+        currentTier: promotion.currentTier,
+        currentTierData: promotion.currentTierData,
+        currentBonus: promotion.currentBonus,
+        remainingSeconds: promotion.remainingSeconds,
+        hasUsed: promotion.hasUsed,
+        isExpired: promotion.isExpired,
+        startTime: promotion.startTime,
+        expiresAt: promotion.expiresAt
+      }
+    })
+  } catch (error) {
+    logger.error('❌ Get promotion status error:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get promotion status',
+      message: error.message
+    })
+  }
+})
+
+// 🎁 优惠充值接口
+router.post('/promotion/recharge', authenticateUser, async (req, res) => {
+  try {
+    const promotionService = require('../services/promotionService')
+    const { amount, remark } = req.body
+    const userId = req.user.id
+
+    // 验证金额
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid amount',
+        message: 'Recharge amount must be a positive number'
+      })
+    }
+
+    const rechargeAmount = parseFloat(amount)
+
+    // 检查并应用优惠
+    const promotionResult = await promotionService.applyPromotion(userId, rechargeAmount)
+
+    if (!promotionResult.applied) {
+      // 优惠不可用，执行正常充值
+      const result = await userService.rechargeBalance(
+        userId,
+        rechargeAmount,
+        { id: userId, name: req.user.username },
+        remark || '用户充值',
+        {
+          recordType: 'payment',
+          source: 'user-recharge'
+        }
+      )
+
+      return res.json({
+        success: true,
+        data: {
+          ...result,
+          promotion: {
+            applied: false,
+            message: promotionResult.message
+          }
+        }
+      })
+    }
+
+    // 应用优惠充值（充值总额包含赠送）
+    const result = await userService.rechargeBalance(
+      userId,
+      promotionResult.total,
+      { id: 'system', name: 'Promotion System' },
+      remark || `限时优惠充值 - ${promotionResult.bonusRate}%赠送`,
+      {
+        recordType: 'promotion',
+        source: 'promotion-system',
+        metadata: {
+          originalAmount: rechargeAmount,
+          bonus: promotionResult.bonus,
+          tier: promotionResult.tier,
+          bonusRate: promotionResult.bonusRate
+        }
+      }
+    )
+
+    logger.info(
+      `💰 Promotion recharge for user ${req.user.username}: ` +
+        `Amount: $${rechargeAmount}, Bonus: $${promotionResult.bonus.toFixed(2)}, ` +
+        `Total: $${promotionResult.total.toFixed(2)}`
+    )
+
+    res.json({
+      success: true,
+      data: {
+        ...result,
+        promotion: {
+          applied: true,
+          bonus: promotionResult.bonus,
+          bonusRate: promotionResult.bonusRate,
+          tier: promotionResult.tier,
+          tierData: promotionResult.tierData,
+          message: promotionResult.message
+        }
+      }
+    })
+  } catch (error) {
+    logger.error('❌ Promotion recharge error:', error)
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+        message: error.message
+      })
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Recharge error',
+      message: 'Failed to process promotion recharge'
+    })
+  }
+})
+
+// 🎁 获取优惠统计（管理员）
+router.get('/promotion/stats', authenticateUserOrAdmin, requireAdmin, async (req, res) => {
+  try {
+    const promotionService = require('../services/promotionService')
+    const stats = await promotionService.getPromotionStats()
+
+    res.json({
+      success: true,
+      data: stats
+    })
+  } catch (error) {
+    logger.error('❌ Get promotion stats error:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get promotion statistics',
+      message: error.message
+    })
+  }
+})
+
+// 🎁 为用户激活优惠（管理员）
+router.post(
+  '/promotion/activate/:userId',
+  authenticateUserOrAdmin,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const promotionService = require('../services/promotionService')
+      const { userId } = req.params
+
+      // 获取用户信息
+      const user = await userService.getUserById(userId, false)
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          error: 'User not found',
+          message: 'The specified user does not exist'
+        })
+      }
+
+      // 激活优惠
+      const result = await promotionService.activatePromotionForUser(
+        userId,
+        user.username,
+        req.admin.id
+      )
+
+      if (result.success) {
+        logger.info(
+          `🎁 Admin ${req.admin.username} activated promotion for user ${user.username} (${userId})`
+        )
+      }
+
+      res.json(result)
+    } catch (error) {
+      logger.error('❌ Activate promotion error:', error)
+      res.status(500).json({
+        success: false,
+        error: 'Failed to activate promotion',
+        message: error.message
+      })
+    }
+  }
+)
 
 module.exports = router

@@ -1283,6 +1283,38 @@ const authenticateApiKey = async (req, res, next) => {
       }
     }
 
+    // 检查用户余额（如果 API Key 关联了用户）
+    if (validation.keyData.userId) {
+      try {
+        const balanceCheck = await userService.checkBalance(validation.keyData.userId)
+
+        if (!balanceCheck.sufficient) {
+          logger.security(
+            `💰 Insufficient balance for user: ${validation.keyData.userId}, balance: $${balanceCheck.balance.toFixed(2)}, cost: $${balanceCheck.totalCost.toFixed(2)}, available: $${balanceCheck.availableBalance.toFixed(2)}`
+          )
+
+          return res.status(402).json({
+            error: 'Insufficient balance',
+            message: '账户余额不足，请充值后继续使用',
+            balance: balanceCheck.balance,
+            totalCost: balanceCheck.totalCost,
+            availableBalance: balanceCheck.availableBalance
+          })
+        }
+
+        // 记录余额使用情况
+        logger.api(
+          `💰 Balance check passed for user: ${validation.keyData.userId}, available: $${balanceCheck.availableBalance.toFixed(2)}`
+        )
+      } catch (balanceError) {
+        // 余额检查失败时记录警告但不阻止请求（容错处理）
+        logger.warn(
+          `⚠️ Balance check failed for user ${validation.keyData.userId}:`,
+          balanceError.message
+        )
+      }
+    }
+
     // 将验证信息添加到请求对象（只包含必要信息）
     req.apiKey = {
       id: validation.keyData.id,

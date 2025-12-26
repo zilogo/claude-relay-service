@@ -27,6 +27,8 @@ const droidRoutes = require('./routes/droidRoutes')
 const userRoutes = require('./routes/userRoutes')
 const azureOpenaiRoutes = require('./routes/azureOpenaiRoutes')
 const webhookRoutes = require('./routes/webhook')
+const paymentRoutes = require('./routes/paymentRoutes')
+const dingtalkBotRoutes = require('./routes/dingtalkBot')
 
 // Import middleware
 const {
@@ -165,16 +167,23 @@ class Application {
       // 🔧 基础中间件
       this.app.use(
         express.json({
-          limit: '10mb',
+          limit: config.http?.maxBodySize || '10mb',
           verify: (req, res, buf, encoding) => {
-            // 验证JSON格式
-            if (buf && buf.length && !buf.toString(encoding || 'utf8').trim()) {
-              throw new Error('Invalid JSON: empty body')
+            // 保存原始 body（Buffer）用于 Stripe webhook 验签
+            if (buf && buf.length) {
+              req.rawBody = Buffer.from(buf)
+              const bodyString = buf.toString(encoding || 'utf8')
+              // 验证 JSON 格式（空白 body 视为非法 JSON）
+              if (!bodyString.trim()) {
+                throw new Error('Invalid JSON: empty body')
+              }
+            } else {
+              req.rawBody = Buffer.alloc(0)
             }
           }
         })
       )
-      this.app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+      this.app.use(express.urlencoded({ extended: true, limit: config.http?.maxBodySize || '10mb' }))
       this.app.use(securityMiddleware)
 
       // 🎯 信任代理
@@ -285,6 +294,8 @@ class Application {
       )
       this.app.use('/admin', adminRoutes)
       this.app.use('/users', userRoutes)
+      this.app.use('/payment', paymentRoutes)
+      this.app.use('/hooks/dingtalk', dingtalkBotRoutes)
       // 使用 web 路由（包含 auth 和页面重定向）
       this.app.use('/web', webRoutes)
       this.app.use('/apiStats', apiStatsRoutes)
