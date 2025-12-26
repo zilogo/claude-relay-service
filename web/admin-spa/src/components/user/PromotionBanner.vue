@@ -19,15 +19,28 @@
               <div
                 class="mb-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center"
               >
-                <div class="flex items-center gap-2">
-                  <span class="animate-pulse text-2xl">🔥</span>
-                  <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 sm:text-xl">
-                    限时充值优惠 - 优惠递减倒计时
-                  </h3>
+                <div class="flex flex-col gap-1">
+                  <div class="flex items-center gap-2">
+                    <span
+                      class="text-2xl"
+                      :class="promotionStatus?.hasUsed ? '' : 'animate-pulse'"
+                    >🔥</span>
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 sm:text-xl">
+                      {{ statusHeadline }}
+                    </h3>
+                  </div>
+                  <p v-if="statusSubtext" class="text-sm text-white/90 dark:text-white/70">
+                    {{ statusSubtext }}
+                  </p>
                 </div>
                 <div class="flex items-center gap-2">
                   <button
-                    class="inline-flex items-center gap-1.5 rounded-xl bg-white/90 px-4 py-2.5 text-sm font-semibold text-orange-600 shadow-md transition-all hover:bg-white hover:shadow-lg dark:bg-white/20 dark:text-white dark:hover:bg-white/30"
+                    class="inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold shadow-md transition-all hover:shadow-lg"
+                    :class="
+                      promotionStatus?.hasUsed
+                        ? 'bg-white/30 text-white hover:bg-white/40'
+                        : 'bg-white/90 text-orange-600 hover:bg-white'
+                    "
                     @click="handleRecharge"
                   >
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -38,47 +51,53 @@
                         stroke-width="2"
                       />
                     </svg>
-                    立即充值（享{{ currentTierData.bonus }}%赠送）
+                    {{ ctaText }}
                   </button>
                 </div>
               </div>
 
-              <!-- 充值提醒 -->
+              <!-- 自动发放提醒 -->
               <div class="mb-3 flex items-center justify-center">
                 <div
-                  class="inline-flex items-center gap-2 rounded-lg border border-yellow-300/50 bg-yellow-100/90 px-4 py-2.5 shadow-sm dark:border-yellow-700/50 dark:bg-yellow-900/40"
+                  class="inline-flex flex-wrap items-center gap-2 rounded-lg border border-emerald-200/60 bg-emerald-50/90 px-4 py-2.5 text-sm font-semibold text-emerald-800 shadow-sm dark:border-emerald-600/40 dark:bg-emerald-900/40 dark:text-emerald-100"
                 >
-                  <svg
-                    class="h-5 w-5 text-yellow-600 dark:text-yellow-400"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
-                      clip-rule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                      fill-rule="evenodd"
-                    />
-                  </svg>
-                  <span class="text-sm font-semibold text-yellow-800 dark:text-yellow-200">
-                    ⚠️ 充值后请联系客服后台赠送优惠额度
-                  </span>
-                  <svg
-                    class="h-5 w-5 text-yellow-600 dark:text-yellow-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
                       stroke-linecap="round"
                       stroke-linejoin="round"
                       stroke-width="2"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
+                  <span>充值成功后系统自动发放赠额，无需联系客服</span>
+                  <button
+                    class="rounded-full border border-emerald-500/60 px-2 py-0.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-500/10 dark:border-emerald-400/60 dark:text-emerald-200"
+                    @click="reloadPromotion"
+                  >
+                    刷新状态
+                  </button>
                 </div>
               </div>
 
               <!-- 当前档位展示（高亮） -->
+              <div
+                v-if="promotionStatus?.hasUsed"
+                class="mb-4 rounded-xl bg-emerald-500/90 p-4 text-white shadow-lg backdrop-blur-sm dark:bg-emerald-500/70"
+              >
+                <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p class="text-sm font-semibold">赠额已到账</p>
+                    <p class="text-2xl font-bold">
+                      +${{ (promotionStatus?.bonusReceived || 0).toFixed(2) }}
+                    </p>
+                  </div>
+                  <div class="text-sm text-white/80">
+                    首充金额 ${{ (promotionStatus?.amountRecharged || 0).toFixed(2) }} · 档位
+                    {{ renderTierLabel(promotionStatus?.tierUsed) }}
+                  </div>
+                </div>
+              </div>
+
               <div
                 v-if="currentTierData"
                 class="mb-4 rounded-xl bg-white/40 p-4 shadow-lg backdrop-blur-sm dark:bg-white/20"
@@ -148,6 +167,50 @@
                 </div>
               </div>
 
+              <!-- 最近赠送记录 -->
+              <div
+                v-if="promotionRecords.length"
+                class="mb-4 rounded-xl bg-white/40 p-4 backdrop-blur-sm shadow-lg dark:bg-white/15"
+              >
+                <div class="flex items-center justify-between">
+                  <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    最新赠送记录
+                  </p>
+                  <span class="text-xs text-gray-500">最近 {{ promotionRecords.length }} 条</span>
+                </div>
+                <div class="mt-3 space-y-2">
+                  <div
+                    v-for="record in promotionRecords"
+                    :key="record.id"
+                    class="flex items-center justify-between rounded-lg bg-white/80 px-3 py-2 shadow-sm dark:bg-gray-900/30"
+                  >
+                    <div>
+                      <p class="text-sm font-semibold text-gray-900 dark:text-white">
+                        +${{ formatBonus(record.bonus) }}
+                      </p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">
+                        {{ formatRecordTime(record.createdAt) }} · 档位
+                        {{ renderTierLabel(record.tier) }}
+                      </p>
+                    </div>
+                    <div class="text-right">
+                      <span :class="getRecordStatusClass(record.status)" class="text-xs font-semibold">
+                        {{ record.status === 'failed' ? '失败' : '已到账' }}
+                      </span>
+                      <p class="text-xs text-gray-500" v-if="record.bonusRate">
+                        +{{ record.bonusRate }}%
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div
+                v-else-if="promotionStatus?.available && !promotionRecords.length"
+                class="mb-4 rounded-xl bg-white/30 p-3 text-sm text-gray-600 backdrop-blur-sm dark:bg-white/10 dark:text-gray-300"
+              >
+                尚未触发赠额，完成首充即可自动到账。
+              </div>
+
               <!-- 底部提醒 -->
               <div
                 class="flex items-center justify-center gap-2 rounded-lg bg-white/30 p-3 text-center backdrop-blur-sm dark:bg-white/10"
@@ -164,7 +227,7 @@
                     🚨 早充越划算！优惠每{{ tierDuration }}小时递减 - 过期后恢复原价，不再享受赠送
                   </span>
                   <span class="text-xs font-medium text-gray-700 dark:text-gray-300">
-                    💡 温馨提示：充值成功后请联系客服申请赠送优惠额度
+                    💡 温馨提示：活动期间充值成功即刻自动发放赠额
                   </span>
                 </div>
               </div>
@@ -178,6 +241,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useUserStore } from '@/stores/user'
 
 const props = defineProps({
   userCreatedAt: {
@@ -188,54 +252,23 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['recharge'])
+const userStore = useUserStore()
 
-// 配置项
-const TOTAL_PROMOTION_HOURS = 72 // 总优惠时长
-const tierDuration = 12 // 每个档位持续时间（小时）
+const TOTAL_PROMOTION_HOURS = 72
+const tierDuration = 12
 
 const currentTime = ref(Date.now())
+const promotionStatus = ref(null)
+const promotionRecords = ref([])
+const serverRemainingSeconds = ref(0)
 
-// 优惠档位配置
 const promotionTiers = [
-  {
-    id: 1,
-    hours: 24,
-    bonus: 30,
-    minAmount: 100,
-    timeLabel: '24小时内',
-    label: '充100得130',
-    emoji: '💰💰💰'
-  },
-  {
-    id: 2,
-    hours: 36,
-    bonus: 20,
-    minAmount: 100,
-    timeLabel: '36小时内',
-    label: '充100得120',
-    emoji: '💰💰'
-  },
-  {
-    id: 3,
-    hours: 48,
-    bonus: 10,
-    minAmount: 100,
-    timeLabel: '48小时内',
-    label: '充100得110',
-    emoji: '💰'
-  },
-  {
-    id: 4,
-    hours: 72,
-    bonus: 5,
-    minAmount: 100,
-    timeLabel: '72小时内',
-    label: '充100得105',
-    emoji: ''
-  }
+  { id: 1, hours: 24, bonus: 30, minAmount: 100, timeLabel: '24小时内', label: '充100得130', emoji: '💰💰💰' },
+  { id: 2, hours: 36, bonus: 20, minAmount: 100, timeLabel: '36小时内', label: '充100得120', emoji: '💰💰' },
+  { id: 3, hours: 48, bonus: 10, minAmount: 100, timeLabel: '48小时内', label: '充100得110', emoji: '💰' },
+  { id: 4, hours: 72, bonus: 5, minAmount: 100, timeLabel: '72小时内', label: '充100得105', emoji: '' }
 ]
 
-// 计算注册后经过的小时数
 const hoursSinceRegistration = computed(() => {
   if (!props.userCreatedAt) {
     return 0
@@ -243,127 +276,243 @@ const hoursSinceRegistration = computed(() => {
 
   try {
     const registrationTime = new Date(props.userCreatedAt).getTime()
-    const elapsed = (currentTime.value - registrationTime) / 1000 / 3600 // 转换为小时
-    return elapsed
+    return (currentTime.value - registrationTime) / 1000 / 3600
   } catch (error) {
     console.error('Failed to parse userCreatedAt:', error)
     return 0
   }
 })
 
-// 计算当前档位（0-3，-1表示已过期）
-const currentTier = computed(() => {
+const fallbackTier = computed(() => {
   const hours = hoursSinceRegistration.value
-
-  if (hours >= TOTAL_PROMOTION_HOURS) {
-    return -1 // 已过期
-  }
-
-  // 根据经过的时间确定当前档位
+  if (hours >= TOTAL_PROMOTION_HOURS) return -1
   if (hours < 24) return 0
   if (hours < 36) return 1
   if (hours < 48) return 2
   if (hours < 72) return 3
-
   return -1
 })
 
-// 获取当前档位数据
+const currentTier = computed(() => {
+  if (typeof promotionStatus.value?.currentTier === 'number') {
+    return promotionStatus.value.currentTier
+  }
+  return fallbackTier.value
+})
+
 const currentTierData = computed(() => {
+  if (promotionStatus.value?.currentTierData) {
+    return promotionStatus.value.currentTierData
+  }
   if (currentTier.value === -1) return null
   return promotionTiers[currentTier.value]
 })
 
-// 计算当前档位剩余秒数
-const remainingSeconds = computed(() => {
-  if (!props.userCreatedAt || currentTier.value === -1) {
+const fallbackRemainingSeconds = computed(() => {
+  if (!props.userCreatedAt || currentTier.value === -1 || !currentTierData.value) {
     return 0
   }
 
   try {
     const registrationTime = new Date(props.userCreatedAt).getTime()
     const elapsed = currentTime.value - registrationTime
-    const currentTierEndTime = currentTierData.value.hours * 3600 * 1000 // 转换为毫秒
-    const remaining = Math.max(0, currentTierEndTime - elapsed)
-    return Math.floor(remaining / 1000) // 转换为秒
+    const currentTierEndTime = currentTierData.value.hours * 3600 * 1000
+    return Math.max(0, Math.floor((currentTierEndTime - elapsed) / 1000))
   } catch (error) {
     console.error('Failed to calculate remaining time:', error)
     return 0
   }
 })
 
-// 格式化时间显示（小时:分钟:秒）
-const formattedTime = computed(() => {
-  const hours = Math.floor(remainingSeconds.value / 3600)
-  const minutes = Math.floor((remainingSeconds.value % 3600) / 60)
-  const seconds = remainingSeconds.value % 60
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+const remainingSeconds = computed(() => {
+  if (promotionStatus.value) {
+    return Math.max(0, serverRemainingSeconds.value)
   }
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  return fallbackRemainingSeconds.value
 })
 
-// 判断是否应该显示横幅（在72小时内显示）
+const formattedTime = computed(() => {
+  const seconds = remainingSeconds.value
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const restSeconds = seconds % 60
+
+  if (seconds <= 0) {
+    return '00:00'
+  }
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${restSeconds
+      .toString()
+      .padStart(2, '0')}`
+  }
+  return `${minutes.toString().padStart(2, '0')}:${restSeconds.toString().padStart(2, '0')}`
+})
+
 const shouldShowBanner = computed(() => {
-  // 如果没有传入注册时间，显示横幅（新用户）
+  if (promotionStatus.value) {
+    if (promotionStatus.value.hasUsed) {
+      return true
+    }
+    return !promotionStatus.value.isExpired
+  }
   if (!props.userCreatedAt) {
     return true
   }
-
-  // 72小时内显示
   return hoursSinceRegistration.value < TOTAL_PROMOTION_HOURS
 })
 
-// 获取档位样式类
+const statusHeadline = computed(() => {
+  if (promotionStatus.value?.hasUsed) {
+    return '赠额已到账'
+  }
+  if (promotionStatus.value?.isExpired) {
+    return '限时优惠已结束'
+  }
+  if (promotionStatus.value?.available) {
+    return '限时充值优惠 - 优惠递减倒计时'
+  }
+  return '新用户限时活动'
+})
+
+const statusSubtext = computed(() => {
+  if (promotionStatus.value?.hasUsed) {
+    const bonus = (promotionStatus.value.bonusReceived || 0).toFixed(2)
+    return `已获取 +$${bonus} 赠额，感谢首充支持`
+  }
+  if (promotionStatus.value?.available && currentTierData.value) {
+    return `当前档位 ${currentTierData.value.label} · 剩余 ${formattedTime.value}`
+  }
+  if (promotionStatus.value?.isExpired) {
+    return '72 小时活动窗口已结束，可关注后续活动通知'
+  }
+  return '首充即可享受 72 小时阶梯赠额，早充越划算'
+})
+
+const ctaText = computed(() => {
+  if (promotionStatus.value?.hasUsed) {
+    return '查看赠送记录'
+  }
+  if (promotionStatus.value?.available) {
+    const bonus = currentTierData.value?.bonus || promotionStatus.value.currentBonus || 0
+    return `立即充值（享${bonus}%赠送）`
+  }
+  return '立即充值'
+})
+
 const getTierClass = (index) => {
+  if (promotionStatus.value?.hasUsed) {
+    return 'bg-gray-200/50 dark:bg-gray-700/50'
+  }
+
   if (currentTier.value === -1) {
-    // 已过期，所有档位置灰
     return 'bg-gray-200/50 opacity-50 dark:bg-gray-700/50'
   }
 
   if (index === currentTier.value) {
-    // 当前档位高亮
     return 'bg-white/60 shadow-lg border-2 border-yellow-400 dark:bg-white/30 dark:border-yellow-500'
   }
 
   if (index < currentTier.value) {
-    // 已过期档位
     return 'bg-gray-200/50 opacity-50 dark:bg-gray-700/50'
   }
 
-  // 未来档位
   return 'bg-white/20 backdrop-blur-sm dark:bg-white/10'
 }
 
-// 获取档位表情
 const getTierEmoji = (index) => {
   if (currentTier.value === -1 || index < currentTier.value) {
-    return '⏰' // 已过期
+    return '⏰'
   }
   return promotionTiers[index].emoji || '💰'
 }
 
-// 定时器用于更新当前时间
+const formatBonus = (value) => Number(value || 0).toFixed(2)
+
+const formatRecordTime = (value) => {
+  if (!value) return ''
+  try {
+    return new Date(value).toLocaleString('zh-CN', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  } catch (error) {
+    return value
+  }
+}
+
+const renderTierLabel = (tierIndex) => {
+  if (typeof tierIndex !== 'number' || tierIndex < 0) {
+    return '无'
+  }
+  return promotionTiers[tierIndex]?.label || `Tier${tierIndex + 1}`
+}
+
+const getRecordStatusClass = (status) => {
+  if (status === 'failed') {
+    return 'rounded-full bg-red-100 px-2 py-0.5 text-red-700 dark:bg-red-900/30 dark:text-red-200'
+  }
+  return 'rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-100'
+}
+
+const loadPromotionStatus = async () => {
+  try {
+    const status = await userStore.getPromotionStatus()
+    promotionStatus.value = status
+    serverRemainingSeconds.value = status?.remainingSeconds || 0
+  } catch (error) {
+    console.error('Failed to load promotion status:', error)
+  }
+}
+
+const loadPromotionRecords = async () => {
+  try {
+    const result = await userStore.getPromotionRecords({ limit: 3 })
+    promotionRecords.value = result.records || []
+  } catch (error) {
+    console.error('Failed to load promotion records:', error)
+    promotionRecords.value = []
+  }
+}
+
+const reloadPromotion = () => {
+  loadPromotionStatus()
+  loadPromotionRecords()
+}
+
 let timer = null
+let refreshTimer = null
 
 onMounted(() => {
-  // 每秒更新一次当前时间，以更新剩余时间显示
+  reloadPromotion()
+
   timer = setInterval(() => {
     currentTime.value = Date.now()
+    if (serverRemainingSeconds.value > 0) {
+      serverRemainingSeconds.value = Math.max(0, serverRemainingSeconds.value - 1)
+    }
   }, 1000)
+
+  refreshTimer = setInterval(() => {
+    reloadPromotion()
+  }, 60000)
 })
 
 onUnmounted(() => {
   if (timer) {
     clearInterval(timer)
   }
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+  }
 })
 
 const handleRecharge = () => {
   emit('recharge', {
     tier: currentTier.value,
-    bonus: currentTierData.value?.bonus || 0,
+    bonus: currentTierData.value?.bonus || promotionStatus.value?.currentBonus || 0,
     minAmount: currentTierData.value?.minAmount || 100
   })
 }

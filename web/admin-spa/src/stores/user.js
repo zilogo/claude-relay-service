@@ -207,6 +207,26 @@ export const useUserStore = defineStore('user', {
       }
     },
 
+    async getPromotionStatus() {
+      try {
+        const response = await axios.get(`${API_BASE}/promotion/status`)
+        return response.data.success ? response.data.data : null
+      } catch (error) {
+        console.error('Failed to fetch promotion status:', error)
+        throw error
+      }
+    },
+
+    async getPromotionRecords(params = {}) {
+      try {
+        const response = await axios.get(`${API_BASE}/promotion/records`, { params })
+        return response.data.success ? response.data.data : { records: [], total: 0 }
+      } catch (error) {
+        console.error('Failed to fetch promotion records:', error)
+        throw error
+      }
+    },
+
     // 💰 获取用户充值记录
     async getRechargeRecords(params = {}) {
       try {
