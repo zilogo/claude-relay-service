@@ -1,3 +1,4 @@
+const crypto = require('crypto')
 const redis = require('../models/redis')
 const logger = require('../utils/logger')
 const config = require('../../config/config')
@@ -6,6 +7,9 @@ class PromotionService {
   constructor() {
     this.promotionPrefix = 'user_promotion:'
     this.promotionStatsPrefix = 'promotion_stats:'
+    this.promotionRecordPrefix = 'promotion_record:'
+    this.userPromotionRecordsPrefix = 'promotion_records:user:'
+    this.globalPromotionRecordsKey = 'promotion_records:all'
 
     // 优惠档位配置
     this.tiers = [
@@ -167,107 +171,105 @@ class PromotionService {
   }
 
   /**
-   * 应用优惠到充值
+   * 评估优惠可用性
    */
   async applyPromotion(userId, amount) {
     try {
-      if (!this.enabled) {
-        return {
-          amount,
-          bonus: 0,
-          applied: false,
-          message: 'Promotion feature is disabled'
-        }
-      }
-
-      const promotion = await this.getUserPromotion(userId)
-
-      // 检查优惠是否可用
-      if (!promotion) {
-        return {
-          amount,
-          bonus: 0,
-          applied: false,
-          message: 'No promotion available for this user'
-        }
-      }
-
-      if (promotion.hasUsed) {
-        return {
-          amount,
-          bonus: 0,
-          applied: false,
-          message: 'Promotion has already been used'
-        }
-      }
-
-      if (promotion.isExpired) {
-        return {
-          amount,
-          bonus: 0,
-          applied: false,
-          message: 'Promotion has expired'
-        }
-      }
-
-      if (promotion.currentTier === -1) {
-        return {
-          amount,
-          bonus: 0,
-          applied: false,
-          message: 'No valid tier available'
-        }
-      }
-
-      // 检查最低充值金额
-      const minAmount = promotion.currentTierData.minAmount
-      if (amount < minAmount) {
-        return {
-          amount,
-          bonus: 0,
-          applied: false,
-          message: `Minimum recharge amount is ${minAmount} to enjoy promotion`
-        }
-      }
-
-      // 计算赠送金额
-      const bonus = this.calculateBonus(amount, promotion.currentBonus)
-
-      // 标记优惠已使用
-      await this.markPromotionUsed(userId, promotion.currentTier, amount, bonus)
-
-      logger.success(
-        `🎉 Promotion applied for user ${userId}: ` +
-        `Tier ${promotion.currentTier + 1} (${promotion.currentBonus}% bonus), ` +
-        `Amount: $${amount}, Bonus: $${bonus.toFixed(2)}, ` +
-        `Total: $${(amount + bonus).toFixed(2)}`
-      )
-
-      return {
-        amount,
-        bonus,
-        total: amount + bonus,
-        applied: true,
-        tier: promotion.currentTier,
-        tierData: promotion.currentTierData,
-        bonusRate: promotion.currentBonus,
-        message: `Successfully applied ${promotion.currentBonus}% bonus`
-      }
+      return await this.evaluatePromotion(userId, amount)
     } catch (error) {
-      logger.error('❌ Error applying promotion:', error)
+      logger.error('❌ Error evaluating promotion:', error)
       return {
         amount,
         bonus: 0,
+        total: amount,
         applied: false,
         message: 'Error applying promotion'
       }
     }
   }
 
+  async evaluatePromotion(userId, amount) {
+    if (!this.enabled) {
+      return {
+        amount,
+        bonus: 0,
+        total: amount,
+        applied: false,
+        message: 'Promotion feature is disabled'
+      }
+    }
+
+    const promotion = await this.getUserPromotion(userId)
+
+    if (!promotion) {
+      return {
+        amount,
+        bonus: 0,
+        total: amount,
+        applied: false,
+        message: 'No promotion available for this user'
+      }
+    }
+
+    if (promotion.hasUsed) {
+      return {
+        amount,
+        bonus: 0,
+        total: amount,
+        applied: false,
+        message: 'Promotion has already been used'
+      }
+    }
+
+    if (promotion.isExpired) {
+      return {
+        amount,
+        bonus: 0,
+        total: amount,
+        applied: false,
+        message: 'Promotion has expired'
+      }
+    }
+
+    if (promotion.currentTier === -1) {
+      return {
+        amount,
+        bonus: 0,
+        total: amount,
+        applied: false,
+        message: 'No valid tier available'
+      }
+    }
+
+    const minAmount = promotion.currentTierData.minAmount
+    if (amount < minAmount) {
+      return {
+        amount,
+        bonus: 0,
+        total: amount,
+        applied: false,
+        message: `Minimum recharge amount is ${minAmount} to enjoy promotion`
+      }
+    }
+
+    const bonus = this.calculateBonus(amount, promotion.currentBonus)
+
+    return {
+      amount,
+      bonus,
+      total: amount + bonus,
+      applied: true,
+      tier: promotion.currentTier,
+      tierData: promotion.currentTierData,
+      bonusRate: promotion.currentBonus,
+      message: `Eligible for ${promotion.currentBonus}% bonus`
+    }
+  }
+
   /**
    * 标记优惠已使用
    */
-  async markPromotionUsed(userId, tier, amount, bonus) {
+  async markPromotionUsed(userId, tier, amount, bonus, metadata = {}) {
     try {
       const key = `${this.promotionPrefix}${userId}`
       const data = await redis.getClientSafe().get(key)
@@ -280,6 +282,7 @@ class PromotionService {
         promotion.amountRecharged = amount
         promotion.bonusReceived = bonus
         promotion.totalReceived = amount + bonus
+        promotion.metadata = metadata
 
         // 更新数据，保持原有的TTL
         const ttl = await redis.getClientSafe().ttl(key)
@@ -294,11 +297,79 @@ class PromotionService {
         await this.incrementStats('totalBonusAmount', bonus)
         await this.incrementStats('totalRechargeAmount', amount)
 
+        const tierData = this.tiers[tier] || null
+        await this.recordPromotionEvent(userId, {
+          tier,
+          bonusRate: tierData?.bonus || metadata.bonusRate,
+          amount,
+          bonus,
+          status: metadata.status || 'completed',
+          source: metadata.source || 'system',
+          metadata
+        })
+
         logger.info(`✅ Marked promotion as used for user ${userId}`)
       }
     } catch (error) {
       logger.error('❌ Error marking promotion as used:', error)
       throw error
+    }
+  }
+
+  async recordPromotionEvent(userId, event = {}) {
+    try {
+      const client = redis.getClientSafe()
+      const recordId = event.id || `promo_${crypto.randomBytes(8).toString('hex')}`
+      const record = {
+        id: recordId,
+        userId,
+        tier: typeof event.tier === 'number' ? event.tier : null,
+        bonusRate:
+          typeof event.bonusRate === 'number' ? event.bonusRate : event.metadata?.bonusRate || null,
+        amount: Number.isFinite(event.amount) ? Number(event.amount) : 0,
+        bonus: Number.isFinite(event.bonus) ? Number(event.bonus) : 0,
+        status: event.status || 'completed',
+        source: event.source || 'system',
+        message: event.message || '',
+        metadata: event.metadata || {},
+        createdAt: event.createdAt || new Date().toISOString()
+      }
+
+      await client.set(`${this.promotionRecordPrefix}${recordId}`, JSON.stringify(record))
+      await client.lpush(`${this.userPromotionRecordsPrefix}${userId}`, recordId)
+      await client.lpush(this.globalPromotionRecordsKey, recordId)
+
+      return record
+    } catch (error) {
+      logger.error('❌ Error recording promotion event:', error)
+      return null
+    }
+  }
+
+  async getUserPromotionRecords(userId, options = {}) {
+    try {
+      const limit = Math.max(1, parseInt(options.limit, 10) || 10)
+      const client = redis.getClientSafe()
+      const listKey = `${this.userPromotionRecordsPrefix}${userId}`
+      const total = await client.llen(listKey)
+      const recordIds = await client.lrange(listKey, 0, limit - 1)
+
+      if (!recordIds || recordIds.length === 0) {
+        return { total, records: [] }
+      }
+
+      const records = []
+      for (const recordId of recordIds) {
+        const data = await client.get(`${this.promotionRecordPrefix}${recordId}`)
+        if (data) {
+          records.push(JSON.parse(data))
+        }
+      }
+
+      return { total, records }
+    } catch (error) {
+      logger.error('❌ Error getting promotion records:', error)
+      return { total: 0, records: [] }
     }
   }
 

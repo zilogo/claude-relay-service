@@ -345,12 +345,16 @@
                 </svg>
               </div>
               <div>
-                <p class="text-sm font-semibold text-purple-900 dark:text-purple-100">活动增额</p>
-                <p class="mt-3 text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400">
+                <p class="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                  手动充值 · 活动增额
+                </p>
+                <p
+                  class="mt-3 text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400"
+                >
                   ${{ (balanceInfo?.manualRechargeTotal || 0).toFixed(2) }}
                 </p>
                 <div class="mt-4 flex items-center justify-between text-sm">
-                  <span class="text-purple-700 dark:text-purple-300">手动充值累计</span>
+                  <span class="text-purple-700 dark:text-purple-300">手动充值累计（含活动增额）</span>
                   <svg
                     class="h-5 w-5 text-purple-500 transition-transform group-hover:translate-x-1"
                     fill="none"

@@ -10,6 +10,7 @@ const logger = require('../utils/logger')
 const zpayService = require('./zpayService')
 const stripeService = require('./stripeService')
 const userService = require('./userService')
+const promotionService = require('./promotionService')
 
 // Redis Key 前缀
 const REDIS_KEYS = {
@@ -467,8 +468,9 @@ class PaymentService {
     await this.saveOrder(order)
 
     // 增加用户余额
+    let baseRechargeResult = null
     try {
-      await userService.rechargeBalance(
+      baseRechargeResult = await userService.rechargeBalance(
         order.userId,
         order.amountUsd,
         { id: 'system', name: '在线支付' },
@@ -490,6 +492,8 @@ class PaymentService {
         userId: order.userId,
         amountUsd: order.amountUsd
       })
+
+      await this.applyPromotionBonus(order, provider, baseRechargeResult)
     } catch (error) {
       // 余额充值失败，标记订单为失败状态
       logger.error('[PaymentService] Failed to recharge balance', {
@@ -503,6 +507,77 @@ class PaymentService {
     }
 
     return { success: true, order }
+  }
+
+  async applyPromotionBonus(order, provider, baseRechargeResult) {
+    if (!promotionService.isEnabled()) {
+      return
+    }
+
+    let promotionResult = null
+
+    try {
+      promotionResult = await promotionService.applyPromotion(order.userId, order.amountUsd)
+      if (!promotionResult.applied) {
+        return
+      }
+
+      const bonusRecharge = await userService.rechargeBalance(
+        order.userId,
+        promotionResult.bonus,
+        { id: 'system', name: 'Promotion System' },
+        `${provider}支付赠额 - 订单${order.id}`,
+        {
+          recordType: 'promotion',
+          source: provider || 'payment',
+          countTowardTotalRecharge: false,
+          updateLastRecharge: false,
+          metadata: {
+            orderId: order.id,
+            tier: promotionResult.tier,
+            bonusRate: promotionResult.bonusRate,
+            promotionType: 'bonus'
+          }
+        }
+      )
+
+      await promotionService.markPromotionUsed(order.userId, promotionResult.tier, order.amountUsd, promotionResult.bonus, {
+        source: 'online-payment',
+        orderId: order.id,
+        paymentProvider: provider,
+        baseRecordId: baseRechargeResult?.recordId,
+        bonusRecordId: bonusRecharge.recordId
+      })
+
+      logger.info('[PaymentService] Promotion bonus applied', {
+        orderId: order.id,
+        userId: order.userId,
+        bonus: promotionResult.bonus,
+        tier: promotionResult.tier
+      })
+    } catch (error) {
+      logger.error('[PaymentService] Failed to apply promotion bonus', {
+        orderId: order.id,
+        userId: order.userId,
+        error: error.message
+      })
+
+      if (promotionResult?.applied) {
+        await promotionService.recordPromotionEvent(order.userId, {
+          tier: promotionResult.tier,
+          bonusRate: promotionResult.bonusRate,
+          amount: order.amountUsd,
+          bonus: promotionResult.bonus,
+          status: 'failed',
+          source: 'online-payment',
+          message: error.message,
+          metadata: {
+            orderId: order.id,
+            paymentProvider: provider
+          }
+        })
+      }
+    }
   }
 
   /**

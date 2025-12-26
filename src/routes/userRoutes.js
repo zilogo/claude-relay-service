@@ -2054,7 +2054,12 @@ router.get('/promotion/status', authenticateUser, async (req, res) => {
         hasUsed: promotion.hasUsed,
         isExpired: promotion.isExpired,
         startTime: promotion.startTime,
-        expiresAt: promotion.expiresAt
+        expiresAt: promotion.expiresAt,
+        usedAt: promotion.usedAt,
+        tierUsed: promotion.tierUsed,
+        amountRecharged: promotion.amountRecharged || 0,
+        bonusReceived: promotion.bonusReceived || 0,
+        metadata: promotion.metadata || null
       }
     })
   } catch (error) {
@@ -2086,19 +2091,21 @@ router.post('/promotion/recharge', authenticateUser, async (req, res) => {
 
     const rechargeAmount = parseFloat(amount)
 
-    // 检查并应用优惠
     const promotionResult = await promotionService.applyPromotion(userId, rechargeAmount)
 
     if (!promotionResult.applied) {
-      // 优惠不可用，执行正常充值
       const result = await userService.rechargeBalance(
         userId,
         rechargeAmount,
         { id: userId, name: req.user.username },
         remark || '用户充值',
         {
-          recordType: 'payment',
-          source: 'user-recharge'
+          recordType: 'manual',
+          source: 'user-recharge',
+          metadata: {
+            promotionEligible: false,
+            reason: promotionResult.message
+          }
         }
       )
 
@@ -2114,34 +2121,63 @@ router.post('/promotion/recharge', authenticateUser, async (req, res) => {
       })
     }
 
-    // 应用优惠充值（充值总额包含赠送）
-    const result = await userService.rechargeBalance(
+    // 先记录实际充值，再记录赠额
+    const baseRecharge = await userService.rechargeBalance(
       userId,
-      promotionResult.total,
-      { id: 'system', name: 'Promotion System' },
-      remark || `限时优惠充值 - ${promotionResult.bonusRate}%赠送`,
+      rechargeAmount,
+      { id: userId, name: req.user.username },
+      remark || '首充到账',
       {
-        recordType: 'promotion',
-        source: 'promotion-system',
+        recordType: 'manual',
+        source: 'promotion-manual',
         metadata: {
-          originalAmount: rechargeAmount,
-          bonus: promotionResult.bonus,
+          promotionEligible: true,
           tier: promotionResult.tier,
-          bonusRate: promotionResult.bonusRate
+          bonusRate: promotionResult.bonusRate,
+          promotionType: 'base'
         }
       }
     )
 
+    const bonusRecharge = await userService.rechargeBalance(
+      userId,
+      promotionResult.bonus,
+      { id: 'system', name: 'Promotion System' },
+      remark || `限时优惠赠额 - ${promotionResult.bonusRate}%`,
+      {
+        recordType: 'promotion',
+        source: 'promotion-system',
+        countTowardTotalRecharge: false,
+        updateLastRecharge: false,
+        metadata: {
+          originalAmount: rechargeAmount,
+          tier: promotionResult.tier,
+          bonusRate: promotionResult.bonusRate,
+          promotionType: 'bonus'
+        }
+      }
+    )
+
+    await promotionService.markPromotionUsed(userId, promotionResult.tier, rechargeAmount, promotionResult.bonus, {
+      source: 'manual-recharge',
+      remark: remark || '',
+      operatorId: req.user.id,
+      operatorName: req.user.username,
+      baseRecordId: baseRecharge.recordId,
+      bonusRecordId: bonusRecharge.recordId
+    })
+
     logger.info(
       `💰 Promotion recharge for user ${req.user.username}: ` +
       `Amount: $${rechargeAmount}, Bonus: $${promotionResult.bonus.toFixed(2)}, ` +
-      `Total: $${promotionResult.total.toFixed(2)}`
+      `Tier ${promotionResult.tier + 1}`
     )
 
     res.json({
       success: true,
       data: {
-        ...result,
+        baseRecharge,
+        bonusRecharge,
         promotion: {
           applied: true,
           bonus: promotionResult.bonus,
@@ -2167,6 +2203,27 @@ router.post('/promotion/recharge', authenticateUser, async (req, res) => {
       success: false,
       error: 'Recharge error',
       message: 'Failed to process promotion recharge'
+    })
+  }
+})
+
+// 🎁 获取优惠记录
+router.get('/promotion/records', authenticateUser, async (req, res) => {
+  try {
+    const promotionService = require('../services/promotionService')
+    const limit = Math.max(1, Math.min(50, parseInt(req.query.limit, 10) || 10))
+    const records = await promotionService.getUserPromotionRecords(req.user.id, { limit })
+
+    res.json({
+      success: true,
+      data: records
+    })
+  } catch (error) {
+    logger.error('❌ Get promotion records error:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get promotion records',
+      message: error.message
     })
   }
 })
