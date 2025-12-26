@@ -29,9 +29,6 @@
                       {{ statusHeadline }}
                     </h3>
                   </div>
-                  <p v-if="statusSubtext" class="text-sm text-white/90 dark:text-white/70">
-                    {{ statusSubtext }}
-                  </p>
                 </div>
                 <div class="flex items-center gap-2">
                   <button
@@ -88,16 +85,42 @@
                       只有一次机会
                     </span>
                   </div>
-                  <p class="mt-2 text-3xl font-bold">
-                    {{ currentTierData?.bonus || promotionStatus?.currentBonus || 0 }}%
-                  </p>
-                  <p class="text-sm text-amber-800 dark:text-amber-100">
-                    {{ currentTierData?.windowLabel || '限时档位' }} · 额外赠送
-                    {{ currentTierData?.bonus || 30 }}%
-                  </p>
-                  <p class="mt-3 text-xs text-amber-700 dark:text-amber-100/80">
-                    下一档将在 {{ formattedTime }} 后开启，赠额比例将下降。
-                  </p>
+                  <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                      <p class="mt-2 text-3xl font-bold">
+                        {{ currentTierData?.bonus || promotionStatus?.currentBonus || 0 }}%
+                      </p>
+                      <p class="text-sm text-amber-800 dark:text-amber-100">
+                        {{ currentTierData?.windowLabel || '限时档位' }} · 额外赠送
+                        {{ currentTierData?.bonus || 30 }}%
+                      </p>
+                      <p class="mt-3 text-xs text-amber-700 dark:text-amber-100/80">
+                        下一档将在 {{ formattedTime }} 后开启，赠额比例将下降。
+                      </p>
+                    </div>
+                    <!-- 倒计时显示 -->
+                    <div
+                      class="ml-4 flex items-center gap-2 rounded-lg bg-red-500/90 px-3 py-2 text-white shadow-md dark:bg-red-600/90"
+                    >
+                      <svg
+                        class="h-4 w-4 animate-pulse"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                        />
+                      </svg>
+                      <div class="text-center">
+                        <div class="text-xs">⏰ 还剩</div>
+                        <div class="text-sm font-bold">{{ formattedTime }}</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -116,47 +139,6 @@
                   <div class="text-sm text-white/80">
                     首充金额 ${{ (promotionStatus?.amountRecharged || 0).toFixed(2) }} · 档位
                     {{ renderTierLabel(promotionStatus?.tierUsed, promotionStatus?.metadata?.tierWindow) }}
-                  </div>
-                </div>
-              </div>
-
-              <div
-                v-else-if="currentTierData"
-                class="mb-4 rounded-xl bg-white/40 p-4 backdrop-blur-sm shadow-lg dark:bg-white/20"
-              >
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <div class="text-3xl">💰💰💰</div>
-                    <div>
-                      <div class="text-lg font-bold text-gray-900 dark:text-gray-100">
-                        {{ currentTierData.label }}
-                      </div>
-                      <div class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        当前档位 - {{ currentTierData.bonus }}%赠送
-                      </div>
-                    </div>
-                  </div>
-                  <!-- 倒计时显示 -->
-                  <div
-                    class="flex items-center gap-2 rounded-lg bg-red-500/90 px-4 py-3 text-white shadow-md dark:bg-red-600/90"
-                  >
-                    <svg
-                      class="h-5 w-5 animate-pulse"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                      />
-                    </svg>
-                    <div class="text-center">
-                      <div class="text-xs">⏰ 还剩</div>
-                      <div class="text-lg font-bold">{{ formattedTime }}</div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -218,10 +200,10 @@ const userStore = useUserStore()
 const DEFAULT_TOTAL_PROMOTION_HOURS = 72
 
 const defaultTierTemplates = [
-  { id: 1, startHour: 0, endHour: 24, bonus: 30, minAmount: 100, label: '额外赠送30%', timeLabel: '0-24小时', example: '充100送30', emoji: '💰💰💰' },
-  { id: 2, startHour: 24, endHour: 36, bonus: 20, minAmount: 100, label: '额外赠送20%', timeLabel: '24-36小时', example: '充100送20', emoji: '💰💰' },
-  { id: 3, startHour: 36, endHour: 48, bonus: 10, minAmount: 100, label: '额外赠送10%', timeLabel: '36-48小时', example: '充100送10', emoji: '💰' },
-  { id: 4, startHour: 48, endHour: 72, bonus: 5, minAmount: 100, label: '额外赠送5%', timeLabel: '48-72小时', example: '充100送5', emoji: '' }
+  { id: 1, startHour: 0, endHour: 24, bonus: 30, minAmount: 100, label: '额外赠送30%', timeLabel: '0-24小时', example: '额外赠送30%', emoji: '💰💰💰' },
+  { id: 2, startHour: 24, endHour: 36, bonus: 20, minAmount: 100, label: '额外赠送20%', timeLabel: '24-36小时', example: '额外赠送20%', emoji: '💰💰' },
+  { id: 3, startHour: 36, endHour: 48, bonus: 10, minAmount: 100, label: '额外赠送10%', timeLabel: '36-48小时', example: '额外赠送10%', emoji: '💰' },
+  { id: 4, startHour: 48, endHour: 72, bonus: 5, minAmount: 100, label: '额外赠送5%', timeLabel: '48-72小时', example: '额外赠送5%', emoji: '' }
 ]
 
 const normalizeTiers = (tiers = []) => {
@@ -252,7 +234,7 @@ const normalizeTiers = (tiers = []) => {
       label: tier.label || `额外赠送${bonus}%`,
       timeLabel: tier.timeLabel || tier.windowLabel || `${startHour}-${endHour}小时`,
       windowLabel: tier.windowLabel || `${startHour}-${endHour}小时`,
-      example: tier.example || `充100送${exampleBonus}`,
+      example: tier.example || `额外赠送${bonus}%`,
       emoji: tier.emoji || defaultTierTemplates[index]?.emoji || '💰'
     })
 
@@ -416,8 +398,7 @@ const statusSubtext = computed(() => {
     return `已获取 +$${bonus} 赠额，感谢首充支持`
   }
   if (promotionStatus.value?.available && currentTierData.value) {
-    const windowLabel = currentTierData.value.windowLabel || currentTierData.value.timeLabel
-    return `${windowLabel} · 剩余 ${formattedTime.value}`
+    return `首充即享赠额，仅此一次机会`
   }
   if (promotionStatus.value?.isExpired) {
     return `活动已结束（超过 ${promotionStatus.value.totalDurationHours || totalPromotionHours.value} 小时窗口）`
@@ -430,8 +411,7 @@ const ctaText = computed(() => {
     return '查看赠送记录'
   }
   if (promotionStatus.value?.available) {
-    const bonus = currentTierData.value?.bonus || promotionStatus.value.currentBonus || 0
-    return `立即充值（享${bonus}%赠送）`
+    return '立即充值'
   }
   return '立即充值'
 })
