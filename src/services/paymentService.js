@@ -522,6 +522,8 @@ class PaymentService {
         return
       }
 
+      const tierWindowLabel = promotionResult.tierWindow?.label || null
+
       const bonusRecharge = await userService.rechargeBalance(
         order.userId,
         promotionResult.bonus,
@@ -537,18 +539,26 @@ class PaymentService {
             tier: promotionResult.tier,
             bonusRate: promotionResult.bonusRate,
             promotionType: 'bonus',
-            promotionBonus: true
+            promotionBonus: true,
+            tierWindow: tierWindowLabel
           }
         }
       )
 
-      await promotionService.markPromotionUsed(order.userId, promotionResult.tier, order.amountUsd, promotionResult.bonus, {
-        source: 'online-payment',
-        orderId: order.id,
-        paymentProvider: provider,
-        baseRecordId: baseRechargeResult?.recordId,
-        bonusRecordId: bonusRecharge.recordId
-      })
+      await promotionService.markPromotionUsed(
+        order.userId,
+        promotionResult.tier,
+        order.amountUsd,
+        promotionResult.bonus,
+        {
+          source: 'online-payment',
+          orderId: order.id,
+          paymentProvider: provider,
+          baseRecordId: baseRechargeResult?.recordId,
+          bonusRecordId: bonusRecharge.recordId,
+          tierWindow: tierWindowLabel
+        }
+      )
 
       logger.info('[PaymentService] Promotion bonus applied', {
         orderId: order.id,
@@ -574,7 +584,8 @@ class PaymentService {
           message: error.message,
           metadata: {
             orderId: order.id,
-            paymentProvider: provider
+            paymentProvider: provider,
+            tierWindow: promotionResult.tierWindow?.label || null
           }
         })
       }

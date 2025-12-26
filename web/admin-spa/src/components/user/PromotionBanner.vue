@@ -93,7 +93,7 @@
                   </div>
                   <div class="text-sm text-white/80">
                     首充金额 ${{ (promotionStatus?.amountRecharged || 0).toFixed(2) }} · 档位
-                    {{ renderTierLabel(promotionStatus?.tierUsed) }}
+                    {{ renderTierLabel(promotionStatus?.tierUsed, promotionStatus?.metadata?.tierWindow) }}
                   </div>
                 </div>
               </div>
@@ -190,7 +190,7 @@
                       </p>
                       <p class="text-xs text-gray-500 dark:text-gray-400">
                         {{ formatRecordTime(record.createdAt) }} · 档位
-                        {{ renderTierLabel(record.tier) }}
+                        {{ renderTierLabel(record.tier, record.tierWindow || record.metadata?.tierWindow) }}
                       </p>
                     </div>
                     <div class="text-right">
@@ -226,7 +226,7 @@
                 </svg>
                 <div class="flex flex-col gap-1">
                   <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    🚨 早充越划算！优惠每{{ tierDuration }}小时递减 - 过期后恢复原价，不再享受赠送
+                    🚨 早充越划算！优惠在 {{ totalPromotionHours }} 小时内阶梯递减，结束后恢复原价
                   </span>
                   <span class="text-xs font-medium text-gray-700 dark:text-gray-300">
                     💡 温馨提示：活动期间充值成功即刻自动发放赠额
@@ -256,20 +256,67 @@ const props = defineProps({
 const emit = defineEmits(['recharge'])
 const userStore = useUserStore()
 
-const TOTAL_PROMOTION_HOURS = 72
-const tierDuration = 12
+const DEFAULT_TOTAL_PROMOTION_HOURS = 72
 
-const currentTime = ref(Date.now())
+const defaultTierTemplates = [
+  { id: 1, startHour: 0, endHour: 24, bonus: 30, minAmount: 100, label: '充100得130', timeLabel: '0-24小时', example: '充100送30', emoji: '💰💰💰' },
+  { id: 2, startHour: 24, endHour: 36, bonus: 20, minAmount: 100, label: '充100得120', timeLabel: '24-36小时', example: '充100送20', emoji: '💰💰' },
+  { id: 3, startHour: 36, endHour: 48, bonus: 10, minAmount: 100, label: '充100得110', timeLabel: '36-48小时', example: '充100送10', emoji: '💰' },
+  { id: 4, startHour: 48, endHour: 72, bonus: 5, minAmount: 100, label: '充100得105', timeLabel: '48-72小时', example: '充100送5', emoji: '' }
+]
+
+const normalizeTiers = (tiers = []) => {
+  const normalized = []
+  let previousEnd = 0
+
+  tiers.forEach((tier, index) => {
+    const startHour =
+      typeof tier.startHour === 'number' ? tier.startHour : index === 0 ? 0 : previousEnd
+    const rawEnd =
+      typeof tier.endHour === 'number'
+        ? tier.endHour
+        : typeof tier.hours === 'number'
+          ? tier.hours
+          : startHour
+    const endHour = Math.max(rawEnd, startHour)
+    const bonus = typeof tier.bonus === 'number' ? tier.bonus : 0
+    const exampleBonus = Math.round((bonus / 100) * 100)
+
+    normalized.push({
+      id: tier.id || index + 1,
+      index,
+      startHour,
+      endHour,
+      hours: endHour,
+      bonus,
+      minAmount: tier.minAmount || 100,
+      label: tier.label || `充100得${100 + exampleBonus}`,
+      timeLabel: tier.timeLabel || tier.windowLabel || `${startHour}-${endHour}小时`,
+      windowLabel: tier.windowLabel || `${startHour}-${endHour}小时`,
+      example: tier.example || `充100送${exampleBonus}`,
+      emoji: tier.emoji || defaultTierTemplates[index]?.emoji || '💰'
+    })
+
+    previousEnd = endHour
+  })
+
+  return normalized
+}
+
+const defaultNormalizedTiers = normalizeTiers(defaultTierTemplates)
+const promotionTiers = ref(defaultNormalizedTiers)
 const promotionStatus = ref(null)
 const promotionRecords = ref([])
+const currentTime = ref(Date.now())
 const serverRemainingSeconds = ref(0)
 
-const promotionTiers = [
-  { id: 1, hours: 24, bonus: 30, minAmount: 100, timeLabel: '24小时内', label: '充100得130', emoji: '💰💰💰' },
-  { id: 2, hours: 36, bonus: 20, minAmount: 100, timeLabel: '36小时内', label: '充100得120', emoji: '💰💰' },
-  { id: 3, hours: 48, bonus: 10, minAmount: 100, timeLabel: '48小时内', label: '充100得110', emoji: '💰' },
-  { id: 4, hours: 72, bonus: 5, minAmount: 100, timeLabel: '72小时内', label: '充100得105', emoji: '' }
-]
+const totalPromotionHours = computed(() => {
+  const tiers = promotionTiers.value
+  if (!tiers.length) {
+    return DEFAULT_TOTAL_PROMOTION_HOURS
+  }
+  return tiers[tiers.length - 1].endHour || DEFAULT_TOTAL_PROMOTION_HOURS
+})
 
 const hoursSinceRegistration = computed(() => {
   if (!props.userCreatedAt) {
@@ -287,17 +334,27 @@ const hoursSinceRegistration = computed(() => {
 
 const fallbackTier = computed(() => {
   const hours = hoursSinceRegistration.value
-  if (hours >= TOTAL_PROMOTION_HOURS) return -1
-  if (hours < 24) return 0
-  if (hours < 36) return 1
-  if (hours < 48) return 2
-  if (hours < 72) return 3
+  const totalHours = totalPromotionHours.value
+
+  if (hours >= totalHours) {
+    return -1
+  }
+
+  const tiers = promotionTiers.value
+  for (let i = 0; i < tiers.length; i += 1) {
+    if (hours < tiers[i].endHour) {
+      return i
+    }
+  }
   return -1
 })
 
 const currentTier = computed(() => {
   if (typeof promotionStatus.value?.currentTier === 'number') {
     return promotionStatus.value.currentTier
+  }
+  if (typeof promotionStatus.value?.currentTierIndex === 'number') {
+    return promotionStatus.value.currentTierIndex
   }
   return fallbackTier.value
 })
@@ -307,7 +364,7 @@ const currentTierData = computed(() => {
     return promotionStatus.value.currentTierData
   }
   if (currentTier.value === -1) return null
-  return promotionTiers[currentTier.value]
+  return promotionTiers.value[currentTier.value] || null
 })
 
 const fallbackRemainingSeconds = computed(() => {
@@ -365,7 +422,7 @@ const shouldShowBanner = computed(() => {
   if (!props.userCreatedAt) {
     return true
   }
-  return hoursSinceRegistration.value < TOTAL_PROMOTION_HOURS
+  return hoursSinceRegistration.value < totalPromotionHours.value
 })
 
 const statusHeadline = computed(() => {
@@ -387,10 +444,11 @@ const statusSubtext = computed(() => {
     return `已获取 +$${bonus} 赠额，感谢首充支持`
   }
   if (promotionStatus.value?.available && currentTierData.value) {
-    return `当前档位 ${currentTierData.value.label} · 剩余 ${formattedTime.value}`
+    const windowLabel = currentTierData.value.windowLabel || currentTierData.value.timeLabel
+    return `${windowLabel} · 剩余 ${formattedTime.value}`
   }
   if (promotionStatus.value?.isExpired) {
-    return '72 小时活动窗口已结束，可关注后续活动通知'
+    return `活动已结束（超过 ${promotionStatus.value.totalDurationHours || totalPromotionHours.value} 小时窗口）`
   }
   return '首充即可享受 72 小时阶梯赠额，早充越划算'
 })
@@ -430,7 +488,7 @@ const getTierEmoji = (index) => {
   if (currentTier.value === -1 || index < currentTier.value) {
     return '⏰'
   }
-  return promotionTiers[index].emoji || '💰'
+  return promotionTiers.value[index]?.emoji || '💰'
 }
 
 const formatBonus = (value) => Number(value || 0).toFixed(2)
@@ -449,11 +507,14 @@ const formatRecordTime = (value) => {
   }
 }
 
-const renderTierLabel = (tierIndex) => {
-  if (typeof tierIndex !== 'number' || tierIndex < 0) {
-    return '无'
+const renderTierLabel = (tierIndex, fallbackWindow = '') => {
+  if (typeof tierIndex === 'number' && tierIndex >= 0) {
+    const tier = promotionTiers.value[tierIndex]
+    if (tier) {
+      return tier.windowLabel || tier.label
+    }
   }
-  return promotionTiers[tierIndex]?.label || `Tier${tierIndex + 1}`
+  return fallbackWindow || '无'
 }
 
 const getRecordStatusClass = (status) => {
@@ -463,13 +524,24 @@ const getRecordStatusClass = (status) => {
   return 'rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-100'
 }
 
+const applyPromotionTiers = (status) => {
+  if (Array.isArray(status?.tiers) && status.tiers.length) {
+    promotionTiers.value = normalizeTiers(status.tiers)
+  } else {
+    promotionTiers.value = defaultNormalizedTiers
+  }
+}
+
 const loadPromotionStatus = async () => {
   try {
     const status = await userStore.getPromotionStatus()
     promotionStatus.value = status
     serverRemainingSeconds.value = status?.remainingSeconds || 0
+    applyPromotionTiers(status)
   } catch (error) {
     console.error('Failed to load promotion status:', error)
+    promotionStatus.value = null
+    promotionTiers.value = defaultNormalizedTiers
   }
 }
 
@@ -523,6 +595,7 @@ const handleRecharge = () => {
   })
 }
 </script>
+
 
 <style scoped>
 .slide-fade-enter-active {
