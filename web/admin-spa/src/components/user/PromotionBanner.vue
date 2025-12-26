@@ -350,6 +350,10 @@ const formattedTime = computed(() => {
 })
 
 const shouldShowBanner = computed(() => {
+  if (promotionStatus.value?.forceHide) {
+    return false
+  }
+
   if (promotionStatus.value) {
     if (promotionStatus.value.hasUsed) {
       return true
