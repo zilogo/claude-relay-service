@@ -294,7 +294,7 @@ class PromotionService {
       }
     }
 
-    const minAmount = promotion.currentTierData.minAmount
+    const { minAmount } = promotion.currentTierData
     if (amount < minAmount) {
       return {
         amount,

@@ -21,10 +21,9 @@
               >
                 <div class="flex flex-col gap-1">
                   <div class="flex items-center gap-2">
-                    <span
-                      class="text-2xl"
-                      :class="promotionStatus?.hasUsed ? '' : 'animate-pulse'"
-                    >🔥</span>
+                    <span class="text-2xl" :class="promotionStatus?.hasUsed ? '' : 'animate-pulse'"
+                      >🔥</span
+                    >
                     <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 sm:text-xl">
                       {{ statusHeadline }}
                     </h3>
@@ -56,7 +55,7 @@
               <!-- 重点提醒 -->
               <div v-if="!promotionStatus?.hasUsed" class="mb-4 grid gap-3 lg:grid-cols-2">
                 <div
-                  class="rounded-2xl bg-white/40 p-4 backdrop-blur-sm shadow-lg dark:bg-white/15"
+                  class="rounded-2xl bg-white/40 p-4 shadow-lg backdrop-blur-sm dark:bg-white/15"
                 >
                   <p class="text-xs font-semibold uppercase tracking-widest text-orange-600">
                     新注册用户 · 首充优惠
@@ -81,7 +80,9 @@
                 >
                   <div class="flex items-center justify-between">
                     <p>当前优惠</p>
-                    <span class="rounded-full bg-amber-100 px-3 py-1 text-xs text-amber-700 dark:bg-amber-800/60 dark:text-amber-100">
+                    <span
+                      class="rounded-full bg-amber-100 px-3 py-1 text-xs text-amber-700 dark:bg-amber-800/60 dark:text-amber-100"
+                    >
                       只有一次机会
                     </span>
                   </div>
@@ -138,7 +139,12 @@
                   </div>
                   <div class="text-sm text-white/80">
                     首充金额 ${{ (promotionStatus?.amountRecharged || 0).toFixed(2) }} · 档位
-                    {{ renderTierLabel(promotionStatus?.tierUsed, promotionStatus?.metadata?.tierWindow) }}
+                    {{
+                      renderTierLabel(
+                        promotionStatus?.tierUsed,
+                        promotionStatus?.metadata?.tierWindow
+                      )
+                    }}
                   </div>
                 </div>
               </div>
@@ -173,7 +179,6 @@
                   </div>
                 </div>
               </div>
-
             </div>
           </div>
         </div>
@@ -192,10 +197,50 @@ const userStore = useUserStore()
 const DEFAULT_TOTAL_PROMOTION_HOURS = 72
 
 const defaultTierTemplates = [
-  { id: 1, startHour: 0, endHour: 24, bonus: 30, minAmount: 100, label: '额外赠送30%', timeLabel: '0-24小时', example: '额外赠送30%', emoji: '💰💰💰' },
-  { id: 2, startHour: 24, endHour: 36, bonus: 20, minAmount: 100, label: '额外赠送20%', timeLabel: '24-36小时', example: '额外赠送20%', emoji: '💰💰' },
-  { id: 3, startHour: 36, endHour: 48, bonus: 10, minAmount: 100, label: '额外赠送10%', timeLabel: '36-48小时', example: '额外赠送10%', emoji: '💰' },
-  { id: 4, startHour: 48, endHour: 72, bonus: 5, minAmount: 100, label: '额外赠送5%', timeLabel: '48-72小时', example: '额外赠送5%', emoji: '' }
+  {
+    id: 1,
+    startHour: 0,
+    endHour: 24,
+    bonus: 30,
+    minAmount: 100,
+    label: '额外赠送30%',
+    timeLabel: '0-24小时',
+    example: '额外赠送30%',
+    emoji: '💰💰💰'
+  },
+  {
+    id: 2,
+    startHour: 24,
+    endHour: 36,
+    bonus: 20,
+    minAmount: 100,
+    label: '额外赠送20%',
+    timeLabel: '24-36小时',
+    example: '额外赠送20%',
+    emoji: '💰💰'
+  },
+  {
+    id: 3,
+    startHour: 36,
+    endHour: 48,
+    bonus: 10,
+    minAmount: 100,
+    label: '额外赠送10%',
+    timeLabel: '36-48小时',
+    example: '额外赠送10%',
+    emoji: '💰'
+  },
+  {
+    id: 4,
+    startHour: 48,
+    endHour: 72,
+    bonus: 5,
+    minAmount: 100,
+    label: '额外赠送5%',
+    timeLabel: '48-72小时',
+    example: '额外赠送5%',
+    emoji: ''
+  }
 ]
 
 const normalizeTiers = (tiers = []) => {
@@ -213,7 +258,6 @@ const normalizeTiers = (tiers = []) => {
           : startHour
     const endHour = Math.max(rawEnd, startHour)
     const bonus = typeof tier.bonus === 'number' ? tier.bonus : 0
-    const exampleBonus = Math.round((bonus / 100) * 100)
 
     normalized.push({
       id: tier.id || index + 1,
@@ -240,7 +284,6 @@ const normalizeTiers = (tiers = []) => {
 const defaultNormalizedTiers = normalizeTiers(defaultTierTemplates)
 const promotionTiers = ref(defaultNormalizedTiers)
 const promotionStatus = ref(null)
-const promotionRecords = ref([])
 const serverRemainingSeconds = ref(0)
 const serverRegisteredHours = ref(null)
 const serverTotalPromotionHours = ref(null)
@@ -370,20 +413,6 @@ const statusHeadline = computed(() => {
   return '新用户首充优惠'
 })
 
-const statusSubtext = computed(() => {
-  if (promotionStatus.value?.hasUsed) {
-    const bonus = (promotionStatus.value.bonusReceived || 0).toFixed(2)
-    return `已获取 +$${bonus} 赠额，感谢首充支持`
-  }
-  if (promotionStatus.value?.available && currentTierData.value) {
-    return `首充即享赠额，仅此一次机会`
-  }
-  if (promotionStatus.value?.isExpired) {
-    return `活动已结束（超过 ${promotionStatus.value.totalDurationHours || totalPromotionHours.value} 小时窗口）`
-  }
-  return '首充即可享受 72 小时阶梯赠额，早充越划算'
-})
-
 const ctaText = computed(() => {
   if (promotionStatus.value?.hasUsed) {
     return '查看赠送记录'
@@ -421,22 +450,6 @@ const getTierEmoji = (index) => {
   return promotionTiers.value[index]?.emoji || '💰'
 }
 
-const formatBonus = (value) => Number(value || 0).toFixed(2)
-
-const formatRecordTime = (value) => {
-  if (!value) return ''
-  try {
-    return new Date(value).toLocaleString('zh-CN', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  } catch (error) {
-    return value
-  }
-}
-
 const renderTierLabel = (tierIndex, fallbackWindow = '') => {
   if (typeof tierIndex === 'number' && tierIndex >= 0) {
     const tier = promotionTiers.value[tierIndex]
@@ -445,48 +458,6 @@ const renderTierLabel = (tierIndex, fallbackWindow = '') => {
     }
   }
   return fallbackWindow || '无'
-}
-
-const getRecordStatusClass = (status) => {
-  if (status === 'failed') {
-    return 'rounded-full bg-red-100 px-2 py-0.5 text-red-700 dark:bg-red-900/30 dark:text-red-200'
-  }
-  return 'rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-100'
-}
-
-const getTierStatusMeta = (index) => {
-  if (promotionStatus.value?.hasUsed) {
-    return {
-      text: '已到账',
-      classes: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-100'
-    }
-  }
-
-  if (promotionStatus.value?.isExpired || promotionStatus.value?.forceHide) {
-    return {
-      text: '已结束',
-      classes: 'bg-gray-200 text-gray-600 dark:bg-gray-700/60 dark:text-gray-300'
-    }
-  }
-
-  if (index === currentTier.value) {
-    return {
-      text: '当前档位',
-      classes: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-100'
-    }
-  }
-
-  if (index < currentTier.value) {
-    return {
-      text: '已过期',
-      classes: 'bg-gray-100 text-gray-500 dark:bg-gray-800/40 dark:text-gray-300'
-    }
-  }
-
-  return {
-    text: '即将下降',
-    classes: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-100'
-  }
 }
 
 const applyPromotionTiers = (status) => {
@@ -524,19 +495,8 @@ const loadPromotionStatus = async () => {
   }
 }
 
-const loadPromotionRecords = async () => {
-  try {
-    const result = await userStore.getPromotionRecords({ limit: 3 })
-    promotionRecords.value = result.records || []
-  } catch (error) {
-    console.error('Failed to load promotion records:', error)
-    promotionRecords.value = []
-  }
-}
-
 const reloadPromotion = () => {
   loadPromotionStatus()
-  loadPromotionRecords()
 }
 
 let timer = null
@@ -573,7 +533,6 @@ const handleRecharge = () => {
   })
 }
 </script>
-
 
 <style scoped>
 .slide-fade-enter-active {

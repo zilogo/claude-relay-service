@@ -44,7 +44,7 @@
 
               <!-- Tab 按钮 -->
               <button
-                class="relative z-10 flex-1 rounded-xl px-3 py-2 text-center text-sm font-semibold transition-colors whitespace-nowrap min-w-0"
+                class="relative z-10 min-w-0 flex-1 whitespace-nowrap rounded-xl px-3 py-2 text-center text-sm font-semibold transition-colors"
                 :class="
                   activeTab === 'overview'
                     ? 'text-[#D97757]'
@@ -55,7 +55,7 @@
                 总览
               </button>
               <button
-                class="relative z-10 flex-1 rounded-xl px-3 py-2 text-center text-sm font-semibold transition-colors whitespace-nowrap min-w-0"
+                class="relative z-10 min-w-0 flex-1 whitespace-nowrap rounded-xl px-3 py-2 text-center text-sm font-semibold transition-colors"
                 :class="
                   activeTab === 'api-keys'
                     ? 'text-[#D97757]'
@@ -66,7 +66,7 @@
                 API Keys
               </button>
               <button
-                class="relative z-10 flex-1 rounded-xl px-3 py-2 text-center text-sm font-semibold transition-colors whitespace-nowrap min-w-0"
+                class="relative z-10 min-w-0 flex-1 whitespace-nowrap rounded-xl px-3 py-2 text-center text-sm font-semibold transition-colors"
                 :class="
                   activeTab === 'usage'
                     ? 'text-[#D97757]'
@@ -77,7 +77,7 @@
                 使用统计
               </button>
               <button
-                class="relative z-10 flex-1 rounded-xl px-3 py-2 text-center text-sm font-semibold transition-colors whitespace-nowrap min-w-0"
+                class="relative z-10 min-w-0 flex-1 whitespace-nowrap rounded-xl px-3 py-2 text-center text-sm font-semibold transition-colors"
                 :class="
                   activeTab === 'recharge'
                     ? 'text-[#D97757]'
@@ -88,7 +88,7 @@
                 充值记录
               </button>
               <button
-                class="relative z-10 flex-1 rounded-xl px-3 py-2 text-center text-sm font-semibold transition-colors whitespace-nowrap min-w-0"
+                class="relative z-10 min-w-0 flex-1 whitespace-nowrap rounded-xl px-3 py-2 text-center text-sm font-semibold transition-colors"
                 :class="
                   activeTab === 'tutorial'
                     ? 'text-[#D97757]'
@@ -327,7 +327,9 @@
             ></div>
             <div class="relative">
               <!-- 右上角提示 -->
-              <div class="absolute -top-2 -right-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1 text-xs font-semibold text-white shadow-lg">
+              <div
+                class="absolute -right-2 -top-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1 text-xs font-semibold text-white shadow-lg"
+              >
                 节日活动，定期开启
               </div>
               <div
@@ -353,7 +355,7 @@
                     活动赠额已到账
                   </p>
                   <p
-                    class="mt-3 text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400"
+                    class="mt-3 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-4xl font-bold text-transparent dark:from-purple-400 dark:to-pink-400"
                   >
                     +${{ promotionBonusReceived.toFixed(2) }}
                   </p>
@@ -371,7 +373,7 @@
                     首充优惠倒计时
                   </p>
                   <p
-                    class="mt-3 text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400"
+                    class="mt-3 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-4xl font-bold text-transparent dark:from-purple-400 dark:to-pink-400"
                   >
                     {{ promotionCurrentBonus }}%
                   </p>
@@ -393,12 +395,14 @@
                     手动充值 · 活动增额
                   </p>
                   <p
-                    class="mt-3 text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400"
+                    class="mt-3 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-4xl font-bold text-transparent dark:from-purple-400 dark:to-pink-400"
                   >
                     ${{ (balanceInfo?.manualRechargeTotal || 0).toFixed(2) }}
                   </p>
                   <div class="mt-4 flex items-center justify-between text-sm">
-                    <span class="text-purple-700 dark:text-purple-300">手动充值累计（含活动增额）</span>
+                    <span class="text-purple-700 dark:text-purple-300"
+                      >手动充值累计（含活动增额）</span
+                    >
                     <svg
                       class="h-5 w-5 text-purple-500 transition-transform group-hover:translate-x-1"
                       fill="none"
@@ -868,18 +872,7 @@ const promotionTeaserVisible = computed(() => {
   return status.available !== false
 })
 
-const promotionTierWindow = computed(() => {
-  return (
-    promotionStatusState.value?.metadata?.tierWindow ||
-    promotionStatusState.value?.currentTierData?.windowLabel ||
-    promotionStatusState.value?.currentTierData?.timeLabel ||
-    '限时档位'
-  )
-})
-
 const promotionBonusReceived = computed(() => promotionStatusState.value?.bonusReceived || 0)
-
-const promotionRechargeAmount = computed(() => promotionStatusState.value?.amountRecharged || 0)
 
 const handlePromotionStatusChange = (status) => {
   promotionStatusState.value = status
