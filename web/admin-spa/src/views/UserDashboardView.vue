@@ -326,6 +326,10 @@
               class="absolute -bottom-12 -right-12 h-40 w-40 rounded-full bg-purple-500/10 blur-3xl transition-all group-hover:bg-purple-500/20"
             ></div>
             <div class="relative">
+              <!-- 右上角提示 -->
+              <div class="absolute -top-2 -right-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1 text-xs font-semibold text-white shadow-lg">
+                节日活动，定期开启
+              </div>
               <div
                 class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg shadow-purple-500/30"
               >
@@ -353,9 +357,6 @@
                   >
                     +${{ promotionBonusReceived.toFixed(2) }}
                   </p>
-                  <p class="mt-2 text-sm text-purple-700 dark:text-purple-200">
-                    首充 ${{ promotionRechargeAmount.toFixed(2) }} · {{ promotionTierWindow }} · 仅此一次
-                  </p>
                   <div class="mt-4 flex flex-wrap gap-2 text-sm">
                     <button
                       class="inline-flex items-center rounded-full bg-white/80 px-4 py-2 font-semibold text-purple-700 shadow-sm transition hover:bg-white"
@@ -363,9 +364,6 @@
                     >
                       查看充值记录
                     </button>
-                    <span class="inline-flex items-center rounded-full bg-purple-100/80 px-3 py-1 text-xs font-semibold text-purple-700 dark:bg-purple-900/40 dark:text-purple-200">
-                      活动仅可领取一次
-                    </span>
                   </div>
                 </template>
                 <template v-else-if="promotionTeaserVisible">
