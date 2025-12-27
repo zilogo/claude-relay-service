@@ -3,6 +3,7 @@ const crypto = require('crypto')
 const bcrypt = require('bcrypt')
 const logger = require('../utils/logger')
 const config = require('../../config/config')
+const NodeCache = require('node-cache')
 
 class UserService {
   constructor() {
@@ -13,6 +14,14 @@ class UserService {
     this.ENCRYPTION_ALGORITHM = 'aes-256-cbc'
     this.ENCRYPTION_SALT = 'salt'
     this._encryptionKeyCache = null
+
+    // 缓存实例
+    // 用户统计缓存: TTL 60秒
+    this.userStatsCache = new NodeCache({ stdTTL: 60, checkperiod: 120 })
+    // 用户列表缓存: TTL 300秒 (5分钟)
+    this.userListCache = new NodeCache({ stdTTL: 300, checkperiod: 600 })
+
+    logger.info('✅ UserService cache initialized (stats: 60s, list: 300s)')
   }
 
   // 🔑 生成用户ID
@@ -172,6 +181,10 @@ class UserService {
         await this.transferMatchingApiKeys(user)
       }
 
+      // 清理缓存
+      this.userListCache.flushAll()
+      this.userStatsCache.del('user_stats_overview')
+
       logger.info(`📝 ${isNewUser ? 'Created' : 'Updated'} user: ${username} (${user.id})`)
       return user
     } catch (error) {
@@ -283,6 +296,27 @@ class UserService {
   // 📋 获取所有用户列表（管理员功能）
   async getAllUsers(options = {}) {
     try {
+      // 生成缓存键（包含过滤条件）
+      const cacheKey = `user_list_${JSON.stringify(options)}`
+      const cached = this.userListCache.get(cacheKey)
+
+      if (cached) {
+        logger.debug('✅ User list cache hit')
+        return cached
+      }
+
+      logger.debug('⏳ User list cache miss, fetching from Redis...')
+      const result = await this._fetchAllUsersInternal(options)
+      this.userListCache.set(cacheKey, result)
+      return result
+    } catch (error) {
+      logger.error('❌ Error in getAllUsers:', error)
+      throw error
+    }
+  }
+
+  async _fetchAllUsersInternal(options = {}) {
+    try {
       const client = redis.getClientSafe()
       const { page = 1, limit = 20, role, isActive, search, disablePagination = false } = options
       const pageNumber = Number.isInteger(page)
@@ -295,6 +329,7 @@ class UserService {
       const pattern = `${this.userPrefix}*`
       const keys = await client.keys(pattern)
 
+      // 第一步：收集所有用户数据（不计算使用统计）
       const users = []
       for (const key of keys) {
         const userData = await client.get(key)
@@ -309,7 +344,16 @@ class UserService {
             continue
           }
 
-          // Calculate dynamic usage stats for each user
+          users.push(user)
+        }
+      }
+
+      // 第二步：✅ 并发计算所有用户的使用统计（最多10个并发）
+      const pLimit = require('p-limit')
+      const limit = pLimit(10)
+
+      const usagePromises = users.map((user) =>
+        limit(async () => {
           try {
             const usageStats = await this.calculateUserUsageStats(user.id)
             user.totalUsage = usageStats.totalUsage
@@ -336,9 +380,11 @@ class UserService {
           user.availableBalance = balance - totalCost
           user.lastRechargeAt = user.lastRechargeAt || null
 
-          users.push(user)
-        }
-      }
+          return user
+        })
+      )
+
+      await Promise.all(usagePromises)
 
       let filteredUsers = users
       if (searchQuery) {
@@ -409,6 +455,10 @@ class UserService {
         }
       }
 
+      // 清理缓存
+      this.userListCache.flushAll()
+      this.userStatsCache.del('user_stats_overview')
+
       return user
     } catch (error) {
       logger.error('❌ Error updating user status:', error)
@@ -429,6 +479,10 @@ class UserService {
 
       await redis.set(`${this.userPrefix}${userId}`, JSON.stringify(user))
       logger.info(`🔄 Updated user role: ${user.username} -> ${role}`)
+
+      // 清理缓存
+      this.userListCache.flushAll()
+      this.userStatsCache.del('user_stats_overview')
 
       return user
     } catch (error) {
@@ -574,6 +628,10 @@ class UserService {
         logger.error('❌ Error disabling user API keys during user deletion:', error)
       }
 
+      // 清理缓存
+      this.userListCache.flushAll()
+      this.userStatsCache.del('user_stats_overview')
+
       logger.info(`🗑️ Soft deleted user: ${user.username} (${userId})`)
       return user
     } catch (error) {
@@ -584,6 +642,26 @@ class UserService {
 
   // 📊 获取用户统计信息
   async getUserStats() {
+    try {
+      const cacheKey = 'user_stats_overview'
+      const cached = this.userStatsCache.get(cacheKey)
+
+      if (cached) {
+        logger.debug('✅ User stats cache hit')
+        return cached
+      }
+
+      logger.debug('⏳ User stats cache miss, calculating...')
+      const stats = await this._calculateUserStatsInternal()
+      this.userStatsCache.set(cacheKey, stats)
+      return stats
+    } catch (error) {
+      logger.error('❌ Error in getUserStats:', error)
+      throw error
+    }
+  }
+
+  async _calculateUserStatsInternal() {
     try {
       const client = redis.getClientSafe()
       const pattern = `${this.userPrefix}*`
@@ -603,40 +681,62 @@ class UserService {
         }
       }
 
+      // ✅ 并发计算所有用户统计（最多10个并发）
+      const pLimit = require('p-limit')
+      const limit = pLimit(10)
+
+      const statsPromises = []
+
       for (const key of keys) {
-        const userData = await client.get(key)
-        if (userData) {
-          const user = JSON.parse(userData)
-          stats.totalUsers++
+        statsPromises.push(
+          limit(async () => {
+            const userData = await client.get(key)
+            if (!userData) return null
 
-          if (user.isActive) {
-            stats.activeUsers++
-          }
+            const user = JSON.parse(userData)
+            const usageStats = await this.calculateUserUsageStats(user.id).catch((error) => {
+              logger.error(`❌ Error calculating usage for user ${user.id} in stats:`, error)
+              // Fallback to stored values
+              return {
+                apiKeyCount: user.apiKeyCount || 0,
+                totalUsage: {
+                  requests: user.totalUsage?.requests || 0,
+                  inputTokens: user.totalUsage?.inputTokens || 0,
+                  outputTokens: user.totalUsage?.outputTokens || 0,
+                  totalCost: user.totalUsage?.totalCost || 0
+                }
+              }
+            })
 
-          if (user.role === 'admin') {
-            stats.adminUsers++
-          } else {
-            stats.regularUsers++
-          }
+            return { user, usageStats }
+          })
+        )
+      }
 
-          // Calculate dynamic usage stats for each user
-          try {
-            const usageStats = await this.calculateUserUsageStats(user.id)
-            stats.totalApiKeys += usageStats.apiKeyCount
-            stats.totalUsage.requests += usageStats.totalUsage.requests
-            stats.totalUsage.inputTokens += usageStats.totalUsage.inputTokens
-            stats.totalUsage.outputTokens += usageStats.totalUsage.outputTokens
-            stats.totalUsage.totalCost += usageStats.totalUsage.totalCost
-          } catch (error) {
-            logger.error(`❌ Error calculating usage for user ${user.id} in stats:`, error)
-            // Fallback to stored values if calculation fails
-            stats.totalApiKeys += user.apiKeyCount || 0
-            stats.totalUsage.requests += user.totalUsage?.requests || 0
-            stats.totalUsage.inputTokens += user.totalUsage?.inputTokens || 0
-            stats.totalUsage.outputTokens += user.totalUsage?.outputTokens || 0
-            stats.totalUsage.totalCost += user.totalUsage?.totalCost || 0
-          }
+      const results = await Promise.all(statsPromises)
+
+      // 聚合统计结果
+      for (const result of results) {
+        if (!result) continue
+        const { user, usageStats } = result
+
+        stats.totalUsers++
+
+        if (user.isActive) {
+          stats.activeUsers++
         }
+
+        if (user.role === 'admin') {
+          stats.adminUsers++
+        } else {
+          stats.regularUsers++
+        }
+
+        stats.totalApiKeys += usageStats.apiKeyCount
+        stats.totalUsage.requests += usageStats.totalUsage.requests
+        stats.totalUsage.inputTokens += usageStats.totalUsage.inputTokens
+        stats.totalUsage.outputTokens += usageStats.totalUsage.outputTokens
+        stats.totalUsage.totalCost += usageStats.totalUsage.totalCost
       }
 
       return stats
@@ -792,6 +892,10 @@ class UserService {
 
       // 尝试转移匹配的API Keys
       await this.transferMatchingApiKeys(user)
+
+      // 清理缓存
+      this.userListCache.flushAll()
+      this.userStatsCache.del('user_stats_overview')
 
       logger.info(`📝 Registered local user: ${username} (${user.id})`)
 

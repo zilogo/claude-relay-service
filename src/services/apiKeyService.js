@@ -259,6 +259,17 @@ class ApiKeyService {
     // 保存API Key数据并建立哈希映射
     await redis.setApiKey(keyId, keyData, hashedKey)
 
+    // ✅ 添加到用户索引（如果有userId）
+    if (keyData.userId) {
+      try {
+        await redis.getClient().sadd(`user_apikeys:${keyData.userId}`, keyId)
+        logger.debug(`✅ Added API key ${keyId} to user index: user_apikeys:${keyData.userId}`)
+      } catch (error) {
+        logger.error(`❌ Failed to add API key to user index:`, error)
+        // 不抛出错误，允许API Key创建继续
+      }
+    }
+
     logger.success(`🔑 Generated new API key: ${name} (${keyId})`)
 
     return {
@@ -855,6 +866,17 @@ class ApiKeyService {
       // 从哈希映射中移除（这样就不能再使用这个key进行API调用）
       if (keyData.apiKey) {
         await redis.deleteApiKeyHash(keyData.apiKey)
+      }
+
+      // ✅ 从用户索引中移除（如果有userId）
+      if (keyData.userId) {
+        try {
+          await redis.getClient().srem(`user_apikeys:${keyData.userId}`, keyId)
+          logger.debug(`✅ Removed API key ${keyId} from user index: user_apikeys:${keyData.userId}`)
+        } catch (error) {
+          logger.error(`❌ Failed to remove API key from user index:`, error)
+          // 不抛出错误，允许删除操作继续
+        }
       }
 
       logger.success(`🗑️ Soft deleted API key: ${keyId} by ${deletedBy} (${deletedByType})`)
@@ -1623,20 +1645,47 @@ class ApiKeyService {
   // 👤 获取用户的API Keys
   async getUserApiKeys(userId, includeDeleted = false) {
     try {
-      const allKeys = await redis.getAllApiKeys()
-      let userKeys = allKeys.filter((key) => key.userId === userId)
+      const client = redis.getClient()
 
-      // 默认过滤掉已删除的API Keys
-      if (!includeDeleted) {
-        userKeys = userKeys.filter((key) => key.isDeleted !== 'true')
+      // ✅ 使用索引快速查询用户的API Key IDs（O(1)）
+      const keyIds = await client.smembers(`user_apikeys:${userId}`)
+
+      if (keyIds.length === 0) {
+        return []
+      }
+
+      // ✅ 批量获取API Key详情（Pipeline批量查询）
+      const pipeline = client.pipeline()
+      keyIds.forEach((keyId) => {
+        pipeline.hgetall(`apikey:${keyId}`)
+      })
+      const results = await pipeline.exec()
+
+      // 处理结果并过滤
+      const userKeys = []
+      for (let i = 0; i < results.length; i++) {
+        const [err, keyData] = results[i]
+        if (err || !keyData || Object.keys(keyData).length === 0) continue
+
+        const key = { id: keyIds[i], ...keyData }
+
+        // 默认过滤掉已删除的API Keys
+        if (!includeDeleted && key.isDeleted === 'true') {
+          continue
+        }
+
+        userKeys.push(key)
       }
 
       // Populate usage stats for each user's API key (same as getAllApiKeys does)
       const userKeysWithUsage = []
       for (const key of userKeys) {
-        const usage = await redis.getUsageStats(key.id)
-        const dailyCost = (await redis.getDailyCost(key.id)) || 0
-        const costStats = await redis.getCostStats(key.id)
+        // 并发获取使用统计（优化性能）
+        const [usage, dailyCost, costStats] = await Promise.all([
+          redis.getUsageStats(key.id),
+          redis.getDailyCost(key.id),
+          redis.getCostStats(key.id)
+        ])
 
         userKeysWithUsage.push({
           id: key.id,
