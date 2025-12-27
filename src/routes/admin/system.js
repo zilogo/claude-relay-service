@@ -284,7 +284,10 @@ router.get('/oem-settings', async (req, res) => {
       success: true,
       data: {
         ...settings,
-        ldapEnabled: config.ldap && config.ldap.enabled === true
+        ldapEnabled: config.ldap && config.ldap.enabled === true,
+        userManagementEnabled: config.userManagement && config.userManagement.enabled === true,
+        localAuthEnabled: config.localAuth && config.localAuth.enabled === true,
+        paymentEnabled: config.payment && config.payment.enabled === true
       }
     })
   } catch (error) {

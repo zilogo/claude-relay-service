@@ -43,9 +43,10 @@ const tabRouteMap = computed(() => {
     settings: '/settings'
   }
 
-  // 只有在 LDAP 启用时才包含用户管理路由
-  if (authStore.oemSettings?.ldapEnabled) {
+  // 用户管理/充值记录依赖 userManagement 模块，而不是 LDAP
+  if (authStore.oemSettings?.userManagementEnabled) {
     baseMap.userManagement = '/user-management'
+    baseMap.rechargeRecords = '/recharge-records'
   }
 
   return baseMap
@@ -67,6 +68,8 @@ const initActiveTab = () => {
       Dashboard: 'dashboard',
       ApiKeys: 'apiKeys',
       Accounts: 'accounts',
+      UserManagement: 'userManagement',
+      RechargeRecords: 'rechargeRecords',
       Tutorial: 'tutorial',
       Settings: 'settings'
     }
@@ -96,6 +99,8 @@ watch(
         Dashboard: 'dashboard',
         ApiKeys: 'apiKeys',
         Accounts: 'accounts',
+        UserManagement: 'userManagement',
+        RechargeRecords: 'rechargeRecords',
         Tutorial: 'tutorial',
         Settings: 'settings'
       }
