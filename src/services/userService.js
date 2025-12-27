@@ -350,10 +350,10 @@ class UserService {
 
       // 第二步：✅ 并发计算所有用户的使用统计（最多10个并发）
       const pLimit = require('p-limit')
-      const limit = pLimit(10)
+      const limiter = pLimit(10)
 
       const usagePromises = users.map((user) =>
-        limit(async () => {
+        limiter(async () => {
           try {
             const usageStats = await this.calculateUserUsageStats(user.id)
             user.totalUsage = usageStats.totalUsage
@@ -683,13 +683,13 @@ class UserService {
 
       // ✅ 并发计算所有用户统计（最多10个并发）
       const pLimit = require('p-limit')
-      const limit = pLimit(10)
+      const limiter = pLimit(10)
 
       const statsPromises = []
 
       for (const key of keys) {
         statsPromises.push(
-          limit(async () => {
+          limiter(async () => {
             const userData = await client.get(key)
             if (!userData) return null
 
