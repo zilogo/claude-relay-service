@@ -16,32 +16,32 @@ class PromotionService {
         id: 1,
         hours: 24,
         bonus: parseInt(process.env.PROMOTION_TIER1_BONUS) || 30,
-        minAmount: parseInt(process.env.PROMOTION_MIN_AMOUNT) || 100,
-        label: '充100得130',
+        minAmount: parseInt(process.env.PROMOTION_MIN_AMOUNT) || 0,
+        label: '额外赠送30%',
         timeLabel: '24小时内'
       },
       {
         id: 2,
         hours: 36,
         bonus: parseInt(process.env.PROMOTION_TIER2_BONUS) || 20,
-        minAmount: parseInt(process.env.PROMOTION_MIN_AMOUNT) || 100,
-        label: '充100得120',
+        minAmount: parseInt(process.env.PROMOTION_MIN_AMOUNT) || 0,
+        label: '额外赠送20%',
         timeLabel: '36小时内'
       },
       {
         id: 3,
         hours: 48,
         bonus: parseInt(process.env.PROMOTION_TIER3_BONUS) || 10,
-        minAmount: parseInt(process.env.PROMOTION_MIN_AMOUNT) || 100,
-        label: '充100得110',
+        minAmount: parseInt(process.env.PROMOTION_MIN_AMOUNT) || 0,
+        label: '额外赠送10%',
         timeLabel: '48小时内'
       },
       {
         id: 4,
         hours: 72,
         bonus: parseInt(process.env.PROMOTION_TIER4_BONUS) || 5,
-        minAmount: parseInt(process.env.PROMOTION_MIN_AMOUNT) || 100,
-        label: '充100得105',
+        minAmount: parseInt(process.env.PROMOTION_MIN_AMOUNT) || 0,
+        label: '额外赠送5%',
         timeLabel: '72小时内'
       }
     ]
@@ -291,17 +291,6 @@ class PromotionService {
         total: amount,
         applied: false,
         message: 'No valid tier available'
-      }
-    }
-
-    const minAmount = promotion.currentTierData.minAmount
-    if (amount < minAmount) {
-      return {
-        amount,
-        bonus: 0,
-        total: amount,
-        applied: false,
-        message: `Minimum recharge amount is ${minAmount} to enjoy promotion`
       }
     }
 

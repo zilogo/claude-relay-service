@@ -191,10 +191,10 @@ const userStore = useUserStore()
 const DEFAULT_TOTAL_PROMOTION_HOURS = 72
 
 const defaultTierTemplates = [
-  { id: 1, startHour: 0, endHour: 24, bonus: 30, minAmount: 100, label: '额外赠送30%', timeLabel: '0-24小时', example: '额外赠送30%', emoji: '💰💰💰' },
-  { id: 2, startHour: 24, endHour: 36, bonus: 20, minAmount: 100, label: '额外赠送20%', timeLabel: '24-36小时', example: '额外赠送20%', emoji: '💰💰' },
-  { id: 3, startHour: 36, endHour: 48, bonus: 10, minAmount: 100, label: '额外赠送10%', timeLabel: '36-48小时', example: '额外赠送10%', emoji: '💰' },
-  { id: 4, startHour: 48, endHour: 72, bonus: 5, minAmount: 100, label: '额外赠送5%', timeLabel: '48-72小时', example: '额外赠送5%', emoji: '' }
+  { id: 1, startHour: 0, endHour: 24, bonus: 30, minAmount: 0, label: '额外赠送30%', timeLabel: '0-24小时', example: '额外赠送30%', emoji: '💰💰💰' },
+  { id: 2, startHour: 24, endHour: 36, bonus: 20, minAmount: 0, label: '额外赠送20%', timeLabel: '24-36小时', example: '额外赠送20%', emoji: '💰💰' },
+  { id: 3, startHour: 36, endHour: 48, bonus: 10, minAmount: 0, label: '额外赠送10%', timeLabel: '36-48小时', example: '额外赠送10%', emoji: '💰' },
+  { id: 4, startHour: 48, endHour: 72, bonus: 5, minAmount: 0, label: '额外赠送5%', timeLabel: '48-72小时', example: '额外赠送5%', emoji: '' }
 ]
 
 const normalizeTiers = (tiers = []) => {
@@ -568,7 +568,7 @@ const handleRecharge = () => {
   emit('recharge', {
     tier: currentTier.value,
     bonus: currentTierData.value?.bonus || promotionStatus.value?.currentBonus || 0,
-    minAmount: currentTierData.value?.minAmount || 100
+    minAmount: currentTierData.value?.minAmount || 0
   })
 }
 </script>
