@@ -14,6 +14,10 @@ async function migrateUserApiKeyIndex() {
   try {
     logger.info('🚀 开始为现有API Keys创建userId索引...')
 
+    // ✅ 确保 Redis 连接已建立
+    await redis.connect()
+    logger.info('✅ Redis 连接成功')
+
     // 获取所有API Keys（最后一次使用KEYS命令）
     const pattern = 'apikey:*'
     const keys = await redis.getClient().keys(pattern)
@@ -67,9 +71,21 @@ async function migrateUserApiKeyIndex() {
       logger.info(`📝 示例: ${sampleKey} 包含 ${sampleCount} 个API Keys`)
     }
 
+    // ✅ 断开 Redis 连接
+    await redis.disconnect()
+    logger.info('👋 Redis 连接已关闭')
+
     process.exit(0)
   } catch (error) {
     logger.error('❌ 数据迁移失败:', error)
+
+    // ✅ 错误时也要断开连接
+    try {
+      await redis.disconnect()
+    } catch (disconnectError) {
+      // 忽略断开连接的错误
+    }
+
     process.exit(1)
   }
 }
