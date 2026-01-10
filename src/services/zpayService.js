@@ -2,6 +2,12 @@
  * ZPAY 支付服务
  * 支持支付宝和微信支付的聚合支付
  * API 文档: https://7-pay.cn/doc.html
+ *
+ * 功能特性：
+ * - 支持多种支付方式（支付宝、微信、QQ钱包、财付通）
+ * - 支持指定支付渠道 ID（用于区分不同的支付渠道）
+ * - 支持从配置文件映射默认渠道 ID
+ * - 自动签名验证和回调处理
  */
 
 const crypto = require('crypto')
@@ -14,6 +20,7 @@ class ZpayService {
     this.key = config.payment.zpay.key
     this.apiUrl = config.payment.zpay.apiUrl
     this.paymentMethods = config.payment.zpay.paymentMethods || ['alipay', 'wxpay']
+    this.channelMapping = config.payment.zpay.channelMapping || {}
 
     if (!this.pid || !this.key) {
       logger.warn('[ZpayService] ZPAY credentials not configured')
@@ -101,6 +108,7 @@ class ZpayService {
    * @param {number} amount - 金额（人民币）
    * @param {string} paymentMethod - 支付方式 (alipay/wxpay)
    * @param {Object} options - 额外选项
+   * @param {string} options.channelId - 支付渠道ID（可选）
    * @returns {Object} - 支付信息
    */
   async createOrder(orderId, amount, paymentMethod, options = {}) {
@@ -127,6 +135,24 @@ class ZpayService {
       sitename: options.sitename || config.web.title || 'AI TokenCloud'
     }
 
+    // 如果指定了 channelId，添加到参数中
+    if (options.channelId) {
+      params.channel_id = options.channelId
+      logger.info('[ZpayService] Using specified channel ID', {
+        orderId,
+        channelId: options.channelId,
+        paymentMethod
+      })
+    } else if (this.channelMapping[paymentMethod]) {
+      // 如果没有指定 channelId，但配置中有该支付方式的默认渠道映射，则使用映射的渠道ID
+      params.channel_id = this.channelMapping[paymentMethod]
+      logger.info('[ZpayService] Using mapped channel ID from config', {
+        orderId,
+        channelId: params.channel_id,
+        paymentMethod
+      })
+    }
+
     // 生成签名
     params.sign = this.generateSign(params)
     params.sign_type = 'MD5'
@@ -138,6 +164,7 @@ class ZpayService {
       orderId,
       amount,
       paymentMethod,
+      channelId: params.channel_id || 'default',
       payUrl: payUrl.replace(this.key, '***')
     })
 
@@ -145,7 +172,8 @@ class ZpayService {
       payUrl,
       params,
       provider: 'zpay',
-      method: paymentMethod
+      method: paymentMethod,
+      channelId: params.channel_id || null
     }
   }
 

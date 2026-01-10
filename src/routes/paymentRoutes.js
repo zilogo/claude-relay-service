@@ -38,8 +38,16 @@ router.get('/config', async (req, res) => {
 router.post('/orders', authenticateUser, async (req, res) => {
   try {
     const userId = req.user.id
-    const { amount, currency, provider, paymentMethod, packageId, displayAmount, displayCurrency } =
-      req.body
+    const {
+      amount,
+      currency,
+      provider,
+      paymentMethod,
+      packageId,
+      displayAmount,
+      displayCurrency,
+      channelId
+    } = req.body
 
     // 参数验证
     if (!amount || !provider || !paymentMethod) {
@@ -56,7 +64,8 @@ router.post('/orders', authenticateUser, async (req, res) => {
       paymentMethod,
       packageId,
       displayAmount,
-      displayCurrency
+      displayCurrency,
+      channelId
     })
 
     res.json({

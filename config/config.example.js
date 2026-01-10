@@ -357,7 +357,23 @@ const config = {
         ? process.env.ZPAY_IP_WHITELIST.split(',').map((ip) => ip.trim()).filter(Boolean)
         : [],
       requireHttps:
-        process.env.ZPAY_REQUIRE_HTTPS !== 'false' && process.env.NODE_ENV === 'production'
+        process.env.ZPAY_REQUIRE_HTTPS !== 'false' && process.env.NODE_ENV === 'production',
+      // 渠道ID映射配置：为不同支付方式指定默认渠道ID
+      // 格式：{ '支付方式': '渠道ID' }
+      // 例如：{ "wxpay": "10001", "alipay": "10002" }
+      // 环境变量格式：ZPAY_CHANNEL_MAPPING='{"wxpay":"10001","alipay":"10002"}'
+      channelMapping: (() => {
+        const mapping = process.env.ZPAY_CHANNEL_MAPPING
+        if (!mapping) return {}
+        try {
+          return JSON.parse(mapping)
+        } catch (e) {
+          if (typeof logger !== 'undefined') {
+            logger.warn('[Config] Invalid ZPAY_CHANNEL_MAPPING JSON, using empty mapping')
+          }
+          return {}
+        }
+      })()
     },
 
     // Stripe 配置

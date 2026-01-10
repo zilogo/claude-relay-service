@@ -132,6 +132,7 @@ class PaymentService {
    * 创建支付订单
    * @param {string} userId - 用户ID
    * @param {object} options - 订单选项
+   * @param {string} options.channelId - 支付渠道ID（可选，用于zpay等支持多渠道的提供商）
    * @returns {object} - 订单信息
    */
   async createOrder(userId, options) {
@@ -142,7 +143,8 @@ class PaymentService {
       paymentMethod,
       packageId = null,
       displayAmount = null,
-      displayCurrency = null
+      displayCurrency = null,
+      channelId = null
     } = options
 
     // 检查支付是否启用
@@ -279,7 +281,8 @@ class PaymentService {
       displayAmount: effectiveDisplayAmount,
       displayCurrency: normalizedDisplayCurrency,
       discountRate: configuredDiscountRate,
-      payableAmountCny
+      payableAmountCny,
+      channelId // 传递渠道ID参数
     })
 
     order.payUrl = paymentResult.payUrl || null
