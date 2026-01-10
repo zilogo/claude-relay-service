@@ -1343,12 +1343,19 @@ const conversionFormulaHint = computed(() => {
 
 const availablePaymentMethods = computed(() =>
   (paymentStore.paymentMethods || [])
-    .filter((method) => !(method.provider === 'zpay' && method.method === 'wxpay'))
+    // 移除了对 zpay wxpay 的过滤，现在会显示所有支付方式
     .map((method) => {
+      // 为不同提供商的微信支付设置更友好的名称
       if (method.provider === 'stripe' && method.method === 'wechat_pay') {
         return {
           ...method,
-          name: '微信'
+          name: '微信支付 (Stripe)'
+        }
+      }
+      if (method.provider === 'zpay' && method.method === 'wxpay') {
+        return {
+          ...method,
+          name: '微信支付'
         }
       }
       return method
