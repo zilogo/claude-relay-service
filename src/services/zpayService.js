@@ -74,8 +74,8 @@ class ZpayService {
     const sortedPairs = []
 
     for (const key in params) {
-      // 过滤空值、sign 和 sign_type
-      if (!params[key] || key === 'sign' || key === 'sign_type') {
+      // 过滤空值、sign、sign_type 和 channel_id（channel_id不参与签名）
+      if (!params[key] || key === 'sign' || key === 'sign_type' || key === 'channel_id') {
         continue
       }
       sortedPairs.push([key, params[key]])
@@ -95,10 +95,22 @@ class ZpayService {
    */
   generateSign(params) {
     const signString = this.buildSignString(params)
-    // 签名 = MD5(参数字符串 + 密钥)
+    // 根据 ZPay 文档，签名 = MD5(参数字符串 + 商户密钥)
+    // 注意：密钥直接拼接在参数字符串后面，没有 & 符号
+    const fullString = signString + this.key
+
+    // 记录调试信息（生产环境应该移除）
+    if (process.env.DEBUG_ZPAY === 'true') {
+      logger.debug('[ZpayService] Sign calculation:', {
+        paramString: signString,
+        fullString: fullString.replace(this.key, '***KEY***'),
+        sign: crypto.createHash('md5').update(fullString).digest('hex')
+      })
+    }
+
     return crypto
       .createHash('md5')
-      .update(signString + this.key)
+      .update(fullString)
       .digest('hex')
   }
 

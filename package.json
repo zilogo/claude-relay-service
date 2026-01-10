@@ -48,7 +48,14 @@
     "data:debug": "node scripts/debug-redis-keys.js",
     "test:pricing-fallback": "node scripts/test-pricing-fallback.js",
     "test:usage": "node scripts/generate-test-usage-data-fixed.js",
-    "test:usage:old": "node scripts/generate-test-usage-data.js"
+    "test:usage:old": "node scripts/generate-test-usage-data.js",
+    "test:remote": "node scripts/test-remote-crs.js",
+    "test:remote:admin": "node scripts/test-remote-admin.js",
+    "test:remote:stress": "node scripts/test-remote-stress.js",
+    "test:remote:all": "npm run test:remote && npm run test:remote:admin",
+    "test:zpay": "node scripts/test-zpay-debug.js",
+    "test:zpay:simple": "node scripts/test-zpay-debug.js --simple",
+    "test:zpay:verify": "node scripts/test-zpay-debug.js --verify"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.861.0",
