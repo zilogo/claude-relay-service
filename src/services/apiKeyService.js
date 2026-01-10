@@ -868,7 +868,9 @@ class ApiKeyService {
         await redis.deleteApiKeyHash(keyData.apiKey)
       }
 
-      // ✅ 从用户索引中移除（如果有userId）
+      // ❌ 不再从用户索引中移除，以便用户可以看到已删除的API Keys
+      // 保留在索引中，通过 isDeleted 标志来区分
+      /*
       if (keyData.userId) {
         try {
           await redis.getClient().srem(`user_apikeys:${keyData.userId}`, keyId)
@@ -878,6 +880,7 @@ class ApiKeyService {
           // 不抛出错误，允许删除操作继续
         }
       }
+      */
 
       logger.success(`🗑️ Soft deleted API key: ${keyId} by ${deletedBy} (${deletedByType})`)
 
