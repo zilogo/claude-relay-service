@@ -433,7 +433,7 @@ const formatDate = (dateString) => {
 const loadApiKeys = async () => {
   loading.value = true
   try {
-    apiKeys.value = await userStore.getUserApiKeys(false) // 不包含已删除的 keys
+    apiKeys.value = await userStore.getUserApiKeys(true) // 包含已删除的 keys
   } catch (error) {
     console.error('Failed to load API keys:', error)
     showToast('加载 API Keys 失败', 'error')
