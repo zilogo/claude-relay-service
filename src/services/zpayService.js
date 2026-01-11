@@ -74,8 +74,8 @@ class ZpayService {
     const sortedPairs = []
 
     for (const key in params) {
-      // 过滤空值、sign、sign_type 和 channel_id（channel_id不参与签名）
-      if (!params[key] || key === 'sign' || key === 'sign_type' || key === 'channel_id') {
+      // 过滤空值、sign、sign_type 和 cid（cid不参与签名）
+      if (!params[key] || key === 'sign' || key === 'sign_type' || key === 'cid') {
         continue
       }
       sortedPairs.push([key, params[key]])
@@ -147,9 +147,9 @@ class ZpayService {
       sitename: options.sitename || config.web.title || 'AI TokenCloud'
     }
 
-    // 如果指定了 channelId，添加到参数中
+    // 如果指定了 channelId，添加到参数中（使用 cid 作为参数名）
     if (options.channelId) {
-      params.channel_id = options.channelId
+      params.cid = options.channelId
       logger.info('[ZpayService] Using specified channel ID', {
         orderId,
         channelId: options.channelId,
@@ -157,10 +157,10 @@ class ZpayService {
       })
     } else if (this.channelMapping[paymentMethod]) {
       // 如果没有指定 channelId，但配置中有该支付方式的默认渠道映射，则使用映射的渠道ID
-      params.channel_id = this.channelMapping[paymentMethod]
+      params.cid = this.channelMapping[paymentMethod]
       logger.info('[ZpayService] Using mapped channel ID from config', {
         orderId,
-        channelId: params.channel_id,
+        channelId: params.cid,
         paymentMethod
       })
     }
@@ -176,7 +176,7 @@ class ZpayService {
       orderId,
       amount,
       paymentMethod,
-      channelId: params.channel_id || 'default',
+      channelId: params.cid || 'default',
       payUrl: payUrl.replace(this.key, '***')
     })
 
@@ -185,7 +185,7 @@ class ZpayService {
       params,
       provider: 'zpay',
       method: paymentMethod,
-      channelId: params.channel_id || null
+      channelId: params.cid || null
     }
   }
 
