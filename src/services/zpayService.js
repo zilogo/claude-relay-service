@@ -74,8 +74,8 @@ class ZpayService {
     const sortedPairs = []
 
     for (const key in params) {
-      // 过滤空值、sign、sign_type 和 cid（cid不参与签名）
-      if (!params[key] || key === 'sign' || key === 'sign_type' || key === 'cid') {
+      // 过滤空值、sign、sign_type（注意：cid 参数需要参与签名）
+      if (!params[key] || key === 'sign' || key === 'sign_type') {
         continue
       }
       sortedPairs.push([key, params[key]])
