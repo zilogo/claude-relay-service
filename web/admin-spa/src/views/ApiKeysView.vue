@@ -1593,7 +1593,18 @@
           <!-- 已删除的 API Keys 表格 -->
           <div v-else>
             <!-- 工具栏 -->
-            <div class="mb-4 flex justify-end">
+            <div class="mb-4 flex justify-between">
+              <!-- 左侧：导出按钮 -->
+              <button
+                v-if="deletedApiKeys.length > 0"
+                class="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
+                @click="exportDeletedApiKeys"
+              >
+                <i class="fas fa-file-download mr-2" />
+                导出为 CSV ({{ deletedApiKeys.length }})
+              </button>
+
+              <!-- 右侧：清空按钮 -->
               <button
                 v-if="deletedApiKeys.length > 0"
                 class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
@@ -3473,6 +3484,116 @@ const permanentDeleteApiKey = async (keyId) => {
 }
 
 // 清空所有已删除的API Keys
+// 导出已删除的 API Keys 为 CSV
+const exportDeletedApiKeys = () => {
+  if (deletedApiKeys.value.length === 0) {
+    showToast('没有可导出的数据', 'info')
+    return
+  }
+
+  try {
+    // CSV 字段定义
+    const fields = [
+      { key: 'id', label: 'ID' },
+      { key: 'name', label: '名称' },
+      { key: 'description', label: '描述' },
+      { key: 'isActive', label: '状态' },
+      { key: 'createdAt', label: '创建时间' },
+      { key: 'deletedAt', label: '删除时间' },
+      { key: 'deletedBy', label: '删除者' },
+      { key: 'lastUsedAt', label: '最后使用时间' },
+      { key: 'apiKey', label: 'API密钥' },
+      { key: 'usage.total.tokens', label: '总令牌数' },
+      { key: 'usage.total.inputTokens', label: '输入令牌数' },
+      { key: 'usage.total.outputTokens', label: '输出令牌数' },
+      { key: 'usage.total.cacheCreateTokens', label: '缓存创建令牌数' },
+      { key: 'usage.total.cacheReadTokens', label: '缓存读取令牌数' },
+      { key: 'usage.total.allTokens', label: '所有令牌总数' },
+      { key: 'usage.total.requests', label: '总请求数' },
+      { key: 'usage.total.cost', label: '总费用(美元)' }
+    ]
+
+    // 获取嵌套值
+    const getNestedValue = (obj, path) => {
+      return path.split('.').reduce((current, key) => current?.[key], obj)
+    }
+
+    // 格式化值
+    const formatValue = (key, value) => {
+      if (value == null || value === '') return ''
+      if (key === 'isActive') return value === true || value === 'true' ? '是' : '否'
+      if (key.includes('At') || key.includes('Time')) {
+        try {
+          return new Date(value).toLocaleString('zh-CN')
+        } catch {
+          return value
+        }
+      }
+      if (key.includes('cost') || key.includes('Cost')) {
+        const num = parseFloat(value)
+        return num > 0 ? `$${num.toFixed(4)}` : '$0.0000'
+      }
+      if (typeof value === 'number') return value.toLocaleString('zh-CN')
+      return value
+    }
+
+    // 转义 CSV 字段
+    const escapeCSV = (field) => {
+      if (field == null) return ''
+      const str = String(field)
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`
+      }
+      return str
+    }
+
+    // 生成 CSV
+    const headers = fields.map((f) => f.label)
+    const rows = deletedApiKeys.value.map((item) => {
+      return fields.map((field) => {
+        const value = getNestedValue(item, field.key)
+        const formatted = formatValue(field.key, value)
+        return escapeCSV(formatted)
+      })
+    })
+
+    const csv = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n')
+    const csvWithBOM = '\ufeff' + csv // 添加 UTF-8 BOM
+
+    // 下载文件
+    const blob = new Blob([csvWithBOM], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    const filename = `deleted-apikeys-${new Date().toISOString().split('T')[0]}.csv`
+
+    link.setAttribute('href', url)
+    link.setAttribute('download', filename)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    // 统计信息
+    const totalRequests = deletedApiKeys.value.reduce(
+      (sum, key) => sum + (parseInt(getNestedValue(key, 'usage.total.requests')) || 0),
+      0
+    )
+    const totalCost = deletedApiKeys.value.reduce(
+      (sum, key) => sum + (parseFloat(getNestedValue(key, 'usage.total.cost')) || 0),
+      0
+    )
+
+    showToast(
+      `已导出 ${deletedApiKeys.value.length} 个已删除的 API Keys（总请求: ${totalRequests.toLocaleString('zh-CN')}, 总费用: $${totalCost.toFixed(4)}）`,
+      'success'
+    )
+  } catch (error) {
+    console.error('导出失败:', error)
+    showToast('导出失败，请重试', 'error')
+  }
+}
+
 const clearAllDeletedApiKeys = async () => {
   const count = deletedApiKeys.value.length
   if (count === 0) {
