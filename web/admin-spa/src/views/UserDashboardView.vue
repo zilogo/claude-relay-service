@@ -150,6 +150,65 @@
 
     <!-- 主内容 -->
     <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <!-- 系统升级通知栏 -->
+      <div
+        class="mb-6 overflow-hidden rounded-2xl border border-blue-200/60 bg-gradient-to-r from-blue-50/90 via-indigo-50/90 to-purple-50/90 p-6 shadow-lg backdrop-blur-sm dark:border-blue-500/30 dark:from-blue-900/30 dark:via-indigo-900/30 dark:to-purple-900/30"
+      >
+        <div class="flex items-start gap-4">
+          <!-- 图标 -->
+          <div
+            class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg"
+          >
+            <svg
+              class="h-6 w-6 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
+          </div>
+          <!-- 内容 -->
+          <div class="flex-1">
+            <h3 class="mb-2 text-lg font-bold text-gray-900 dark:text-white">
+              系统升级通知
+            </h3>
+            <div class="space-y-2 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+              <p>
+                <strong class="font-semibold text-gray-900 dark:text-white"
+                  >AITokenCloud</strong
+                >
+                正在进行新系统升级，本次升级将新增
+                <span class="font-semibold text-indigo-600 dark:text-indigo-400"
+                  >Gemini CLI</span
+                >
+                支持，并优化整体性能与稳定性。
+              </p>
+              <p>
+                升级期间将
+                <span class="font-semibold text-orange-600 dark:text-orange-400"
+                  >临时关闭支付通道</span
+                >，已开通服务
+                <span class="font-semibold text-green-600 dark:text-green-400"
+                  >可正常使用，不受影响</span
+                >。
+              </p>
+              <p>
+                升级完成后将恢复支付功能，具体时间请关注官网及用户群通知。
+              </p>
+              <p class="pt-2 text-gray-600 dark:text-gray-400">
+                感谢您的理解与支持
+                <span class="font-semibold">— AITokenCloud 团队</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
       <!-- Overview Tab -->
       <div v-if="activeTab === 'overview'" class="space-y-6">
         <!-- 标题和欢迎信息 -->
