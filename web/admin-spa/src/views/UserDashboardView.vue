@@ -44,7 +44,7 @@
 
               <!-- Tab 按钮 -->
               <button
-                class="relative z-10 flex-1 rounded-xl px-3 py-2 text-center text-sm font-semibold transition-colors whitespace-nowrap min-w-0"
+                class="relative z-10 min-w-0 flex-1 whitespace-nowrap rounded-xl px-3 py-2 text-center text-sm font-semibold transition-colors"
                 :class="
                   activeTab === 'overview'
                     ? 'text-[#D97757]'
@@ -55,7 +55,7 @@
                 总览
               </button>
               <button
-                class="relative z-10 flex-1 rounded-xl px-3 py-2 text-center text-sm font-semibold transition-colors whitespace-nowrap min-w-0"
+                class="relative z-10 min-w-0 flex-1 whitespace-nowrap rounded-xl px-3 py-2 text-center text-sm font-semibold transition-colors"
                 :class="
                   activeTab === 'api-keys'
                     ? 'text-[#D97757]'
@@ -66,7 +66,7 @@
                 API Keys
               </button>
               <button
-                class="relative z-10 flex-1 rounded-xl px-3 py-2 text-center text-sm font-semibold transition-colors whitespace-nowrap min-w-0"
+                class="relative z-10 min-w-0 flex-1 whitespace-nowrap rounded-xl px-3 py-2 text-center text-sm font-semibold transition-colors"
                 :class="
                   activeTab === 'usage'
                     ? 'text-[#D97757]'
@@ -77,7 +77,7 @@
                 使用统计
               </button>
               <button
-                class="relative z-10 flex-1 rounded-xl px-3 py-2 text-center text-sm font-semibold transition-colors whitespace-nowrap min-w-0"
+                class="relative z-10 min-w-0 flex-1 whitespace-nowrap rounded-xl px-3 py-2 text-center text-sm font-semibold transition-colors"
                 :class="
                   activeTab === 'recharge'
                     ? 'text-[#D97757]'
@@ -88,7 +88,7 @@
                 充值记录
               </button>
               <button
-                class="relative z-10 flex-1 rounded-xl px-3 py-2 text-center text-sm font-semibold transition-colors whitespace-nowrap min-w-0"
+                class="relative z-10 min-w-0 flex-1 whitespace-nowrap rounded-xl px-3 py-2 text-center text-sm font-semibold transition-colors"
                 :class="
                   activeTab === 'tutorial'
                     ? 'text-[#D97757]'
@@ -150,6 +150,50 @@
 
     <!-- 主内容 -->
     <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <!-- 紧急通知栏 - Claude 服务暂停 -->
+      <div
+        class="mb-4 overflow-hidden rounded-2xl border border-red-200/60 bg-gradient-to-r from-red-50/90 via-orange-50/90 to-yellow-50/90 p-6 shadow-lg backdrop-blur-sm dark:border-red-500/30 dark:from-red-900/30 dark:via-orange-900/30 dark:to-yellow-900/30"
+      >
+        <div class="flex items-start gap-4">
+          <!-- 警告图标 -->
+          <div
+            class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-orange-600 shadow-lg"
+          >
+            <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
+          </div>
+          <!-- 内容 -->
+          <div class="flex-1">
+            <h3 class="mb-3 text-lg font-bold text-red-700 dark:text-red-400">【重要通知】</h3>
+            <div class="space-y-3 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+              <p>
+                各位用户，很抱歉地通知：因A社大规模封号且不退费，<span
+                  class="font-semibold text-red-600 dark:text-red-400"
+                  >Claude 代码功能将在约30分钟后暂停</span
+                >。请大家先使用
+                <span class="font-semibold text-indigo-600 dark:text-indigo-400">Codex</span>
+                完成编码任务。
+              </p>
+              <p>
+                我们正在紧急升级服务，预计两天内将上线
+                <span class="font-semibold text-green-600 dark:text-green-400">Gemini 支持</span
+                >，旨在为大家提供更稳定、优质的服务体验。当前号源紧张带来不便，我们深表歉意，<span
+                  class="font-semibold text-gray-900 dark:text-white"
+                  >Claude Code资源我们正在努力恢复</span
+                >，搞定后会第一时间通知。
+              </p>
+              <p class="pt-2 font-semibold text-gray-900 dark:text-white">感谢理解与耐心支持！</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 系统升级通知栏 -->
       <div
         class="mb-6 overflow-hidden rounded-2xl border border-blue-200/60 bg-gradient-to-r from-blue-50/90 via-indigo-50/90 to-purple-50/90 p-6 shadow-lg backdrop-blur-sm dark:border-blue-500/30 dark:from-blue-900/30 dark:via-indigo-900/30 dark:to-purple-900/30"
@@ -159,12 +203,7 @@
           <div
             class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg"
           >
-            <svg
-              class="h-6 w-6 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 stroke-linecap="round"
@@ -175,18 +214,12 @@
           </div>
           <!-- 内容 -->
           <div class="flex-1">
-            <h3 class="mb-2 text-lg font-bold text-gray-900 dark:text-white">
-              系统升级通知
-            </h3>
+            <h3 class="mb-2 text-lg font-bold text-gray-900 dark:text-white">系统升级通知</h3>
             <div class="space-y-2 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
               <p>
-                <strong class="font-semibold text-gray-900 dark:text-white"
-                  >AITokenCloud</strong
-                >
+                <strong class="font-semibold text-gray-900 dark:text-white">AITokenCloud</strong>
                 正在进行新系统升级，本次升级将新增
-                <span class="font-semibold text-indigo-600 dark:text-indigo-400"
-                  >Gemini CLI</span
-                >
+                <span class="font-semibold text-indigo-600 dark:text-indigo-400">Gemini CLI</span>
                 支持，并优化整体性能与稳定性。
               </p>
               <p>
@@ -198,9 +231,7 @@
                   >可正常使用，不受影响</span
                 >。
               </p>
-              <p>
-                升级完成后将恢复支付功能，具体时间请关注官网及用户群通知。
-              </p>
+              <p>升级完成后将恢复支付功能，具体时间请关注官网及用户群通知。</p>
               <p class="pt-2 text-gray-600 dark:text-gray-400">
                 感谢您的理解与支持
                 <span class="font-semibold">— AITokenCloud 团队</span>
@@ -386,7 +417,9 @@
             ></div>
             <div class="relative">
               <!-- 右上角提示 -->
-              <div class="absolute -top-2 -right-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1 text-xs font-semibold text-white shadow-lg">
+              <div
+                class="absolute -right-2 -top-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1 text-xs font-semibold text-white shadow-lg"
+              >
                 节日活动，定期开启
               </div>
               <div
@@ -412,7 +445,7 @@
                     活动赠额已到账
                   </p>
                   <p
-                    class="mt-3 text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400"
+                    class="mt-3 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-4xl font-bold text-transparent dark:from-purple-400 dark:to-pink-400"
                   >
                     +${{ promotionBonusReceived.toFixed(2) }}
                   </p>
@@ -430,7 +463,7 @@
                     首充优惠倒计时
                   </p>
                   <p
-                    class="mt-3 text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400"
+                    class="mt-3 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-4xl font-bold text-transparent dark:from-purple-400 dark:to-pink-400"
                   >
                     {{ promotionCurrentBonus }}%
                   </p>
@@ -452,12 +485,14 @@
                     手动充值 · 活动增额
                   </p>
                   <p
-                    class="mt-3 text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400"
+                    class="mt-3 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-4xl font-bold text-transparent dark:from-purple-400 dark:to-pink-400"
                   >
                     ${{ (balanceInfo?.manualRechargeTotal || 0).toFixed(2) }}
                   </p>
                   <div class="mt-4 flex items-center justify-between text-sm">
-                    <span class="text-purple-700 dark:text-purple-300">手动充值累计（含活动增额）</span>
+                    <span class="text-purple-700 dark:text-purple-300"
+                      >手动充值累计（含活动增额）</span
+                    >
                     <svg
                       class="h-5 w-5 text-purple-500 transition-transform group-hover:translate-x-1"
                       fill="none"
